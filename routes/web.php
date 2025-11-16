@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
 
+// controllers
+use App\Http\Controllers\Admin\UserController;
+
 Route::get('/', function () {
     return Inertia::render('welcome', [
         'canRegister' => Features::enabled(Features::registration()),
@@ -18,10 +21,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
 // Route Admin
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::get('/admin/dashboard', function () {
-        return inertia('Admin/Dashboard');
-    });
+Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', function () {
+        return inertia('admin/AdminDashboard');
+    })->name('dashboard');
+
+    Route::resource('users', UserController::class);
 });
 
 // Route Teacher
