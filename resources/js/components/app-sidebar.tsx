@@ -13,7 +13,7 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, User } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const footerNavItems: NavItem[] = [
@@ -43,9 +43,13 @@ export function AppSidebar() {
                 icon: LayoutGrid,
             },
             {
-                title: 'Manage Users',
-                href: '/admin/users',
-                icon: User,
+                title: 'User Management',
+                href: '#',
+                icon: Folder,
+                items: [
+                    { title: 'Semua User', href: '/admin/users' },
+                    { title: 'Buat User', href: '/admin/users/create' },
+                ],
             },
         ];
     } else if (role === 'teacher') {
