@@ -54,11 +54,16 @@ class User extends Authenticatable
 
     public function isTeacher(): bool
     {
-        return $this->role === 'professor';
+        return $this->role === 'teacher';
     }
 
     public function isStudent(): bool
     {
         return $this->role === 'student';
+    }
+
+    public function questionBanks()
+    {
+        return $this->hasMany(QuestionBank::class, 'teacher_id');
     }
 }

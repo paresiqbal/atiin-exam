@@ -11,7 +11,7 @@ class QuestionBank extends Model
 
     protected $fillable = [
         'teacher_id',
-        'title',
+        'name',
         'description',
     ];
 

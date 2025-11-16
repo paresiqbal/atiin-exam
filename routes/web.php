@@ -6,6 +6,7 @@ use Laravel\Fortify\Features;
 
 // controllers
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Teacher\QuestionBankController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -30,10 +31,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
 });
 
 // Route Teacher
-Route::middleware(['auth', 'role:teacher'])->group(function () {
-    Route::get('/teacher/bank', function () {
-        return inertia('Teacher/QuestionBank');
-    });
+Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')->group(function () {
+    Route::resource('question-banks', QuestionBankController::class);
 });
 
 
