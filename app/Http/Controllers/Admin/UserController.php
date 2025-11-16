@@ -13,6 +13,7 @@ class UserController extends Controller
     public function index()
     {
         $users = User::with('university', 'major')->paginate(15);
+
         return Inertia::render('admin/users/UserIndex', [
             'users' => $users,
         ]);
