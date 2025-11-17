@@ -32,6 +32,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
 
 // Route Teacher
 Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')->group(function () {
+    Route::get('/dashboard', function () {
+        return inertia('teacher/TeacherDashboard');
+    })->name('dashboard');
+
     Route::resource('question-banks', QuestionBankController::class);
 });
 
