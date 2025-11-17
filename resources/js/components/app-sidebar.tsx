@@ -59,6 +59,21 @@ export function AppSidebar() {
                 href: '/teacher/dashboard',
                 icon: LayoutGrid,
             },
+            {
+                title: 'Bank Soal',
+                href: '#',
+                icon: Folder,
+                items: [
+                    {
+                        title: 'Semua Bank Soal',
+                        href: '/teacher/question-banks',
+                    },
+                    {
+                        title: 'Buat Bank Soal',
+                        href: '/teacher/question-banks/create',
+                    },
+                ],
+            },
         ];
     } else {
         mainNavItems = [

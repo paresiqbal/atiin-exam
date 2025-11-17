@@ -14,7 +14,6 @@ class QuestionBankController extends Controller
     public function index()
     {
         $user = auth()->user();
-        dd(auth()->user());
 
         if (!$user) {
             abort(401, 'Not authenticated');
@@ -22,14 +21,14 @@ class QuestionBankController extends Controller
 
         $questionBanks = $user->questionBanks()->withCount('questions')->paginate(15);
 
-        return Inertia::render('teacher/question-banks/Index', [
+        return Inertia::render('teacher/question-banks/QuestionIndex', [
             'questionBanks' => $questionBanks,
         ]);
     }
 
     public function create()
     {
-        return Inertia::render('teacher/question-banks/Create');
+        return Inertia::render('teacher/question-banks/QuestionCreate');
     }
 
     public function store(Request $request)
@@ -52,7 +51,7 @@ class QuestionBankController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        return Inertia::render('teacher/question-banks/Edit', [
+        return Inertia::render('teacher/question-banks/QuestionEdit', [
             'questionBank' => $questionBank,
         ]);
     }
