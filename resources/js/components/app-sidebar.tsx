@@ -82,6 +82,15 @@ export function AppSidebar() {
                 href: dashboard(),
                 icon: LayoutGrid,
             },
+            {
+                title: 'Exams',
+                href: '#',
+                icon: Folder,
+                items: [
+                    { title: 'Join Exam', href: '/student/exams/join' },
+                    { title: 'My Exams', href: '/student/exams' },
+                ],
+            },
         ];
     }
 
