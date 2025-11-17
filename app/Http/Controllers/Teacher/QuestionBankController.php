@@ -21,14 +21,14 @@ class QuestionBankController extends Controller
 
         $questionBanks = $user->questionBanks()->withCount('questions')->paginate(15);
 
-        return Inertia::render('teacher/question-banks/QuestionIndex', [
+        return Inertia::render('teacher/question-banks/QuestionBankIndex', [
             'questionBanks' => $questionBanks,
         ]);
     }
 
     public function create()
     {
-        return Inertia::render('teacher/question-banks/QuestionCreate');
+        return Inertia::render('teacher/question-banks/QuestionBankCreate');
     }
 
     public function store(Request $request)
@@ -51,7 +51,7 @@ class QuestionBankController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        return Inertia::render('teacher/question-banks/QuestionEdit', [
+        return Inertia::render('teacher/question-banks/QuestionBankEdit', [
             'questionBank' => $questionBank,
         ]);
     }
@@ -84,5 +84,17 @@ class QuestionBankController extends Controller
 
         return redirect()->route('teacher.question-banks.index')
             ->with('success', 'Question bank deleted successfully');
+    }
+
+    public function show(QuestionBank $questionBank)
+    {
+        // Check if teacher owns this question bank
+        if ($questionBank->teacher_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        return Inertia::render('teacher/question-banks/QuestionBankShow', [
+            'questionBank' => $questionBank->load('questions.options'),
+        ]);
     }
 }

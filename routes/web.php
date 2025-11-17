@@ -7,6 +7,7 @@ use Laravel\Fortify\Features;
 // controllers
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Teacher\QuestionBankController;
+use App\Http\Controllers\Teacher\QuestionController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -37,6 +38,9 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')
     })->name('dashboard');
 
     Route::resource('question-banks', QuestionBankController::class);
+    Route::post('question-banks/{questionBank}/questions', [QuestionController::class, 'store'])->name('questions.store');
+    Route::put('questions/{question}', [QuestionController::class, 'update'])->name('questions.update');
+    Route::delete('questions/{question}', [QuestionController::class, 'destroy'])->name('questions.destroy');
 });
 
 
