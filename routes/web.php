@@ -6,6 +6,7 @@ use Laravel\Fortify\Features;
 
 // controllers
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Student\ExamController;
 use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\QuestionController;
 
@@ -45,10 +46,13 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')
 
 
 // Route Student
-Route::middleware(['auth', 'role:student'])->group(function () {
-    Route::get('/exam/start', function () {
-        return inertia('Student/StartExam');
-    });
+Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')->group(function () {
+    Route::get('/dashboard', function () {
+        return inertia('teacher/TeacherDashboard');
+    })->name('dashboard');
+
+    Route::get('/exams/join', [ExamController::class, 'joinForm'])->name('exams.join');
+    Route::post('/exams/start', [ExamController::class, 'startExam'])->name('exams.start');
 });
 
 
