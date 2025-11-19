@@ -64,12 +64,10 @@ class ExamController extends Controller
             'max_attempts' => 1,
         ]);
 
-        // Generate unique token
         ExamToken::create([
             'exam_id' => $exam->id,
-            'token' => Str::random(20),
+            'token' => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
         ]);
-
         return redirect()
             ->route('admin.exams.index')
             ->with('success', 'Exam created successfully');

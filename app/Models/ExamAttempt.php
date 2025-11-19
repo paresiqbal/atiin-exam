@@ -30,8 +30,8 @@ class ExamAttempt extends Model
         return $this->belongsTo(User::class, 'student_id');
     }
 
-    // public function responses()
-    // {
-    //     return $this->hasMany(ExamResponse::class);
-    // }
+    public function responses()
+    {
+        return $this->hasMany(ExamResponse::class);
+    }
 }

@@ -43,6 +43,15 @@ export function AppSidebar() {
                 icon: LayoutGrid,
             },
             {
+                title: 'Exam Management',
+                href: '#',
+                icon: Folder,
+                items: [
+                    { title: 'Semua Exam', href: '/admin/exams' },
+                    { title: 'Buat Exam', href: '/admin/exams/create' },
+                ],
+            },
+            {
                 title: 'User Management',
                 href: '#',
                 icon: Folder,

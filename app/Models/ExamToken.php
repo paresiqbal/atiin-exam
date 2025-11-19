@@ -15,4 +15,9 @@ class ExamToken extends Model
         'expires_at',
         'used_at',
     ];
+
+    public function exam()
+    {
+        return $this->belongsTo(Exam::class);
+    }
 }

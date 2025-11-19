@@ -43,9 +43,18 @@ class ExamController extends Controller
 
         $exam = $token->exam;
 
+        // If exam no longer exists (exam_id points to non-existing exam)
+        if (!$exam) {
+            return back()->withErrors([
+                'token' => 'This exam is no longer available',
+            ]);
+        }
+
         // Check if exam is published
         if (!$exam->is_published) {
-            return back()->withErrors(['token' => 'This exam is not available yet']);
+            return back()->withErrors([
+                'token' => 'This exam is not available yet',
+            ]);
         }
 
         // Update student's university & major

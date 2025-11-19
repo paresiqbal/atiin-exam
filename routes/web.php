@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ExamController as AdminExamController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -30,6 +31,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('ad
     })->name('dashboard');
 
     Route::resource('users', UserController::class);
+
+    Route::resource('exams', AdminExamController::class);
+    Route::post('exams/{exam}/publish', [AdminExamController::class, 'publish'])->name('exams.publish');
 });
 
 // Route Teacher
