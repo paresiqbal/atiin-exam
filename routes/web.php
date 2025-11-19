@@ -53,6 +53,10 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
 
     Route::get('/exams/join', [ExamController::class, 'joinForm'])->name('exams.join');
     Route::post('/exams/start', [ExamController::class, 'startExam'])->name('exams.start');
+    Route::get('/exams/{attempt}/take', [ExamController::class, 'take'])->name('exams.take');
+    Route::post('/exams/{attempt}/save-answer', [ExamController::class, 'saveAnswer'])->name('exams.saveAnswer');
+    Route::post('/exams/{attempt}/submit', [ExamController::class, 'submitExam'])->name('exams.submit');
+    Route::get('/exams/{attempt}/results', [ExamController::class, 'results'])->name('exams.results');
 });
 
 

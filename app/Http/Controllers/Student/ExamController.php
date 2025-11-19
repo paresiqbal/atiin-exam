@@ -7,6 +7,7 @@ use App\Models\ExamAttempt;
 use App\Models\ExamToken;
 use App\Models\University;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -66,5 +67,162 @@ class ExamController extends Controller
         $token->update(['used_at' => now()]);
 
         return redirect()->route('student.exams.take', $attempt->id);
+    }
+
+    public function take(ExamAttempt $attempt)
+    {
+        // Check if student owns this attempt
+        if ($attempt->student_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Check if already submitted
+        if ($attempt->status === 'submitted') {
+            return redirect()->route('student.exams.results', $attempt->id);
+        }
+
+        // Load questions with options
+        $questions = $attempt->exam->questionBank->questions()
+            ->with('options')
+            ->get();
+
+        // Shuffle if enabled
+        if ($attempt->exam->settings->shuffle_questions) {
+            $questions = $questions->shuffle();
+        }
+
+        // Get student's previous answers
+        $responses = $attempt->responses()
+            ->pluck('selected_option_id', 'question_id')
+            ->toArray();
+
+        $timeLimit = $attempt->exam->settings->time_limit_minutes;
+        $elapsedMinutes = now()->diffInMinutes($attempt->started_at);
+
+        // Auto-submit if time expired
+        if ($elapsedMinutes > $timeLimit) {
+            return $this->submitExam($attempt);
+        }
+
+        return Inertia::render('student/exams/TakeExam', [
+            'attempt' => $attempt,
+            'exam' => $attempt->exam->load('settings'),
+            'questions' => $questions,
+            'responses' => $responses,
+            'timeLimit' => $timeLimit,
+            'elapsedMinutes' => $elapsedMinutes,
+        ]);
+    }
+
+    public function saveAnswer(Request $request, ExamAttempt $attempt)
+    {
+        // Check if student owns this attempt
+        if ($attempt->student_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Check if time expired
+        $timeLimit = $attempt->exam->settings->time_limit_minutes;
+        if (now()->diffInMinutes($attempt->started_at) > $timeLimit) {
+            return response()->json(['error' => 'Time expired'], 403);
+        }
+
+        $validated = $request->validate([
+            'question_id' => 'required|exists:questions,id',
+            'selected_option_id' => 'nullable|exists:question_options,id',
+        ]);
+
+        // Save or update response
+        $attempt->responses()->updateOrCreate(
+            [
+                'question_id' => $validated['question_id'],
+            ],
+            [
+                'selected_option_id' => $validated['selected_option_id'],
+                'answered_at' => now(),
+            ]
+        );
+
+        return response()->json(['success' => true]);
+    }
+
+    public function submitExam(ExamAttempt $attempt)
+    {
+        // Check if student owns this attempt
+        if ($attempt->student_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Check if already submitted
+        if ($attempt->status === 'submitted') {
+            return redirect()->route('student.exams.results', $attempt->id);
+        }
+
+        // Calculate score
+        $totalScore = 0;
+        $maxScore = 0;
+
+        foreach ($attempt->exam->questionBank->questions as $question) {
+            $maxScore += $question->points;
+
+            $response = $attempt->responses()
+                ->where('question_id', $question->id)
+                ->first();
+
+            if ($response && $response->selectedOption && $response->selectedOption->is_correct) {
+                $totalScore += $question->points;
+            }
+        }
+
+        // Update attempt with final score
+        $attempt->update([
+            'status' => 'submitted',
+            'completed_at' => now(),
+            'score' => $totalScore,
+            'total_score' => $maxScore,
+        ]);
+
+        return redirect()->route('student.exams.results', $attempt->id);
+    }
+
+    public function results(ExamAttempt $attempt): Response
+    {
+        // Check if student owns this attempt
+        if ($attempt->student_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $passingScore = $attempt->student->major->minimum_passing_grade ?? 0;
+        $isPassed = $attempt->score >= $passingScore;
+
+        $questionDetails = $attempt->exam->questionBank->questions
+            ->map(function ($question) use ($attempt) {
+                $response = $attempt->responses()
+                    ->where('question_id', $question->id)
+                    ->first();
+
+                $correctOption = $question->options()
+                    ->where('is_correct', true)
+                    ->first();
+
+                return [
+                    'id' => $question->id,
+                    'question_text' => $question->question_text,
+                    'question_type' => $question->question_type,
+                    'points' => $question->points,
+                    'student_answer' => $response?->selectedOption?->option_text,
+                    'correct_answer' => $correctOption?->option_text,
+                    'is_correct' => $response?->selectedOption?->is_correct ?? false,
+                    'points_earned' => $response ? ($response->selectedOption?->is_correct ? $question->points : 0) : 0,
+                ];
+            });
+
+        return Inertia::render('student/exams/Results', [
+            'attempt' => $attempt,
+            'exam' => $attempt->exam,
+            'passingScore' => $passingScore,
+            'isPassed' => $isPassed,
+            'questionDetails' => $questionDetails,
+        ]);
     }
 }
