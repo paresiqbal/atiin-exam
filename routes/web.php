@@ -18,12 +18,6 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-// Route::middleware(['auth', 'verified'])->group(function () {
-//     Route::get('dashboard', function () {
-//         return Inertia::render('dashboard');
-//     })->name('dashboard');
-// });
-
 
 // Route Admin
 Route::middleware(['auth', 'verified', 'role:admin'])
@@ -40,6 +34,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');
         Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
     });
+
+
 // Route Teacher
 Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', function () {
