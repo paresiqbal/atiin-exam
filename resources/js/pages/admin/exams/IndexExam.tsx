@@ -1,48 +1,37 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem } from '@/types';
+// react
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
-interface ExamData {
-    id: number;
-    name: string;
-    description: string;
-    is_published: boolean;
-    question_bank: {
-        name: string;
-    } | null;
-    attempts_count: number;
-    created_at: string;
-}
+// layout
+import AppLayout from '@/layouts/app-layout';
 
-interface PaginationLink {
-    url: string | null;
-    label: string;
-    active: boolean;
-}
+// components
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
-interface Props {
-    exams: {
-        data: ExamData[];
-        links: PaginationLink[];
-    };
-}
+// types
+import { BreadcrumbItem } from '@/types';
+import { ExamData } from '@/types/exam';
 
-export default function IndexExam({ exams }: Props) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [deleteId, setDeleteId] = useState<number | null>(null);
+export default function IndexExam({ exams }: { exams: { data: ExamData[] } }) {
+    const [examToDelete, setExamToDelete] = useState<ExamData | null>(null);
 
-    const handleDelete = (id: number) => {
-        if (
-            confirm(
-                'Are you sure? If the exam has been taken by students, it cannot be deleted.',
-            )
-        ) {
-            router.delete(`/admin/exams/${id}`);
-            setDeleteId(null);
-        }
+    const handleConfirmDelete = () => {
+        if (!examToDelete) return;
+
+        router.delete(`/admin/exams/${examToDelete.id}`, {
+            onFinish: () => setExamToDelete(null),
+        });
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -137,7 +126,7 @@ export default function IndexExam({ exams }: Props) {
                                                 variant="destructive"
                                                 size="sm"
                                                 onClick={() =>
-                                                    handleDelete(exam.id)
+                                                    setExamToDelete(exam)
                                                 }
                                             >
                                                 Hapus
@@ -149,6 +138,36 @@ export default function IndexExam({ exams }: Props) {
                         </table>
                     </div>
                 )}
+
+                {/* Modal for deleting an exam */}
+                <AlertDialog
+                    open={!!examToDelete}
+                    onOpenChange={(open) => !open && setExamToDelete(null)}
+                >
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Hapus Ujian?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                {examToDelete
+                                    ? `Anda yakin ingin menghapus ujian "${examToDelete.name}"? Jika ujian sudah pernah dikerjakan siswa, ujian tidak dapat dihapus.`
+                                    : 'Anda yakin ingin menghapus ujian ini?'}
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel
+                                onClick={() => setExamToDelete(null)}
+                            >
+                                Batal
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={handleConfirmDelete}
+                            >
+                                Hapus
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </AppLayout>
     );
