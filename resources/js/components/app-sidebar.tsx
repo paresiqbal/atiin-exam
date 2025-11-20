@@ -13,13 +13,13 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import { Book, BookOpen, Folder, LayoutGrid, User } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const footerNavItems: NavItem[] = [
     {
         title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
+        href: 'https://github.com/paresiqbal/atiin-exam',
         icon: Folder,
     },
     {
@@ -43,18 +43,18 @@ export function AppSidebar() {
                 icon: LayoutGrid,
             },
             {
-                title: 'Exam Management',
+                title: 'Manajemen Ujian',
                 href: '#',
-                icon: Folder,
+                icon: Book,
                 items: [
                     { title: 'Semua Exam', href: '/admin/exams' },
                     { title: 'Buat Exam', href: '/admin/exams/create' },
                 ],
             },
             {
-                title: 'User Management',
+                title: 'Manajemen User',
                 href: '#',
-                icon: Folder,
+                icon: User,
                 items: [
                     { title: 'Semua User', href: '/admin/users' },
                     { title: 'Buat User', href: '/admin/users/create' },
