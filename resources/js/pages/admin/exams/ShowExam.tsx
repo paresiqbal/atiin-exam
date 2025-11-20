@@ -1,67 +1,67 @@
-// resources/js/pages/admin/exams/ShowExam.tsx
-
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
 
 interface Option {
     id: number;
-    // NOTE: adjust "text" to your actual column name if different (e.g. "content")
     text: string;
     is_correct: boolean;
 }
 
 interface Question {
     id: number;
-    // NOTE: adjust "text" to your actual column name if different (e.g. "question_text")
-    text: string;
+    question_text: string;
+    type: string;
+    points: number;
     options: Option[];
 }
 
-interface QuestionBank {
-    id: number;
-    name: string;
-    questions: Question[];
+interface ExamToken {
+    token: string;
 }
 
 interface ExamSettings {
     time_limit_minutes: number;
     shuffle_questions: boolean;
     allow_review: boolean;
-    max_attempts: number;
 }
 
-interface ExamToken {
-    id: number;
-    token: string;
+interface QuestionBank {
+    questions: Question[];
 }
 
-interface Exam {
+interface ExamData {
     id: number;
     name: string;
     description: string | null;
     is_published: boolean;
-    created_at: string;
-    question_bank: QuestionBank | null;
-    settings: ExamSettings;
+    settings: ExamSettings | null;
+    question_bank: QuestionBank | null; // <-- snake_case + nullable
     tokens: ExamToken[];
 }
 
 interface Props {
-    exam: Exam;
+    exam: ExamData;
 }
 
 export default function ShowExam({ exam }: Props) {
-    const handlePublish = () => {
-        if (exam.is_published) return;
+    const [copiedToken, setCopiedToken] = useState(false);
 
-        if (confirm('Publish this exam? Students will be able to take it.')) {
-            router.post(`/admin/exams/${exam.id}/publish`);
+    const handleCopyToken = () => {
+        if (exam.tokens[0]) {
+            navigator.clipboard.writeText(exam.tokens[0].token);
+            setCopiedToken(true);
+            setTimeout(() => setCopiedToken(false), 2000);
         }
     };
 
-    const primaryToken = exam.tokens[0]?.token ?? null;
+    const handlePublish = () => {
+        router.post(`/admin/exams/${exam.id}/publish`);
+    };
+
+    const questions = exam.question_bank?.questions ?? [];
 
     return (
         <AppLayout
@@ -70,203 +70,180 @@ export default function ShowExam({ exam }: Props) {
                 { title: exam.name, href: `/admin/exams/${exam.id}` },
             ]}
         >
-            <Head title={`Exam - ${exam.name}`} />
-
+            <Head title={exam.name} />
             <div className="space-y-4 p-4">
-                {/* Header */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">{exam.name}</h1>
-                        <div className="mt-2 flex items-center gap-2 text-sm text-gray-600">
-                            <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                                    exam.is_published
-                                        ? 'bg-green-100 text-green-800'
-                                        : 'bg-yellow-100 text-yellow-800'
-                                }`}
-                            >
-                                {exam.is_published ? 'Published' : 'Draft'}
-                            </span>
-                            <span>Created at: {exam.created_at}</span>
-                        </div>
+                        <p className="mt-2 text-gray-600">
+                            {exam.description || (
+                                <span className="text-gray-400 italic">
+                                    No description provided.
+                                </span>
+                            )}
+                        </p>
                     </div>
-
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex space-x-2">
+                        <Link href={`/admin/exams/${exam.id}/attempts`}>
+                            <Button variant="outline">View Attempts</Button>
+                        </Link>
                         <Link href={`/admin/exams/${exam.id}/edit`}>
                             <Button variant="outline">Edit</Button>
                         </Link>
                         {!exam.is_published && (
-                            <Button onClick={handlePublish}>
-                                Publish Exam
+                            <Button
+                                onClick={handlePublish}
+                                className="bg-green-600 hover:bg-green-700"
+                            >
+                                Publish
                             </Button>
                         )}
-                        <Link href="/admin/exams">
-                            <Button variant="outline">Back to Exams</Button>
-                        </Link>
                     </div>
                 </div>
 
-                {/* Description + Settings */}
-                <div className="grid gap-4 md:grid-cols-2">
-                    {/* Description & token */}
-                    <Card>
-                        <CardContent className="space-y-4 pt-6">
-                            <div>
-                                <h2 className="text-lg font-semibold">
-                                    Description
-                                </h2>
-                                <p className="mt-2 text-sm text-gray-700">
-                                    {exam.description || (
-                                        <span className="text-gray-400 italic">
-                                            No description provided.
-                                        </span>
-                                    )}
-                                </p>
-                            </div>
-
-                            <div>
-                                <h2 className="text-lg font-semibold">
-                                    Question Bank
-                                </h2>
-                                <p className="mt-2 text-sm text-gray-700">
-                                    {exam.question_bank ? (
-                                        exam.question_bank.name
-                                    ) : (
-                                        <span className="text-gray-400 italic">
-                                            No question bank associated.
-                                        </span>
-                                    )}
-                                </p>
-                            </div>
-
-                            <div>
-                                <h2 className="text-lg font-semibold">
-                                    Access Token
-                                </h2>
-                                {primaryToken ? (
-                                    <p className="mt-2 rounded bg-gray-100 px-3 py-2 font-mono text-sm">
-                                        {primaryToken}
-                                    </p>
-                                ) : (
-                                    <p className="mt-2 text-sm text-gray-500">
-                                        No token generated.
-                                    </p>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Settings */}
-                    <Card>
-                        <CardContent className="space-y-4 pt-6">
-                            <h2 className="text-lg font-semibold">
-                                Exam Settings
-                            </h2>
-                            <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-                                <div>
-                                    <dt className="font-medium">
-                                        Time Limit (minutes)
-                                    </dt>
-                                    <dd className="text-gray-700">
-                                        {exam.settings?.time_limit_minutes}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="font-medium">
-                                        Shuffle Questions
-                                    </dt>
-                                    <dd className="text-gray-700">
-                                        {exam.settings?.shuffle_questions
-                                            ? 'Yes'
-                                            : 'No'}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="font-medium">
-                                        Allow Review
-                                    </dt>
-                                    <dd className="text-gray-700">
-                                        {exam.settings?.allow_review
-                                            ? 'Yes'
-                                            : 'No'}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="font-medium">
-                                        Max Attempts
-                                    </dt>
-                                    <dd className="text-gray-700">
-                                        {exam.settings?.max_attempts}
-                                    </dd>
-                                </div>
-                            </dl>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Questions */}
+                {/* Exam Settings */}
                 <Card>
-                    <CardContent className="pt-6">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-semibold">Questions</h2>
-                            <span className="text-sm text-gray-500">
-                                {exam.question_bank?.questions?.length ?? 0}{' '}
-                                question
-                                {(exam.question_bank?.questions?.length ??
-                                    0) === 1
-                                    ? ''
-                                    : 's'}
-                            </span>
-                        </div>
-
-                        {exam.question_bank?.questions?.length ? (
-                            <div className="space-y-4">
-                                {exam.question_bank.questions.map(
-                                    (question, index) => (
-                                        <div
-                                            key={question.id}
-                                            className="rounded border border-gray-200 p-4"
-                                        >
-                                            <div className="mb-2 font-medium">
-                                                {index + 1}. {question.text}
-                                            </div>
-
-                                            {question.options?.length ? (
-                                                <ul className="ml-4 list-disc space-y-1 text-sm">
-                                                    {question.options.map(
-                                                        (option) => (
-                                                            <li
-                                                                key={option.id}
-                                                                className={
-                                                                    option.is_correct
-                                                                        ? 'font-semibold text-green-700'
-                                                                        : ''
-                                                                }
-                                                            >
-                                                                {option.text}
-                                                                {option.is_correct && (
-                                                                    <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-800">
-                                                                        Correct
-                                                                    </span>
-                                                                )}
-                                                            </li>
-                                                        ),
-                                                    )}
-                                                </ul>
-                                            ) : (
-                                                <p className="text-sm text-gray-500">
-                                                    No options defined for this
-                                                    question.
-                                                </p>
-                                            )}
-                                        </div>
-                                    ),
-                                )}
+                    <CardHeader>
+                        <CardTitle>Exam Settings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {exam.settings ? (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Time Limit
+                                    </p>
+                                    <p className="font-semibold">
+                                        {exam.settings.time_limit_minutes}{' '}
+                                        minutes
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Status
+                                    </p>
+                                    <span
+                                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                            exam.is_published
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-yellow-100 text-yellow-800'
+                                        }`}
+                                    >
+                                        {exam.is_published
+                                            ? 'Published'
+                                            : 'Draft'}
+                                    </span>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Shuffle Questions
+                                    </p>
+                                    <p className="font-semibold">
+                                        {exam.settings.shuffle_questions
+                                            ? 'Yes'
+                                            : 'No'}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">
+                                        Allow Review
+                                    </p>
+                                    <p className="font-semibold">
+                                        {exam.settings.allow_review
+                                            ? 'Yes'
+                                            : 'No'}
+                                    </p>
+                                </div>
                             </div>
                         ) : (
                             <p className="text-sm text-gray-500">
-                                No questions found for this question bank.
+                                No settings configured for this exam.
                             </p>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Exam Token */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Exam Token</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center gap-2">
+                            <code className="flex-1 rounded bg-gray-100 p-3 font-mono text-sm">
+                                {exam.tokens[0]?.token || 'No token available'}
+                            </code>
+                            {exam.tokens[0] && (
+                                <Button
+                                    variant="outline"
+                                    onClick={handleCopyToken}
+                                >
+                                    {copiedToken ? 'Copied!' : 'Copy'}
+                                </Button>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Questions */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Questions ({questions.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {questions.length === 0 ? (
+                            <p className="text-sm text-gray-500">
+                                No questions found for this exam&apos;s question
+                                bank.
+                            </p>
+                        ) : (
+                            <div className="space-y-4">
+                                {questions.map((question, idx) => (
+                                    <div
+                                        key={question.id}
+                                        className="rounded border p-4"
+                                    >
+                                        <div className="flex justify-between">
+                                            <div className="flex-1">
+                                                <p className="font-semibold">
+                                                    Q{idx + 1}:{' '}
+                                                    {question.question_text}
+                                                </p>
+                                                <p className="mt-2 text-sm text-gray-600">
+                                                    Type: {question.type} |
+                                                    Points: {question.points}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 space-y-2">
+                                            {question.options.map((option) => (
+                                                <div
+                                                    key={option.id}
+                                                    className="flex items-center gap-2"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={
+                                                            option.is_correct
+                                                        }
+                                                        disabled
+                                                        className="h-4 w-4"
+                                                    />
+                                                    <span
+                                                        className={
+                                                            option.is_correct
+                                                                ? 'font-semibold text-green-600'
+                                                                : ''
+                                                        }
+                                                    >
+                                                        {option.text}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </CardContent>
                 </Card>

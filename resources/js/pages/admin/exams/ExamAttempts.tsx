@@ -5,7 +5,7 @@ import { Head, Link } from '@inertiajs/react';
 
 interface Attempt {
     id: number;
-    score: number;
+    score: number | string; // in case backend sends string
     completed_at: string;
     student: {
         id: number;
@@ -19,7 +19,7 @@ interface Attempt {
 interface Analytics {
     total_attempts: number;
     passed: number;
-    average_score: number;
+    average_score: number | string | null; // backend may send string
 }
 
 interface PaginationLink {
@@ -41,6 +41,9 @@ interface Props {
 }
 
 export default function ExamAttempts({ exam, attempts, analytics }: Props) {
+    // Convert average score safely into a REAL number:
+    const averageScore = Number(analytics.average_score ?? 0);
+
     return (
         <AppLayout
             breadcrumbs={[
@@ -50,11 +53,13 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
             ]}
         >
             <Head title={`${exam.name} - Attempts`} />
+
             <div className="space-y-4 p-4">
                 <h1 className="text-3xl font-bold">{exam.name} - Attempts</h1>
 
                 {/* Analytics Cards */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {/* Total Attempts */}
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-600">
@@ -67,6 +72,8 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Passed Count */}
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-600">
@@ -79,6 +86,8 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Average Score */}
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-600">
@@ -87,7 +96,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">
-                                {analytics.average_score?.toFixed(2) || 0}%
+                                {averageScore.toFixed(2)}%
                             </div>
                         </CardContent>
                     </Card>
@@ -125,47 +134,64 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                     </th>
                                 </tr>
                             </thead>
+
                             <tbody>
-                                {attempts.data.map((attempt) => (
-                                    <tr
-                                        key={attempt.id}
-                                        className="border-b hover:bg-gray-50"
-                                    >
-                                        <td className="px-6 py-4 text-sm font-medium">
-                                            {attempt.student.name}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm">
-                                            {attempt.student.university.name}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm">
-                                            {attempt.student.major.name}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm">
-                                            <span
-                                                className={`rounded-full px-3 py-1 text-xs font-semibold ${attempt.score >= 60 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-                                            >
-                                                {attempt.score.toFixed(2)}%
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm">
-                                            {new Date(
-                                                attempt.completed_at,
-                                            ).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm">
-                                            <Link
-                                                href={`/admin/exams/attempts/${attempt.id}`}
-                                            >
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
+                                {attempts.data.map((attempt) => {
+                                    const score = Number(attempt.score);
+
+                                    return (
+                                        <tr
+                                            key={attempt.id}
+                                            className="border-b hover:bg-gray-50"
+                                        >
+                                            <td className="px-6 py-4 text-sm font-medium">
+                                                {attempt.student.name}
+                                            </td>
+
+                                            <td className="px-6 py-4 text-sm">
+                                                {
+                                                    attempt.student.university
+                                                        .name
+                                                }
+                                            </td>
+
+                                            <td className="px-6 py-4 text-sm">
+                                                {attempt.student.major.name}
+                                            </td>
+
+                                            <td className="px-6 py-4 text-sm">
+                                                <span
+                                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                                        score >= 60
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-red-100 text-red-800'
+                                                    }`}
                                                 >
-                                                    View Details
-                                                </Button>
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))}
+                                                    {score.toFixed(2)}%
+                                                </span>
+                                            </td>
+
+                                            <td className="px-6 py-4 text-sm">
+                                                {new Date(
+                                                    attempt.completed_at,
+                                                ).toLocaleDateString()}
+                                            </td>
+
+                                            <td className="px-6 py-4 text-sm">
+                                                <Link
+                                                    href={`/admin/exams/attempts/${attempt.id}`}
+                                                >
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                    >
+                                                        View Details
+                                                    </Button>
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
