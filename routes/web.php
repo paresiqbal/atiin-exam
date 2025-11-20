@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController as AdminExamController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -17,27 +18,28 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
-});
+// Route::middleware(['auth', 'verified'])->group(function () {
+//     Route::get('dashboard', function () {
+//         return Inertia::render('dashboard');
+//     })->name('dashboard');
+// });
 
 
 // Route Admin
-Route::middleware(['auth', 'verified', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', function () {
-        return inertia('admin/AdminDashboard');
-    })->name('dashboard');
+Route::middleware(['auth', 'verified', 'role:admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])
+            ->name('dashboard');
 
-    Route::resource('users', UserController::class);
+        Route::resource('users', UserController::class);
 
-    Route::resource('exams', AdminExamController::class);
-    Route::post('exams/{exam}/publish', [AdminExamController::class, 'publish'])->name('exams.publish');
-    Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');
-    Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
-});
-
+        Route::resource('exams', AdminExamController::class);
+        Route::post('exams/{exam}/publish', [AdminExamController::class, 'publish'])->name('exams.publish');
+        Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');
+        Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
+    });
 // Route Teacher
 Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', function () {
