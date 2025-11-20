@@ -18,7 +18,7 @@ export default function Welcome({
             case 'student':
                 return '/student/dashboard';
             default:
-                return '/';
+                return '/teacher/dashboard';
         }
     };
     return (
