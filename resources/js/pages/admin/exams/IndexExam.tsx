@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -44,15 +45,20 @@ export default function IndexExam({ exams }: Props) {
         }
     };
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Admin', href: '/admin/dashboard' },
+        { title: 'Ujian', href: '/admin/exams' },
+    ];
+
     return (
-        <AppLayout breadcrumbs={[{ title: 'Exams', href: '/admin/exams' }]}>
-            <Head title="Exams" />
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Ujian" />
             <div className="space-y-4 p-4">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold">Exams</h1>
+                    <h1 className="text-3xl font-bold">Daftar Ujian</h1>
                     <Link href="/admin/exams/create">
-                        <Button className="bg-blue-600 hover:bg-blue-700">
-                            Create Exam
+                        <Button className="bg-primary/90 text-primary-foreground">
+                            Buat Ujian
                         </Button>
                     </Link>
                 </div>
@@ -60,37 +66,34 @@ export default function IndexExam({ exams }: Props) {
                 {exams.data.length === 0 ? (
                     <Card>
                         <CardContent className="pt-8 text-center text-gray-500">
-                            No exams created yet.
+                            Belum ada ujian yang dibuat.
                         </CardContent>
                     </Card>
                 ) : (
                     <div className="overflow-x-auto rounded-lg">
                         <table className="w-full">
-                            <thead className="border-b bg-gray-100">
+                            <thead className="border-b">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-sm font-semibold">
-                                        Name
+                                        Nama
                                     </th>
                                     <th className="px-6 py-3 text-left text-sm font-semibold">
-                                        Question Bank
+                                        Bank Soal
                                     </th>
                                     <th className="px-6 py-3 text-left text-sm font-semibold">
                                         Status
                                     </th>
                                     <th className="px-6 py-3 text-left text-sm font-semibold">
-                                        Attempts
+                                        Peserta
                                     </th>
                                     <th className="px-6 py-3 text-left text-sm font-semibold">
-                                        Actions
+                                        Aksi
                                     </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {exams.data.map((exam) => (
-                                    <tr
-                                        key={exam.id}
-                                        className="border-b hover:bg-gray-50"
-                                    >
+                                    <tr key={exam.id} className="border-b">
                                         <td className="px-6 py-4 text-sm">
                                             {exam.name}
                                         </td>
@@ -102,8 +105,8 @@ export default function IndexExam({ exams }: Props) {
                                                 className={`rounded-full px-3 py-1 text-xs font-semibold ${exam.is_published ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}
                                             >
                                                 {exam.is_published
-                                                    ? 'Published'
-                                                    : 'Draft'}
+                                                    ? 'Publis'
+                                                    : 'Draf'}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm">
@@ -117,7 +120,7 @@ export default function IndexExam({ exams }: Props) {
                                                     variant="outline"
                                                     size="sm"
                                                 >
-                                                    View
+                                                    Lihat
                                                 </Button>
                                             </Link>
                                             <Link
@@ -137,7 +140,7 @@ export default function IndexExam({ exams }: Props) {
                                                     handleDelete(exam.id)
                                                 }
                                             >
-                                                Delete
+                                                Hapus
                                             </Button>
                                         </td>
                                     </tr>
