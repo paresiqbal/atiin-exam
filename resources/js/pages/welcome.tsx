@@ -10,7 +10,7 @@ export default function Welcome({
     const { auth } = usePage<SharedData>().props;
 
     const getDashboardUrl = () => {
-        if (!auth.user) return '/dashboard';
+        if (!auth.user) return '/';
 
         switch (auth.user.role) {
             case 'admin':
