@@ -1,5 +1,10 @@
-'use client';
+// react
+import { Head, router, useForm } from '@inertiajs/react';
 
+// layout
+import AppLayout from '@/layouts/app-layout';
+
+// components
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,9 +25,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import AppLayout from '@/layouts/app-layout';
-import { Head, router, useForm } from '@inertiajs/react';
+
+// icons
 import { Trash2 } from 'lucide-react';
+
+// types
+import { BreadcrumbItem } from '@/types';
 
 interface QuestionBank {
     id: number;
@@ -30,21 +38,9 @@ interface QuestionBank {
     description: string | null;
 }
 
-interface BreadcrumbItem {
-    title: string;
-    href: string;
-}
-
 interface Props {
     questionBank: QuestionBank;
 }
-
-const createBreadcrumbs = (name: string): BreadcrumbItem[] => {
-    return [
-        { title: 'Question Banks', href: '/teacher/question-banks' },
-        { title: name, href: '#' },
-    ];
-};
 
 export default function QuestionBankEdit({ questionBank }: Props) {
     const { data, setData, put, errors, processing } = useForm({
@@ -65,28 +61,32 @@ export default function QuestionBankEdit({ questionBank }: Props) {
         router.delete(`/teacher/question-banks/${questionBank.id}`);
     };
 
-    const breadcrumbs = createBreadcrumbs(questionBank.name);
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Bank Soal', href: '/teacher/question-banks' },
+        {
+            title: 'Edit Bank Soal',
+            href: `/teacher/question-banks/${questionBank.id}/edit`,
+        },
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Edit ${questionBank.name}`} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {/* Header Section */}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold text-foreground">
-                        Edit Question Bank
+                        Edit Bank Soal
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Update the details of your question bank.
+                        Ubah informasi bank soal Anda di bawah ini.
                     </p>
                 </div>
 
-                {/* Form Card */}
-                <Card className="w-full max-w-2xl">
+                <Card className="mx-auto w-full max-w-screen">
                     <CardHeader>
-                        <CardTitle>Question Bank Details</CardTitle>
+                        <CardTitle>Detail Bank Soal</CardTitle>
                         <CardDescription>
-                            Modify the question bank information below.
+                            Ubah informasi bank soal di bawah ini.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -94,7 +94,7 @@ export default function QuestionBankEdit({ questionBank }: Props) {
                             {/* Name Field */}
                             <div className="space-y-2">
                                 <Label htmlFor="name">
-                                    Name{' '}
+                                    Nama{' '}
                                     <span className="text-destructive">*</span>
                                 </Label>
                                 <Input
@@ -115,9 +115,8 @@ export default function QuestionBankEdit({ questionBank }: Props) {
                                 )}
                             </div>
 
-                            {/* Description Field */}
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
+                                <Label htmlFor="description">Deskripsi</Label>
                                 <Textarea
                                     id="description"
                                     value={data.description}
@@ -138,14 +137,15 @@ export default function QuestionBankEdit({ questionBank }: Props) {
                                 )}
                             </div>
 
-                            {/* Form Actions */}
                             <div className="flex gap-3 pt-4">
                                 <Button
                                     type="submit"
                                     disabled={processing}
                                     className="flex-1"
                                 >
-                                    {processing ? 'Saving...' : 'Save Changes'}
+                                    {processing
+                                        ? 'Menyimpan...'
+                                        : 'Simpan Perubahan'}
                                 </Button>
                                 <Button
                                     type="button"
@@ -153,7 +153,7 @@ export default function QuestionBankEdit({ questionBank }: Props) {
                                     onClick={handleCancel}
                                     className="flex-1"
                                 >
-                                    Cancel
+                                    Batal
                                 </Button>
                             </div>
                         </form>
@@ -164,11 +164,11 @@ export default function QuestionBankEdit({ questionBank }: Props) {
                 <Card className="w-full max-w-2xl border-destructive/50 bg-destructive/5">
                     <CardHeader>
                         <CardTitle className="text-destructive">
-                            Danger Zone
+                            Zona Berbahaya
                         </CardTitle>
                         <CardDescription>
-                            Permanently delete this question bank and all
-                            associated data.
+                            Hapus permanen bank soal ini beserta semua data
+                            terkait.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -176,28 +176,26 @@ export default function QuestionBankEdit({ questionBank }: Props) {
                             <AlertDialogTrigger asChild>
                                 <Button variant="destructive" className="gap-2">
                                     <Trash2 className="h-4 w-4" />
-                                    Delete Question Bank
+                                    Hapus Bank Soal
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogTitle>
-                                    Delete Question Bank
+                                    Hapus Bank Soal
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Are you sure you want to delete "
-                                    {questionBank.name}"? This action cannot be
-                                    undone and will remove all associated
-                                    questions.
+                                    Apakah Anda yakin ingin menghapus "
+                                    {questionBank.name}"? Tindakan ini tidak
+                                    dapat dibatalkan dan akan menghapus semua
+                                    soal terkait.
                                 </AlertDialogDescription>
                                 <div className="flex gap-3">
-                                    <AlertDialogCancel>
-                                        Cancel
-                                    </AlertDialogCancel>
+                                    <AlertDialogCancel>Batal</AlertDialogCancel>
                                     <AlertDialogAction
                                         onClick={handleDelete}
                                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                     >
-                                        Delete
+                                        Hapus
                                     </AlertDialogAction>
                                 </div>
                             </AlertDialogContent>

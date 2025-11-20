@@ -115,9 +115,9 @@ export default function QuestionBankIndex({ questionBanks }: Props) {
                                 <CardContent className="space-y-4">
                                     <div className="flex items-center justify-between text-sm text-muted-foreground">
                                         <span>
-                                            {bank.questions_count} question
+                                            {bank.questions_count} soal
                                             {bank.questions_count !== 1
-                                                ? 's'
+                                                ? ''
                                                 : ''}
                                         </span>
                                         <span>

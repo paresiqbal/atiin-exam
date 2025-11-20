@@ -1,5 +1,10 @@
-'use client';
+// react
+import { Head, useForm } from '@inertiajs/react';
 
+// layout
+import AppLayout from '@/layouts/app-layout';
+
+// components
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -11,20 +16,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import AppLayout from '@/layouts/app-layout';
-import { Head, useForm } from '@inertiajs/react';
 
-interface BreadcrumbItem {
-    title: string;
-    href: string;
-}
-
-const createBreadcrumbs = (): BreadcrumbItem[] => {
-    return [
-        { title: 'Question Banks', href: '/teacher/question-banks' },
-        { title: 'Create', href: '/teacher/question-banks/create' },
-    ];
-};
+// types
+import { BreadcrumbItem } from '@/types';
 
 export default function QuestionBankCreate() {
     const { data, setData, post, errors, processing } = useForm({
@@ -41,44 +35,44 @@ export default function QuestionBankCreate() {
         window.location.href = '/teacher/question-banks';
     };
 
-    const breadcrumbs = createBreadcrumbs();
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Bank Soal', href: '/teacher/question-banks' },
+        { title: 'Buat Bank Soal', href: '/teacher/question-banks/create' },
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Create Question Bank" />
+            <Head title="Buat Bank Soal" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {/* Header Section */}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold text-foreground">
-                        Create Question Bank
+                        Buat Bank Soal
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Create a new question bank to organize your questions
-                        and assessments.
+                        Buat bank soal baru untuk mengorganisir pertanyaan dan
+                        penilaian Anda.
                     </p>
                 </div>
 
-                {/* Form Card */}
-                <Card className="w-full max-w-2xl">
+                <Card className="mx-auto w-full max-w-screen">
                     <CardHeader>
-                        <CardTitle>Question Bank Details</CardTitle>
+                        <CardTitle>Detail Bank Soal</CardTitle>
                         <CardDescription>
-                            Enter the details for your new question bank. Fields
-                            marked with * are required.
+                            Masukkan detail untuk bank soal baru Anda. Kolom
+                            yang ditandai dengan * wajib diisi.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Name Field */}
                             <div className="space-y-2">
                                 <Label htmlFor="name">
-                                    Name{' '}
+                                    Nama
                                     <span className="text-destructive">*</span>
                                 </Label>
                                 <Input
                                     id="name"
                                     type="text"
-                                    placeholder="e.g., Biology Chapter 5"
+                                    placeholder="e.g., Biologi Bab 5"
                                     value={data.name}
                                     onChange={(e) =>
                                         setData('name', e.target.value)
@@ -94,12 +88,11 @@ export default function QuestionBankCreate() {
                                 )}
                             </div>
 
-                            {/* Description Field */}
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
+                                <Label htmlFor="description">Deskripsi</Label>
                                 <Textarea
                                     id="description"
-                                    placeholder="Enter a description for this question bank (optional)"
+                                    placeholder="Masukkan deskripsi untuk bank soal ini (opsional)"
                                     value={data.description}
                                     onChange={(e) =>
                                         setData('description', e.target.value)
@@ -117,12 +110,11 @@ export default function QuestionBankCreate() {
                                     </p>
                                 )}
                                 <p className="text-xs text-muted-foreground">
-                                    Optional: Add details about the topics
-                                    covered or purpose of this bank
+                                    Opsional: Tambahkan detail tentang topik
+                                    yang dibahas atau tujuan dari bank soal ini
                                 </p>
                             </div>
 
-                            {/* Form Actions */}
                             <div className="flex gap-3 pt-4">
                                 <Button
                                     type="submit"
@@ -130,8 +122,8 @@ export default function QuestionBankCreate() {
                                     className="flex-1"
                                 >
                                     {processing
-                                        ? 'Creating...'
-                                        : 'Create Question Bank'}
+                                        ? 'Membuat...'
+                                        : 'Buat Bank Soal'}
                                 </Button>
                                 <Button
                                     type="button"
@@ -139,7 +131,7 @@ export default function QuestionBankCreate() {
                                     onClick={handleCancel}
                                     className="flex-1"
                                 >
-                                    Cancel
+                                    Batal
                                 </Button>
                             </div>
                         </form>
