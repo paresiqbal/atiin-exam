@@ -42,6 +42,8 @@ class ExamController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'question_bank_id' => 'required|exists:question_banks,id',
+            'start_at' => 'required|date',
+            'end_at' => 'required|date|after_or_equal:start_at',
             'time_limit_minutes' => 'required|integer|min:1|max:300',
             'shuffle_questions' => 'boolean',
             'allow_review' => 'boolean',
@@ -53,10 +55,11 @@ class ExamController extends Controller
             'question_bank_id' => $validated['question_bank_id'],
             'name' => $validated['name'],
             'description' => $validated['description'],
+            'start_at' => $validated['start_at'],
+            'end_at' => $validated['end_at'],
             'is_published' => false,
         ]);
 
-        // Create exam settings
         ExamSetting::create([
             'exam_id' => $exam->id,
             'time_limit_minutes' => $validated['time_limit_minutes'],
@@ -69,6 +72,7 @@ class ExamController extends Controller
             'exam_id' => $exam->id,
             'token' => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
         ]);
+
         return redirect()
             ->route('admin.exams.index')
             ->with('success', 'Exam created successfully');

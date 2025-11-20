@@ -29,8 +29,20 @@ class ExamController extends Controller
             'major_id' => 'required|exists:majors,id',
         ]);
 
-        // Find exam by token
         $token = ExamToken::where('token', $validated['token'])->first();
+        $exam = $token->exam;
+
+        if (!$exam->is_published) {
+            return back()->withErrors(['token' => 'This exam is not available yet']);
+        }
+
+        if (now() < $exam->start_at) {
+            return back()->withErrors(['token' => 'This exam has not started yet']);
+        }
+
+        if (now() > $exam->end_at) {
+            return back()->withErrors(['token' => 'This exam has ended']);
+        }
 
         if (!$token) {
             return back()->withErrors(['token' => 'Invalid token']);
@@ -38,19 +50,16 @@ class ExamController extends Controller
 
         $exam = $token->exam;
 
-        // Check if exam is published
         if (!$exam->is_published) {
             return back()->withErrors(['token' => 'This exam is not available yet']);
         }
 
-        // Update student's university & major
         $student = auth()->user();
         $student->update([
             'university_id' => $validated['university_id'],
             'major_id' => $validated['major_id'],
         ]);
 
-        // Create exam attempt (no token.update needed)
         $attempt = ExamAttempt::create([
             'student_id' => $student->id,
             'exam_id' => $exam->id,

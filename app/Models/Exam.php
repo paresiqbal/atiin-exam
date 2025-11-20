@@ -14,6 +14,8 @@ class Exam extends Model
         'question_bank_id',
         'name',
         'description',
+        'start_at',
+        'end_at',
         'is_published',
     ];
 

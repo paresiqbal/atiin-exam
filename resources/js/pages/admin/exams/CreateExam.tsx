@@ -1,5 +1,13 @@
+// react
+import { Head, useForm } from '@inertiajs/react';
+
+// layout
+import AppLayout from '@/layouts/app-layout';
+
+// components
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -10,8 +18,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import AppLayout from '@/layouts/app-layout';
-import { Head, useForm } from '@inertiajs/react';
+
+// types
+import { BreadcrumbItem } from '@/types';
 
 interface QuestionBank {
     id: number;
@@ -27,6 +36,8 @@ export default function CreateExam({ questionBanks }: Props) {
         name: '',
         description: '',
         question_bank_id: '',
+        start_at: '',
+        end_at: '',
         time_limit_minutes: '90',
         shuffle_questions: true,
         allow_review: true,
@@ -37,28 +48,28 @@ export default function CreateExam({ questionBanks }: Props) {
         post('/admin/exams');
     };
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Admin', href: '/admin/dashboard' },
+        { title: 'Ujian', href: '/admin/exams' },
+        { title: 'Buat Ujian', href: '/admin/exams/create' },
+    ];
+
     return (
-        <AppLayout
-            breadcrumbs={[
-                { title: 'Exams', href: '/admin/exams' },
-                { title: 'Create', href: '/admin/exams/create' },
-            ]}
-        >
-            <Head title="Create Exam" />
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Buat Ujian" />
             <div className="p-4">
-                <Card className="max-w-2xl">
+                <Card className="mx-auto max-w-screen">
                     <CardHeader>
-                        <CardTitle>Create New Exam</CardTitle>
+                        <CardTitle>Buat Ujian Baru</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Name */}
                             <div className="space-y-2">
-                                <Label htmlFor="name">Exam Name *</Label>
+                                <Label htmlFor="name">Nama Ujian *</Label>
                                 <Input
                                     id="name"
                                     type="text"
-                                    placeholder="Enter exam name"
+                                    placeholder="Masukkan nama ujian"
                                     value={data.name}
                                     onChange={(e) =>
                                         setData('name', e.target.value)
@@ -74,12 +85,11 @@ export default function CreateExam({ questionBanks }: Props) {
                                 )}
                             </div>
 
-                            {/* Description */}
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
+                                <Label htmlFor="description">Deskripsi</Label>
                                 <Textarea
                                     id="description"
-                                    placeholder="Enter exam description"
+                                    placeholder="Masukkan deskripsi ujian"
                                     value={data.description}
                                     onChange={(e) =>
                                         setData('description', e.target.value)
@@ -97,10 +107,9 @@ export default function CreateExam({ questionBanks }: Props) {
                                 )}
                             </div>
 
-                            {/* Question Bank */}
                             <div className="space-y-2">
                                 <Label htmlFor="question_bank_id">
-                                    Question Bank *
+                                    Bank Soal *
                                 </Label>
                                 <Select
                                     value={data.question_bank_id}
@@ -116,7 +125,7 @@ export default function CreateExam({ questionBanks }: Props) {
                                                 : ''
                                         }
                                     >
-                                        <SelectValue placeholder="Select question bank" />
+                                        <SelectValue placeholder="Pilih bank soal" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {questionBanks.map((qb) => (
@@ -136,10 +145,60 @@ export default function CreateExam({ questionBanks }: Props) {
                                 )}
                             </div>
 
-                            {/* Time Limit */}
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label htmlFor="start_at">
+                                        Dimulai di *
+                                    </Label>
+                                    <Input
+                                        id="start_at"
+                                        type="datetime-local"
+                                        value={data.start_at}
+                                        onChange={(e) =>
+                                            setData('start_at', e.target.value)
+                                        }
+                                        className={
+                                            errors.start_at
+                                                ? 'border-red-500'
+                                                : ''
+                                        }
+                                    />
+                                    {errors.start_at && (
+                                        <p className="text-sm text-red-500">
+                                            {errors.start_at}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="end_at">
+                                        Berakhir di *
+                                    </Label>
+                                    <Input
+                                        id="end_at"
+                                        type="datetime-local"
+                                        value={data.end_at}
+                                        onChange={(e) =>
+                                            setData('end_at', e.target.value)
+                                        }
+                                        min={data.start_at || undefined}
+                                        className={
+                                            errors.end_at
+                                                ? 'border-red-500'
+                                                : ''
+                                        }
+                                    />
+                                    {errors.end_at && (
+                                        <p className="text-sm text-red-500">
+                                            {errors.end_at}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="time_limit_minutes">
-                                    Time Limit (minutes) *
+                                    Batas Waktu (menit) *
                                 </Label>
                                 <Input
                                     id="time_limit_minutes"
@@ -166,53 +225,50 @@ export default function CreateExam({ questionBanks }: Props) {
                                 )}
                             </div>
 
-                            {/* Toggle Options */}
                             <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <Label>Shuffle Questions</Label>
-                                    <input
-                                        type="checkbox"
+                                <div className="flex items-center space-x-4">
+                                    <Label htmlFor="shuffle_questions">
+                                        Acak Soal
+                                    </Label>
+                                    <Checkbox
+                                        id="shuffle_questions"
                                         checked={data.shuffle_questions}
-                                        onChange={(e) =>
+                                        onCheckedChange={(value) =>
                                             setData(
                                                 'shuffle_questions',
-                                                e.target.checked,
+                                                Boolean(value),
                                             )
                                         }
-                                        className="h-5 w-5"
                                     />
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <Label>Allow Review</Label>
-                                    <input
-                                        type="checkbox"
+
+                                <div className="flex items-center space-x-4">
+                                    <Label htmlFor="allow_review">
+                                        Izinkan Review
+                                    </Label>
+                                    <Checkbox
+                                        id="allow_review"
                                         checked={data.allow_review}
-                                        onChange={(e) =>
+                                        onCheckedChange={(value) =>
                                             setData(
                                                 'allow_review',
-                                                e.target.checked,
+                                                Boolean(value),
                                             )
                                         }
-                                        className="h-5 w-5"
                                     />
                                 </div>
                             </div>
 
-                            {/* Submit Button */}
                             <div className="flex gap-3 pt-4">
-                                <Button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="bg-blue-600 hover:bg-blue-700"
-                                >
-                                    {processing ? 'Creating...' : 'Create Exam'}
+                                <Button type="submit" disabled={processing}>
+                                    {processing ? 'Membuat...' : 'Buat Ujian'}
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={() => window.history.back()}
                                 >
-                                    Cancel
+                                    Batal
                                 </Button>
                             </div>
                         </form>
