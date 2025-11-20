@@ -361,7 +361,7 @@ export default function QuestionBankShow({
                                         <div className="flex-1">
                                             <div className="mb-2 flex gap-2">
                                                 <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700">
-                                                    Q{idx + 1}
+                                                    Soal {idx + 1}
                                                 </span>
                                                 <span className="rounded bg-blue-100 px-2 py-1 text-xs text-blue-700">
                                                     {question.question_type.replace(
@@ -370,7 +370,7 @@ export default function QuestionBankShow({
                                                     )}
                                                 </span>
                                                 <span className="rounded bg-amber-100 px-2 py-1 text-xs text-amber-700">
-                                                    {question.points} pts
+                                                    {question.points} point
                                                 </span>
                                             </div>
                                             <CardTitle className="text-lg">
@@ -414,7 +414,6 @@ export default function QuestionBankShow({
                                                                     question.id,
                                                                 )
                                                             }
-                                                            className="bg-red-600"
                                                         >
                                                             Hapus
                                                         </AlertDialogAction>
@@ -437,18 +436,18 @@ export default function QuestionBankShow({
                                     )}
                                     <div>
                                         <p className="mb-2 text-sm font-medium">
-                                            Options:
+                                            Opsi:
                                         </p>
                                         <div className="space-y-1">
                                             {question.options.map((opt) => (
                                                 <div
                                                     key={opt.id}
-                                                    className={`rounded p-2 text-sm ${opt.is_correct ? 'bg-green-50' : 'bg-gray-50'}`}
+                                                    className={`rounded p-2 text-sm ${opt.is_correct ? 'bg-green-600/90' : 'bg-gray-500/90'}`}
                                                 >
                                                     {opt.option_text}{' '}
                                                     {opt.is_correct && (
-                                                        <span className="ml-2 text-xs text-green-700">
-                                                            ✓ Correct
+                                                        <span className="ml-2 text-xs text-primary-foreground">
+                                                            ✓ Benar
                                                         </span>
                                                     )}
                                                 </div>
