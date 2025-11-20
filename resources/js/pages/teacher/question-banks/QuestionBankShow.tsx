@@ -38,7 +38,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 
 // types
-import type { Question, QuestionBank } from '@/types/question';
+import type { Question, QuestionBank, QuestionOption } from '@/types/question';
 
 export default function QuestionBankShow({
     questionBank,
@@ -91,10 +91,10 @@ export default function QuestionBankShow({
         }
     };
 
-    const handleOptionChange = (
+    const handleOptionChange = <K extends keyof QuestionOption>(
         index: number,
-        field: 'option_text' | 'is_correct',
-        value: string | boolean,
+        field: K,
+        value: QuestionOption[K],
     ) => {
         const newOptions = [...data.options];
 
@@ -104,10 +104,16 @@ export default function QuestionBankShow({
                     opt.is_correct = i === index;
                 });
             } else {
-                newOptions[index] = { ...newOptions[index], [field]: value };
+                newOptions[index] = {
+                    ...newOptions[index],
+                    is_correct: true,
+                };
             }
         } else {
-            newOptions[index] = { ...newOptions[index], [field]: value };
+            newOptions[index] = {
+                ...newOptions[index],
+                [field]: value,
+            };
         }
 
         setData('options', newOptions);

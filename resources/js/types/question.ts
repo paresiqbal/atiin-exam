@@ -21,3 +21,9 @@ export interface QuestionBank {
     description: string | null;
     questions: Question[];
 }
+
+export interface QuestionOption {
+    id?: number;
+    option_text: string;
+    is_correct: boolean;
+}
