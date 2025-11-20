@@ -179,7 +179,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
 
                                             <td className="px-6 py-4 text-sm">
                                                 <Link
-                                                    href={`/admin/exams/attempts/${attempt.id}`}
+                                                    href={`/admin/attempts/${attempt.id}`}
                                                 >
                                                     <Button
                                                         variant="outline"
