@@ -1,5 +1,11 @@
-'use client';
+// react
+import { Head, router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 
+// layout
+import AppLayout from '@/layouts/app-layout';
+
+// components
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,32 +33,12 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import AppLayout from '@/layouts/app-layout';
-import { Head, router, useForm } from '@inertiajs/react';
+
+// icons
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
 
-interface Option {
-    id?: number;
-    option_text: string;
-    is_correct: boolean;
-}
-
-interface Question {
-    id: number;
-    question_text: string;
-    question_type: 'multiple_choice' | 'multiple_select' | 'true_false';
-    points: number;
-    image_url: string | null;
-    options: Option[];
-}
-
-interface QuestionBank {
-    id: number;
-    name: string;
-    description: string | null;
-    questions: Question[];
-}
+// types
+import type { Question, QuestionBank } from '@/types/question';
 
 export default function QuestionBankShow({
     questionBank,
@@ -108,18 +94,16 @@ export default function QuestionBankShow({
     const handleOptionChange = (
         index: number,
         field: 'option_text' | 'is_correct',
-        value: any,
+        value: string | boolean,
     ) => {
         const newOptions = [...data.options];
 
         if (field === 'is_correct' && value === true) {
             if (data.question_type === 'multiple_choice') {
-                // Multiple choice: only 1 correct answer allowed
                 newOptions.forEach((opt, i) => {
                     opt.is_correct = i === index;
                 });
             } else {
-                // Multiple select or true/false: allow multiple correct
                 newOptions[index] = { ...newOptions[index], [field]: value };
             }
         } else {
@@ -152,9 +136,9 @@ export default function QuestionBankShow({
     };
 
     const breadcrumbs = [
-        { title: 'Question Banks', href: '/teacher/question-banks' },
+        { title: 'Bank Soal', href: '/teacher/question-banks' },
         {
-            title: 'Questions',
+            title: 'Soal Ujian',
             href: `/teacher/question-banks/${questionBank.id}`,
         },
     ];
@@ -162,8 +146,8 @@ export default function QuestionBankShow({
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`${questionBank.name} - Questions`} />
+
             <div className="flex flex-1 flex-col gap-6 p-4">
-                {/* Header */}
                 <div>
                     <h1 className="text-3xl font-bold">{questionBank.name}</h1>
                     {questionBank.description && (
@@ -172,12 +156,11 @@ export default function QuestionBankShow({
                         </p>
                     )}
                     <p className="mt-2 text-sm text-gray-500">
-                        {questionBank.questions.length} question
-                        {questionBank.questions.length !== 1 ? 's' : ''}
+                        {questionBank.questions.length} soal
+                        {questionBank.questions.length !== 1 ? '' : ''}
                     </p>
                 </div>
 
-                {/* Create Button */}
                 <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
                         <Button
@@ -185,26 +168,23 @@ export default function QuestionBankShow({
                             className="w-full gap-2 sm:w-auto"
                         >
                             <Plus className="h-4 w-4" />
-                            Add Question
+                            Tambah Soal
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>
-                                {editingId
-                                    ? 'Edit Question'
-                                    : 'Create Question'}
+                                {editingId ? 'Edit Soal' : 'Buat Soal'}
                             </DialogTitle>
                         </DialogHeader>
 
                         <div className="space-y-4">
-                            {/* Question Text */}
                             <div>
                                 <label className="text-sm font-medium">
-                                    Question
+                                    Soal
                                 </label>
                                 <Textarea
-                                    placeholder="Enter question..."
+                                    placeholder="1 + 1 adalah..."
                                     value={data.question_text}
                                     onChange={(e) =>
                                         setData('question_text', e.target.value)
@@ -218,11 +198,10 @@ export default function QuestionBankShow({
                                 )}
                             </div>
 
-                            {/* Type & Points */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-sm font-medium">
-                                        Type
+                                        Tipe Soal
                                     </label>
                                     <Select
                                         value={data.question_type}
@@ -235,20 +214,20 @@ export default function QuestionBankShow({
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="multiple_choice">
-                                                Multiple Choice
+                                                Pilihan Ganda
                                             </SelectItem>
                                             <SelectItem value="multiple_select">
-                                                Multiple Select
+                                                Pilihan Ganda (Beberapa Jawaban)
                                             </SelectItem>
                                             <SelectItem value="true_false">
-                                                True/False
+                                                Benar/Salah
                                             </SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium">
-                                        Points
+                                        Point
                                     </label>
                                     <Input
                                         type="number"
@@ -271,7 +250,6 @@ export default function QuestionBankShow({
                                 </div>
                             </div>
 
-                            {/* Image URL */}
                             <div>
                                 <label className="text-sm font-medium">
                                     Image URL
@@ -286,10 +264,9 @@ export default function QuestionBankShow({
                                 />
                             </div>
 
-                            {/* Options */}
                             <div>
                                 <label className="mb-2 block text-sm font-medium">
-                                    Answer Options
+                                    Opsi Jawaban
                                 </label>
                                 <div className="space-y-2">
                                     {data.options.map((option, idx) => (
@@ -298,7 +275,7 @@ export default function QuestionBankShow({
                                             className="flex items-center gap-2"
                                         >
                                             <Input
-                                                placeholder={`Option ${idx + 1}`}
+                                                placeholder={`Opsi ${idx + 1}`}
                                                 value={option.option_text}
                                                 onChange={(e) =>
                                                     handleOptionChange(
@@ -350,27 +327,25 @@ export default function QuestionBankShow({
                                     className="mt-2 gap-1"
                                 >
                                     <Plus className="h-4 w-4" />
-                                    Add Option
+                                    Tambah Opsi
                                 </Button>
                             </div>
 
-                            {/* Actions */}
                             <div className="flex gap-2 pt-4">
                                 <Button
                                     variant="outline"
                                     onClick={() => setDialogOpen(false)}
                                 >
-                                    Cancel
+                                    Batal
                                 </Button>
                                 <Button onClick={handleSave}>
-                                    {editingId ? 'Update' : 'Create'}
+                                    {editingId ? 'Perbarui' : 'Buat Soal'}
                                 </Button>
                             </div>
                         </div>
                     </DialogContent>
                 </Dialog>
 
-                {/* Questions List */}
                 {questionBank.questions.length > 0 ? (
                     <div className="space-y-4">
                         {questionBank.questions.map((question, idx) => (
@@ -417,14 +392,15 @@ export default function QuestionBankShow({
                                                 </AlertDialogTrigger>
                                                 <AlertDialogContent>
                                                     <AlertDialogTitle>
-                                                        Delete Question?
+                                                        Hapus Soal?
                                                     </AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        This cannot be undone.
+                                                        Ini tidak dapat
+                                                        dibatalkan.
                                                     </AlertDialogDescription>
                                                     <div className="flex gap-2">
                                                         <AlertDialogCancel>
-                                                            Cancel
+                                                            Batal
                                                         </AlertDialogCancel>
                                                         <AlertDialogAction
                                                             onClick={() =>
@@ -434,7 +410,7 @@ export default function QuestionBankShow({
                                                             }
                                                             className="bg-red-600"
                                                         >
-                                                            Delete
+                                                            Hapus
                                                         </AlertDialogAction>
                                                     </div>
                                                 </AlertDialogContent>
@@ -480,15 +456,13 @@ export default function QuestionBankShow({
                 ) : (
                     <Card className="flex items-center justify-center py-12">
                         <div className="text-center">
-                            <p className="mb-4 text-gray-500">
-                                No questions yet
-                            </p>
+                            <p className="mb-4 text-gray-500">Belum ada soal</p>
                             <Button
                                 onClick={handleOpenDialog}
                                 className="gap-2"
                             >
                                 <Plus className="h-4 w-4" />
-                                Create First Question
+                                Buat Soal Pertama
                             </Button>
                         </div>
                     </Card>
