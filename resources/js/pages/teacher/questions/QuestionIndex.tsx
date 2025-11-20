@@ -65,9 +65,9 @@ export default function QuestionIndex({ questionBank }: Props) {
     };
 
     const breadcrumbs = [
-        { title: 'Question Banks', href: '/teacher/question-banks' },
+        { title: 'Bank Soal', href: '/teacher/question-banks' },
         {
-            title: questionBank.name,
+            title: '',
             href: `/teacher/question-banks/${questionBank.id}`,
         },
         { title: 'Questions', href: '#' },
