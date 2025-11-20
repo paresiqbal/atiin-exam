@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Models\Exam;
+use App\Models\ExamAttempt;
 use App\Models\ExamSetting;
 use App\Models\ExamToken;
 use App\Models\QuestionBank;
@@ -139,5 +140,84 @@ class ExamController extends Controller
         $exam->update(['is_published' => true]);
 
         return back()->with('success', 'Exam published successfully');
+    }
+
+    public function attempts(Exam $exam)
+    {
+        $attempts = $exam->attempts()
+            ->with('student.university', 'student.major')
+            ->orderByDesc('completed_at')
+            ->paginate(15);
+
+        $analytics = [
+            'total_attempts' => $exam->attempts()->count(),
+            'passed' => $exam->attempts()
+                ->whereRaw('score >= (SELECT minimum_passing_grade FROM majors WHERE id = exam_attempts.student_id)')
+                ->count(),
+            'average_score' => $exam->attempts()
+                ->whereNotNull('score')
+                ->avg('score'),
+        ];
+
+        return Inertia::render('admin/exams/ExamAttempts', [
+            'exam' => $exam,
+            'attempts' => $attempts,
+            'analytics' => $analytics,
+        ]);
+    }
+
+    public function attemptDetail(ExamAttempt $attempt)
+    {
+        $passingScore = $attempt->student->major->minimum_passing_grade ?? 0;
+        $isPassed = $attempt->score >= $passingScore;
+
+        $questionDetails = $attempt->exam->questionBank->questions
+            ->map(function ($question) use ($attempt) {
+                $response = $attempt->responses()
+                    ->where('question_id', $question->id)
+                    ->first();
+
+                $correctOption = $question->options()
+                    ->where('is_correct', true)
+                    ->first();
+
+                return [
+                    'id' => $question->id,
+                    'question_text' => $question->question_text,
+                    'question_type' => $question->question_type,
+                    'points' => $question->points,
+                    'student_answer' => $response?->selectedOption?->option_text,
+                    'correct_answer' => $correctOption?->option_text,
+                    'is_correct' => $response?->selectedOption?->is_correct ?? false,
+                    'points_earned' => $response ? ($response->selectedOption?->is_correct ? $question->points : 0) : 0,
+                ];
+            });
+
+        // Calculate question performance
+        $questionPerformance = $attempt->exam->attempts()
+            ->with('responses')
+            ->get()
+            ->flatMap(function ($att) {
+                return $att->responses;
+            })
+            ->groupBy('question_id')
+            ->map(function ($responses) {
+                $correct = $responses->filter(fn($r) => $r->selectedOption?->is_correct)->count();
+                return [
+                    'total' => $responses->count(),
+                    'correct' => $correct,
+                    'percentage' => $responses->count() > 0 ? ($correct / $responses->count()) * 100 : 0,
+                ];
+            });
+
+        return Inertia::render('admin/exams/AttemptDetail', [
+            'attempt' => $attempt,
+            'exam' => $attempt->exam,
+            'student' => $attempt->student->load('university', 'major'),
+            'passingScore' => $passingScore,
+            'isPassed' => $isPassed,
+            'questionDetails' => $questionDetails,
+            'questionPerformance' => $questionPerformance,
+        ]);
     }
 }

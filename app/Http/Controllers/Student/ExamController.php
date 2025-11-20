@@ -36,25 +36,11 @@ class ExamController extends Controller
             return back()->withErrors(['token' => 'Invalid token']);
         }
 
-        // Check if token already used (one-time use only)
-        if ($token->used_at) {
-            return back()->withErrors(['token' => 'This token has already been used']);
-        }
-
         $exam = $token->exam;
-
-        // If exam no longer exists (exam_id points to non-existing exam)
-        if (!$exam) {
-            return back()->withErrors([
-                'token' => 'This exam is no longer available',
-            ]);
-        }
 
         // Check if exam is published
         if (!$exam->is_published) {
-            return back()->withErrors([
-                'token' => 'This exam is not available yet',
-            ]);
+            return back()->withErrors(['token' => 'This exam is not available yet']);
         }
 
         // Update student's university & major
@@ -64,16 +50,13 @@ class ExamController extends Controller
             'major_id' => $validated['major_id'],
         ]);
 
-        // Create exam attempt
+        // Create exam attempt (no token.update needed)
         $attempt = ExamAttempt::create([
             'student_id' => $student->id,
             'exam_id' => $exam->id,
             'started_at' => now(),
             'status' => 'in_progress',
         ]);
-
-        // Mark token as used
-        $token->update(['used_at' => now()]);
 
         return redirect()->route('student.exams.take', $attempt->id);
     }
