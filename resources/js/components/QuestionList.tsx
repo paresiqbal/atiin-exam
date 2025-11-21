@@ -49,8 +49,13 @@ export function QuestionList({
                                         {question.points} point
                                     </span>
                                 </div>
-                                <CardTitle className="text-lg">
-                                    {question.question_text}
+                                <CardTitle className="text-lg font-normal">
+                                    <span
+                                        className="prose max-w-none"
+                                        dangerouslySetInnerHTML={{
+                                            __html: question.question_text,
+                                        }}
+                                    />
                                 </CardTitle>
                             </div>
                             <div className="flex gap-1">
