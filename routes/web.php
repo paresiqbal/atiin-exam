@@ -46,6 +46,7 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')
     Route::post('question-banks/{questionBank}/questions', [QuestionController::class, 'store'])->name('questions.store');
     Route::put('questions/{question}', [QuestionController::class, 'update'])->name('questions.update');
     Route::delete('questions/{question}', [QuestionController::class, 'destroy'])->name('questions.destroy');
+    Route::post('questions/images', [QuestionController::class, 'uploadImage'])->name('questions.images.upload');
 });
 
 

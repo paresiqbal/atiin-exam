@@ -57,6 +57,14 @@ type FormData = {
     options: QuestionOption[];
 };
 
+// helper to get CSRF token
+function getCsrfToken(): string {
+    const meta = document.querySelector(
+        'meta[name="csrf-token"]',
+    ) as HTMLMetaElement | null;
+    return meta?.content ?? '';
+}
+
 const extensions = [
     BaseKit.configure({
         placeholder: {
@@ -80,11 +88,25 @@ const extensions = [
     Code,
     CodeBlock,
     Image.configure({
-        upload: (file: File) => {
-            return new Promise<string>((resolve) => {
-                const url = URL.createObjectURL(file);
-                resolve(url);
+        upload: async (file: File) => {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            const response = await fetch('/teacher/questions/images', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                },
+                body: formData,
             });
+
+            if (!response.ok) {
+                console.error('Image upload failed', await response.text());
+                throw new Error('Image upload failed');
+            }
+
+            const data: { url: string } = await response.json();
+            return data.url;
         },
     }),
 ];

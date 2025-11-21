@@ -7,12 +7,13 @@ use App\Models\QuestionBank;
 use App\Models\QuestionOption;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Storage;
 
 class QuestionController extends Controller
 {
     public function store(Request $request, QuestionBank $questionBank)
     {
-        // Check if teacher owns this question bank
+
         if ($questionBank->teacher_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
@@ -34,7 +35,6 @@ class QuestionController extends Controller
             'image_url' => $validated['image_url'],
         ]);
 
-        // Create options for this question
         foreach ($validated['options'] as $index => $option) {
             QuestionOption::create([
                 'question_id' => $question->id,
@@ -47,9 +47,24 @@ class QuestionController extends Controller
         return back()->with('success', 'Question created successfully');
     }
 
+    public function uploadImage(Request $request)
+    {
+
+        $request->validate([
+            'image' => ['required', 'image', 'max:2048'],
+        ]);
+
+        $path = $request->file('image')->store('question-images', 'public');
+
+        $url = Storage::url($path);
+        return response()->json([
+            'url' => $url,
+        ]);
+    }
+
     public function update(Request $request, Question $question)
     {
-        // Check if teacher owns this question's bank
+
         if ($question->questionBank->teacher_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
@@ -71,7 +86,6 @@ class QuestionController extends Controller
             'image_url' => $validated['image_url'],
         ]);
 
-        // Delete old options and create new ones
         $question->options()->delete();
 
         foreach ($validated['options'] as $index => $option) {
@@ -88,7 +102,7 @@ class QuestionController extends Controller
 
     public function destroy(Question $question)
     {
-        // Check if teacher owns this question's bank
+
         if ($question->questionBank->teacher_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
