@@ -1,5 +1,4 @@
 import AppLayout from '@/layouts/app-layout';
-import { dashboard } from '@/routes';
 import { BreadcrumbItem } from '@/types';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { ChevronLeft, ChevronRight, Edit2, Search, Trash2 } from 'lucide-react';
@@ -29,7 +28,7 @@ type RoleFilter = 'all' | 'admin' | 'instructor' | 'student';
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Users Management',
-        href: dashboard().url,
+        href: '/',
     },
 ];
 

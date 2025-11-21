@@ -18,13 +18,33 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 
 // icons
 import { Check, Plus, X } from 'lucide-react';
 
 // types
 import type { Question, QuestionOption } from '@/types/question';
+
+// rich editor
+import RichTextEditor, { BaseKit } from 'reactjs-tiptap-editor';
+
+import { Blockquote } from 'reactjs-tiptap-editor/blockquote';
+import { Bold } from 'reactjs-tiptap-editor/bold';
+import { BulletList } from 'reactjs-tiptap-editor/bulletlist';
+import { Code } from 'reactjs-tiptap-editor/code';
+import { CodeBlock } from 'reactjs-tiptap-editor/codeblock';
+import { History } from 'reactjs-tiptap-editor/history';
+import { HorizontalRule } from 'reactjs-tiptap-editor/horizontalrule';
+import { Image } from 'reactjs-tiptap-editor/image';
+import { Italic } from 'reactjs-tiptap-editor/italic';
+import { Link } from 'reactjs-tiptap-editor/link';
+import { OrderedList } from 'reactjs-tiptap-editor/orderedlist';
+import { Strike } from 'reactjs-tiptap-editor/strike';
+import { TextAlign } from 'reactjs-tiptap-editor/textalign';
+import { TextUnderline } from 'reactjs-tiptap-editor/textunderline';
+
+// ⚠️ CSS for the editor should be imported once globally in app.tsx:
+// import 'reactjs-tiptap-editor/style.css';
 
 interface QuestionFormDialogProps {
     open: boolean;
@@ -40,6 +60,40 @@ type FormData = {
     image_url: string;
     options: QuestionOption[];
 };
+
+// simplified extensions, inspired by docs
+const extensions = [
+    BaseKit.configure({
+        placeholder: {
+            showOnlyCurrent: true,
+        },
+        characterCount: {
+            limit: 50_000,
+        },
+    }),
+    History,
+    Bold,
+    Italic,
+    TextUnderline,
+    Strike,
+    BulletList,
+    OrderedList,
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    Link,
+    Blockquote,
+    HorizontalRule,
+    Code,
+    CodeBlock,
+    Image.configure({
+        // for now just return a local preview URL; later you can call your Laravel upload endpoint here
+        upload: (file: File) => {
+            return new Promise<string>((resolve) => {
+                const url = URL.createObjectURL(file);
+                resolve(url);
+            });
+        },
+    }),
+];
 
 export function QuestionFormDialog({
     open,
@@ -58,12 +112,13 @@ export function QuestionFormDialog({
         ],
     });
 
+    // sync form when dialog opens
     useEffect(() => {
         if (!open) return;
 
         if (editingQuestion) {
             setData({
-                question_text: editingQuestion.question_text,
+                question_text: editingQuestion.question_text || '',
                 question_type: editingQuestion.question_type,
                 points: editingQuestion.points,
                 image_url: editingQuestion.image_url || '',
@@ -140,9 +195,14 @@ export function QuestionFormDialog({
         }
     };
 
+    // editor -> form (HTML)
+    const handleChangeContent = (value: string) => {
+        setData('question_text', value || '');
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+            <DialogContent className="max-h-[90vh] w-full max-w-6xl overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {editingQuestion ? 'Edit Soal' : 'Buat Soal'}
@@ -150,17 +210,24 @@ export function QuestionFormDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    {/* Question text */}
+                    {/* Question text (Rich editor) */}
                     <div>
                         <label className="text-sm font-medium">Soal</label>
-                        <Textarea
-                            placeholder="1 + 1 adalah..."
-                            value={data.question_text}
-                            onChange={(e) =>
-                                setData('question_text', e.target.value)
-                            }
-                            className="mt-1"
-                        />
+
+                        <div className="mt-2">
+                            <RichTextEditor
+                                output="html"
+                                content={data.question_text}
+                                onChangeContent={handleChangeContent}
+                                extensions={extensions}
+                                label="Tulis soal di sini..."
+                                minHeight={150}
+                                maxHeight={300}
+                                maxWidth="100%"
+                                contentClass="min-h-[150px]"
+                            />
+                        </div>
+
                         {errors.question_text && (
                             <p className="mt-1 text-xs text-red-500">
                                 {errors.question_text}
@@ -168,7 +235,7 @@ export function QuestionFormDialog({
                         )}
                     </div>
 
-                    {/* Type & points */}
+                    {/* Question type & points */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-medium">
@@ -219,7 +286,7 @@ export function QuestionFormDialog({
                         </div>
                     </div>
 
-                    {/* Image URL (later can be replaced with uploader) */}
+                    {/* Optional image URL outside editor */}
                     <div>
                         <label className="text-sm font-medium">Image URL</label>
                         <Input
@@ -300,6 +367,7 @@ export function QuestionFormDialog({
                         </Button>
                     </div>
 
+                    {/* Actions */}
                     <div className="flex gap-2 pt-4">
                         <Button
                             variant="outline"

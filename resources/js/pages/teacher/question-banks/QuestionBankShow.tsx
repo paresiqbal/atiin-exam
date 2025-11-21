@@ -49,7 +49,6 @@ export default function QuestionBankShow({
             <Head title={`${questionBank.name} - Questions`} />
 
             <div className="flex flex-1 flex-col gap-6 p-4">
-                {/* Header */}
                 <div>
                     <h1 className="text-3xl font-bold">{questionBank.name}</h1>
                     {questionBank.description && (
@@ -62,7 +61,6 @@ export default function QuestionBankShow({
                     </p>
                 </div>
 
-                {/* Create button + dialog */}
                 <div>
                     <Button
                         onClick={handleCreateClick}
@@ -80,7 +78,6 @@ export default function QuestionBankShow({
                     />
                 </div>
 
-                {/* List / empty state */}
                 {questionBank.questions.length > 0 ? (
                     <QuestionList
                         questions={questionBank.questions}
