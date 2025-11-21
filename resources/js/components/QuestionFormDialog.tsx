@@ -27,7 +27,6 @@ import type { Question, QuestionOption } from '@/types/question';
 
 // rich editor
 import RichTextEditor, { BaseKit } from 'reactjs-tiptap-editor';
-
 import { Blockquote } from 'reactjs-tiptap-editor/blockquote';
 import { Bold } from 'reactjs-tiptap-editor/bold';
 import { BulletList } from 'reactjs-tiptap-editor/bulletlist';
@@ -42,9 +41,6 @@ import { OrderedList } from 'reactjs-tiptap-editor/orderedlist';
 import { Strike } from 'reactjs-tiptap-editor/strike';
 import { TextAlign } from 'reactjs-tiptap-editor/textalign';
 import { TextUnderline } from 'reactjs-tiptap-editor/textunderline';
-
-// ⚠️ CSS for the editor should be imported once globally in app.tsx:
-// import 'reactjs-tiptap-editor/style.css';
 
 interface QuestionFormDialogProps {
     open: boolean;
@@ -61,7 +57,6 @@ type FormData = {
     options: QuestionOption[];
 };
 
-// simplified extensions, inspired by docs
 const extensions = [
     BaseKit.configure({
         placeholder: {
@@ -85,7 +80,6 @@ const extensions = [
     Code,
     CodeBlock,
     Image.configure({
-        // for now just return a local preview URL; later you can call your Laravel upload endpoint here
         upload: (file: File) => {
             return new Promise<string>((resolve) => {
                 const url = URL.createObjectURL(file);
@@ -112,7 +106,6 @@ export function QuestionFormDialog({
         ],
     });
 
-    // sync form when dialog opens
     useEffect(() => {
         if (!open) return;
 
@@ -157,7 +150,6 @@ export function QuestionFormDialog({
 
         if (field === 'is_correct' && value === true) {
             if (data.question_type === 'multiple_choice') {
-                // only 1 correct answer
                 newOptions.forEach((opt, i) => {
                     opt.is_correct = i === index;
                 });
@@ -195,7 +187,6 @@ export function QuestionFormDialog({
         }
     };
 
-    // editor -> form (HTML)
     const handleChangeContent = (value: string) => {
         setData('question_text', value || '');
     };
@@ -210,7 +201,6 @@ export function QuestionFormDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    {/* Question text (Rich editor) */}
                     <div>
                         <label className="text-sm font-medium">Soal</label>
 
@@ -235,7 +225,6 @@ export function QuestionFormDialog({
                         )}
                     </div>
 
-                    {/* Question type & points */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-medium">
@@ -286,7 +275,6 @@ export function QuestionFormDialog({
                         </div>
                     </div>
 
-                    {/* Optional image URL outside editor */}
                     <div>
                         <label className="text-sm font-medium">Image URL</label>
                         <Input
@@ -299,7 +287,6 @@ export function QuestionFormDialog({
                         />
                     </div>
 
-                    {/* Options */}
                     <div>
                         <label className="mb-2 block text-sm font-medium">
                             Opsi Jawaban
@@ -367,7 +354,6 @@ export function QuestionFormDialog({
                         </Button>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex gap-2 pt-4">
                         <Button
                             variant="outline"

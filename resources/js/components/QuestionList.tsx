@@ -1,3 +1,7 @@
+// react
+import { Pencil, Trash2 } from 'lucide-react';
+
+// components
 import {
     AlertDialog,
     AlertDialogAction,
@@ -9,8 +13,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Pencil, Trash2 } from 'lucide-react';
 
+// types
 import type { Question } from '@/types/question';
 
 interface QuestionListProps {
