@@ -1,6 +1,6 @@
 // react
 import { useForm } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // components
 import { Button } from '@/components/ui/button';
@@ -42,37 +42,38 @@ import { Strike } from 'reactjs-tiptap-editor/strike';
 import { TextAlign } from 'reactjs-tiptap-editor/textalign';
 import { TextUnderline } from 'reactjs-tiptap-editor/textunderline';
 
-interface QuestionFormDialogProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    questionBankId: number;
-    editingQuestion: Question | null;
-}
-
-type FormData = {
-    question_text: string;
-    question_type: 'multiple_choice' | 'multiple_select' | 'true_false';
-    points: number;
-    image_url: string;
-    options: QuestionOption[];
-};
-
-// helper to get CSRF token
+// helper: CSRF
 function getCsrfToken(): string {
     const meta = document.querySelector(
         'meta[name="csrf-token"]',
     ) as HTMLMetaElement | null;
+
     return meta?.content ?? '';
 }
 
+// simple debounce hook
+function useDebouncedCallback<T>(callback: (value: T) => void, delay: number) {
+    const timeoutRef = useRef<number | undefined>(undefined);
+
+    return useCallback(
+        (value: T) => {
+            if (timeoutRef.current !== undefined) {
+                window.clearTimeout(timeoutRef.current);
+            }
+
+            timeoutRef.current = window.setTimeout(() => {
+                callback(value);
+            }, delay);
+        },
+        [callback, delay],
+    );
+}
+
+// editor extensions (defined once)
 const extensions = [
     BaseKit.configure({
-        placeholder: {
-            showOnlyCurrent: true,
-        },
-        characterCount: {
-            limit: 50_000,
-        },
+        placeholder: { showOnlyCurrent: true },
+        characterCount: { limit: 50_000 },
     }),
     History,
     Bold,
@@ -96,8 +97,11 @@ const extensions = [
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    Accept: 'application/json',
                 },
                 body: formData,
+                credentials: 'same-origin',
             });
 
             if (!response.ok) {
@@ -110,6 +114,21 @@ const extensions = [
         },
     }),
 ];
+
+interface QuestionFormDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    questionBankId: number;
+    editingQuestion: Question | null;
+}
+
+type FormData = {
+    question_text: string;
+    question_type: 'multiple_choice' | 'multiple_select' | 'true_false';
+    points: number;
+    image_url: string;
+    options: QuestionOption[];
+};
 
 export function QuestionFormDialog({
     open,
@@ -128,23 +147,37 @@ export function QuestionFormDialog({
         ],
     });
 
+    // local state for editor only
+    const [editorContent, setEditorContent] = useState<string>('');
+
+    // debounced sync from editor -> useForm
+    const debouncedSyncQuestionText = useDebouncedCallback<string>((value) => {
+        setData('question_text', value);
+    }, 300);
+
+    // when dialog opens or editingQuestion changes, hydrate form + editor
     useEffect(() => {
         if (!open) return;
 
         if (editingQuestion) {
+            const initialHtml = editingQuestion.question_text || '';
+
             setData({
-                question_text: editingQuestion.question_text || '',
+                question_text: initialHtml,
                 question_type: editingQuestion.question_type,
                 points: editingQuestion.points,
                 image_url: editingQuestion.image_url || '',
                 options: editingQuestion.options,
             });
+
+            setEditorContent(initialHtml);
         } else {
             reset();
             setData('options', [
                 { option_text: '', is_correct: false },
                 { option_text: '', is_correct: false },
             ]);
+            setEditorContent('');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, editingQuestion]);
@@ -191,12 +224,22 @@ export function QuestionFormDialog({
         setData('options', newOptions);
     };
 
+    // editor -> local state + debounced form sync
+    const handleChangeContent = (value: string) => {
+        setEditorContent(value);
+        debouncedSyncQuestionText(value);
+    };
+
     const handleSave = () => {
+        // make sure latest editorContent is in form before submit
+        setData('question_text', editorContent);
+
         if (editingQuestion) {
             put(`/teacher/questions/${editingQuestion.id}`, {
                 onSuccess: () => {
                     onOpenChange(false);
                     reset();
+                    setEditorContent('');
                 },
             });
         } else {
@@ -204,18 +247,15 @@ export function QuestionFormDialog({
                 onSuccess: () => {
                     onOpenChange(false);
                     reset();
+                    setEditorContent('');
                 },
             });
         }
     };
 
-    const handleChangeContent = (value: string) => {
-        setData('question_text', value || '');
-    };
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[90vh] w-full max-w-6xl overflow-y-auto">
+            <DialogContent className="max-h-[90vh] w-full overflow-y-auto sm:max-w-5xl">
                 <DialogHeader>
                     <DialogTitle>
                         {editingQuestion ? 'Edit Soal' : 'Buat Soal'}
@@ -223,20 +263,21 @@ export function QuestionFormDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
+                    {/* Question text (Rich editor) */}
                     <div>
                         <label className="text-sm font-medium">Soal</label>
 
                         <div className="mt-2">
                             <RichTextEditor
                                 output="html"
-                                content={data.question_text}
+                                content={editorContent}
                                 onChangeContent={handleChangeContent}
                                 extensions={extensions}
                                 label="Tulis soal di sini..."
-                                minHeight={150}
-                                maxHeight={300}
+                                minHeight={200}
+                                maxHeight={400}
                                 maxWidth="100%"
-                                contentClass="min-h-[150px]"
+                                contentClass="min-h-[200px]"
                             />
                         </div>
 
@@ -247,6 +288,7 @@ export function QuestionFormDialog({
                         )}
                     </div>
 
+                    {/* Question type & points */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-medium">
@@ -297,6 +339,7 @@ export function QuestionFormDialog({
                         </div>
                     </div>
 
+                    {/* Optional image URL outside editor */}
                     <div>
                         <label className="text-sm font-medium">Image URL</label>
                         <Input
@@ -309,6 +352,7 @@ export function QuestionFormDialog({
                         />
                     </div>
 
+                    {/* Options */}
                     <div>
                         <label className="mb-2 block text-sm font-medium">
                             Opsi Jawaban
@@ -376,6 +420,7 @@ export function QuestionFormDialog({
                         </Button>
                     </div>
 
+                    {/* Actions */}
                     <div className="flex gap-2 pt-4">
                         <Button
                             variant="outline"
