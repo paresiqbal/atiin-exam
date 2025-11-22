@@ -41,6 +41,7 @@ export default function CreateExam({ questionBanks }: Props) {
         time_limit_minutes: '90',
         shuffle_questions: true,
         allow_review: true,
+        class: '',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -103,6 +104,26 @@ export default function CreateExam({ questionBanks }: Props) {
                                 {errors.description && (
                                     <p className="text-sm text-red-500">
                                         {errors.description}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="class">Kelas *</Label>
+                                <Input
+                                    id="class"
+                                    type="text"
+                                    placeholder="Contoh: 10 IPA 1"
+                                    value={data.class}
+                                    onChange={(e) =>
+                                        setData('class', e.target.value)
+                                    }
+                                    className={
+                                        errors.class ? 'border-red-500' : ''
+                                    }
+                                />
+                                {errors.class && (
+                                    <p className="text-sm text-red-500">
+                                        {errors.class}
                                     </p>
                                 )}
                             </div>

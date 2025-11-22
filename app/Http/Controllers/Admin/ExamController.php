@@ -47,36 +47,41 @@ class ExamController extends Controller
             'time_limit_minutes' => 'required|integer|min:1|max:300',
             'shuffle_questions' => 'boolean',
             'allow_review' => 'boolean',
+            'class' => 'required|string|max:50',
         ]);
 
-        // Create exam
+        $admin = auth()->user();
+
         $exam = Exam::create([
-            'admin_id' => auth()->id(),
+            'admin_id'        => $admin->id,
+            'school_id'       => $admin->school_id,
+            'class'           => $validated['class'],
             'question_bank_id' => $validated['question_bank_id'],
-            'name' => $validated['name'],
-            'description' => $validated['description'],
-            'start_at' => $validated['start_at'],
-            'end_at' => $validated['end_at'],
-            'is_published' => false,
+            'name'            => $validated['name'],
+            'description'     => $validated['description'],
+            'start_at'        => $validated['start_at'],
+            'end_at'          => $validated['end_at'],
+            'is_published'    => false,
         ]);
 
         ExamSetting::create([
-            'exam_id' => $exam->id,
+            'exam_id'            => $exam->id,
             'time_limit_minutes' => $validated['time_limit_minutes'],
-            'shuffle_questions' => $validated['shuffle_questions'] ?? true,
-            'allow_review' => $validated['allow_review'] ?? true,
-            'max_attempts' => 1,
+            'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
+            'allow_review'       => $validated['allow_review'] ?? true,
+            'max_attempts'       => 1,
         ]);
 
         ExamToken::create([
             'exam_id' => $exam->id,
-            'token' => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
+            'token'   => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
         ]);
 
         return redirect()
             ->route('admin.exams.index')
             ->with('success', 'Exam created successfully');
     }
+
 
     public function show(Exam $exam): Response
     {
@@ -97,33 +102,51 @@ class ExamController extends Controller
 
     public function update(Request $request, Exam $exam)
     {
+        // Optional: only allow the admin who owns it
+        if ($exam->admin_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'question_bank_id' => 'required|exists:question_banks,id',
+
+            'start_at' => 'required|date',
+            'end_at'   => 'required|date|after_or_equal:start_at',
+
             'time_limit_minutes' => 'required|integer|min:1|max:300',
-            'shuffle_questions' => 'boolean',
-            'allow_review' => 'boolean',
+            'shuffle_questions'  => 'boolean',
+            'allow_review'       => 'boolean',
+
+            'class' => 'required|string|max:50', // 👈 same as in store()
+            // if you ever want admin to change school:
+            // 'school_id' => 'required|exists:schools,id',
         ]);
 
-        // Update exam
+        // Update exam core data
         $exam->update([
-            'name' => $validated['name'],
-            'description' => $validated['description'],
+            'name'             => $validated['name'],
+            'description'      => $validated['description'],
             'question_bank_id' => $validated['question_bank_id'],
+            'start_at'         => $validated['start_at'],
+            'end_at'           => $validated['end_at'],
+            'class'            => $validated['class'],
+            // 'school_id'     => $validated['school_id'] ?? $exam->school_id,
         ]);
 
         // Update settings
         $exam->settings()->update([
             'time_limit_minutes' => $validated['time_limit_minutes'],
-            'shuffle_questions' => $validated['shuffle_questions'] ?? true,
-            'allow_review' => $validated['allow_review'] ?? true,
+            'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
+            'allow_review'       => $validated['allow_review'] ?? true,
         ]);
 
         return redirect()
             ->route('admin.exams.index')
             ->with('success', 'Exam updated successfully');
     }
+
 
     public function destroy(Exam $exam)
     {

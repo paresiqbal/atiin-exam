@@ -14,6 +14,32 @@ use Inertia\Response;
 
 class ExamController extends Controller
 {
+    public function index()
+    {
+        $student = auth()->user();
+
+        $exams = Exam::where('school_id', $student->school_id)
+            ->where('class', $student->class)
+            ->where('is_published', true)
+            ->with('questionBank.questions', 'settings')
+            ->orderBy('start_at')
+            ->paginate(15);
+
+        // Add status to each exam
+        $exams->getCollection()->transform(function ($exam) {
+            $exam->status = match (true) {
+                now() < $exam->start_at => 'coming_soon',
+                now() > $exam->end_at => 'ended',
+                default => 'available'
+            };
+            return $exam;
+        });
+
+        return Inertia::render('student/exams/IndexExam', [
+            'exams' => $exams,
+        ]);
+    }
+
     public function joinForm(): Response
     {
         return Inertia::render('student/exams/JoinExam', [

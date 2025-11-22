@@ -56,6 +56,7 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
         return inertia('student/StudentDashboard');
     })->name('dashboard');
 
+    Route::get('/exams', [ExamController::class, 'index'])->name('exams.index');
     Route::get('/exams/join', [ExamController::class, 'joinForm'])->name('exams.join');
     Route::post('/exams/start', [ExamController::class, 'startExam'])->name('exams.start');
     Route::get('/exams/{attempt}/take', [ExamController::class, 'take'])->name('exams.take');
