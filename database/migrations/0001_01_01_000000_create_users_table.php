@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('password');
             $table->unsignedBigInteger('university_id')->nullable();
             $table->unsignedBigInteger('major_id')->nullable();
-            $table->string('school')->nullable();
+            $table->foreignId('school_id')->nullable()->constrained()->onDelete('set null');
             $table->string('class')->nullable();
             $table->rememberToken();
             $table->timestamps();

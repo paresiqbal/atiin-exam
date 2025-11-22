@@ -14,6 +14,8 @@ return new class extends Migration
             $table->foreignId('question_bank_id')->constrained()->onDelete('cascade');
             $table->string('name');
             $table->text('description')->nullable();
+            $table->string('school')->nullable();
+            $table->string('class')->nullable();
             $table->boolean('is_published')->default(false);
             $table->timestamp('start_at')->nullable();
             $table->timestamp('end_at')->nullable();

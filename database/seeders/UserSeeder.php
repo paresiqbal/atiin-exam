@@ -18,9 +18,11 @@ class UserSeeder extends Seeder
             'role' => 'admin',
             'university_id' => null,
             'major_id' => null,
+            'school_id' => null,
+            'class' => null,
         ]);
 
-        // teacher user
+        // Teacher user
         User::create([
             'name' => 'Teacher User',
             'email' => 'teacher@example.com',
@@ -28,6 +30,8 @@ class UserSeeder extends Seeder
             'role' => 'teacher',
             'university_id' => null,
             'major_id' => null,
+            'school_id' => null,
+            'class' => null,
         ]);
 
         // Student user
@@ -38,6 +42,8 @@ class UserSeeder extends Seeder
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
+            'school_id' => 1,
+            'class' => '10A',
         ]);
     }
 }
