@@ -8,9 +8,36 @@ use App\Models\QuestionOption;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class QuestionController extends Controller
 {
+    public function create(QuestionBank $questionBank)
+    {
+        if ($questionBank->teacher_id !== auth()->id()) {
+            abort(403);
+        }
+
+        return Inertia::render('teacher/questions/QuestionFormPage', [
+            'questionBank' => $questionBank,
+            'question' => null,
+        ]);
+    }
+
+    public function edit(Question $question)
+    {
+        if ($question->questionBank->teacher_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $question->load('options');
+
+        return Inertia::render('teacher/questions/QuestionFormPage', [
+            'questionBank' => $question->questionBank,
+            'question' => $question,
+        ]);
+    }
+
     public function store(Request $request, QuestionBank $questionBank)
     {
 
