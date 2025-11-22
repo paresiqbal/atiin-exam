@@ -56,21 +56,20 @@ export default function EditExam({ exam, questionBanks }: Props) {
         <AppLayout
             breadcrumbs={[
                 { title: 'Admin Dashboard', href: '/admin/dashboard' },
-                { title: 'Ujian', href: '/admin/exams' },
+                { title: 'Daftar Ujian', href: '/admin/exams' },
                 { title: 'Edit Ujian', href: `/admin/exams/${exam.id}/edit` },
             ]}
         >
             <Head title="Edit Ujian" />
             <div className="p-4">
-                <Card className="max-w-2xl">
+                <Card className="mx-auto max-w-screen">
                     <CardHeader>
                         <CardTitle>Edit Ujian</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Name */}
                             <div className="space-y-2">
-                                <Label htmlFor="name">Exam Name *</Label>
+                                <Label htmlFor="name">Nama Ujian</Label>
                                 <Input
                                     id="name"
                                     type="text"
@@ -89,9 +88,8 @@ export default function EditExam({ exam, questionBanks }: Props) {
                                 )}
                             </div>
 
-                            {/* Description */}
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
+                                <Label htmlFor="description">Deskripsi</Label>
                                 <Textarea
                                     id="description"
                                     value={data.description}
@@ -111,10 +109,9 @@ export default function EditExam({ exam, questionBanks }: Props) {
                                 )}
                             </div>
 
-                            {/* Question Bank */}
                             <div className="space-y-2">
                                 <Label htmlFor="question_bank_id">
-                                    Question Bank *
+                                    Bank Soal *
                                 </Label>
                                 <Select
                                     value={data.question_bank_id}
@@ -150,10 +147,9 @@ export default function EditExam({ exam, questionBanks }: Props) {
                                 )}
                             </div>
 
-                            {/* Time Limit */}
                             <div className="space-y-2">
                                 <Label htmlFor="time_limit_minutes">
-                                    Time Limit (minutes) *
+                                    Batas Waktu (menit) *
                                 </Label>
                                 <Input
                                     id="time_limit_minutes"
@@ -180,10 +176,9 @@ export default function EditExam({ exam, questionBanks }: Props) {
                                 )}
                             </div>
 
-                            {/* Toggle Options */}
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between">
-                                    <Label>Shuffle Questions</Label>
+                                    <Label>Acak Soal</Label>
                                     <input
                                         type="checkbox"
                                         checked={data.shuffle_questions}
@@ -197,7 +192,7 @@ export default function EditExam({ exam, questionBanks }: Props) {
                                     />
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <Label>Allow Review</Label>
+                                    <Label>Izinkan Review</Label>
                                     <input
                                         type="checkbox"
                                         checked={data.allow_review}
@@ -212,21 +207,18 @@ export default function EditExam({ exam, questionBanks }: Props) {
                                 </div>
                             </div>
 
-                            {/* Submit Button */}
                             <div className="flex gap-3 pt-4">
-                                <Button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="bg-blue-600 hover:bg-blue-700"
-                                >
-                                    {processing ? 'Updating...' : 'Update Exam'}
+                                <Button type="submit" disabled={processing}>
+                                    {processing
+                                        ? 'Memperbarui...'
+                                        : 'Perbarui Ujian'}
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={() => window.history.back()}
                                 >
-                                    Cancel
+                                    Batal
                                 </Button>
                             </div>
                         </form>

@@ -58,8 +58,8 @@ export default function CreateExam({ questionBanks, schools }: Props) {
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Admin', href: '/admin/dashboard' },
-        { title: 'Ujian', href: '/admin/exams' },
+        { title: 'Admin Dashboard', href: '/admin/dashboard' },
+        { title: 'Daftar Ujian', href: '/admin/exams' },
         { title: 'Buat Ujian', href: '/admin/exams/create' },
     ];
 
