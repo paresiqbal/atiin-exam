@@ -66,7 +66,8 @@ export default function ShowExam({ exam }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Exams', href: '/admin/exams' },
+                { title: 'Admin Dashboard', href: '/admin/dashboard' },
+                { title: 'Daftar Ujian', href: '/admin/exams' },
                 { title: exam.name, href: `/admin/exams/${exam.id}` },
             ]}
         >
@@ -78,14 +79,14 @@ export default function ShowExam({ exam }: Props) {
                         <p className="mt-2 text-gray-600">
                             {exam.description || (
                                 <span className="text-gray-400 italic">
-                                    No description provided.
+                                    Tidak ada deskripsi ujian.
                                 </span>
                             )}
                         </p>
                     </div>
                     <div className="flex space-x-2">
                         <Link href={`/admin/exams/${exam.id}/attempts`}>
-                            <Button variant="outline">View Attempts</Button>
+                            <Button variant="outline">Lihat Percobaan</Button>
                         </Link>
                         <Link href={`/admin/exams/${exam.id}/edit`}>
                             <Button variant="outline">Edit</Button>
@@ -95,7 +96,7 @@ export default function ShowExam({ exam }: Props) {
                                 onClick={handlePublish}
                                 className="bg-green-600 hover:bg-green-700"
                             >
-                                Publish
+                                Terbitkan
                             </Button>
                         )}
                     </div>
@@ -104,14 +105,14 @@ export default function ShowExam({ exam }: Props) {
                 {/* Exam Settings */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Exam Settings</CardTitle>
+                        <CardTitle>Pengaturan Ujian</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {exam.settings ? (
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <p className="text-sm text-gray-600">
-                                        Time Limit
+                                        Batas Waktu
                                     </p>
                                     <p className="font-semibold">
                                         {exam.settings.time_limit_minutes}{' '}
@@ -136,7 +137,7 @@ export default function ShowExam({ exam }: Props) {
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-600">
-                                        Shuffle Questions
+                                        Acak Soal
                                     </p>
                                     <p className="font-semibold">
                                         {exam.settings.shuffle_questions
@@ -146,7 +147,7 @@ export default function ShowExam({ exam }: Props) {
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-600">
-                                        Allow Review
+                                        Izinkan Review
                                     </p>
                                     <p className="font-semibold">
                                         {exam.settings.allow_review
@@ -157,7 +158,8 @@ export default function ShowExam({ exam }: Props) {
                             </div>
                         ) : (
                             <p className="text-sm text-gray-500">
-                                No settings configured for this exam.
+                                Tidak ada pengaturan yang dikonfigurasi untuk
+                                ujian ini.
                             </p>
                         )}
                     </CardContent>
@@ -166,12 +168,13 @@ export default function ShowExam({ exam }: Props) {
                 {/* Exam Token */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Exam Token</CardTitle>
+                        <CardTitle>Token Ujian</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center gap-2">
-                            <code className="flex-1 rounded bg-gray-100 p-3 font-mono text-sm">
-                                {exam.tokens[0]?.token || 'No token available'}
+                            <code className="flex-1 rounded p-3 font-mono text-sm">
+                                {exam.tokens[0]?.token ||
+                                    'Tidak ada token tersedia'}
                             </code>
                             {exam.tokens[0] && (
                                 <Button
@@ -188,13 +191,13 @@ export default function ShowExam({ exam }: Props) {
                 {/* Questions */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Questions ({questions.length})</CardTitle>
+                        <CardTitle>Pertanyaan ({questions.length})</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {questions.length === 0 ? (
                             <p className="text-sm text-gray-500">
-                                No questions found for this exam&apos;s question
-                                bank.
+                                Tidak ada pertanyaan yang ditemukan untuk bank
+                                soal ujian ini. bank.
                             </p>
                         ) : (
                             <div className="space-y-4">
@@ -206,12 +209,12 @@ export default function ShowExam({ exam }: Props) {
                                         <div className="flex justify-between">
                                             <div className="flex-1">
                                                 <p className="font-semibold">
-                                                    Q{idx + 1}:{' '}
+                                                    P{idx + 1}:{' '}
                                                     {question.question_text}
                                                 </p>
                                                 <p className="mt-2 text-sm text-gray-600">
-                                                    Type: {question.type} |
-                                                    Points: {question.points}
+                                                    Tipe: {question.type} |
+                                                    Poin: {question.points}
                                                 </p>
                                             </div>
                                         </div>
