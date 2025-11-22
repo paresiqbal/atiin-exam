@@ -34,6 +34,8 @@ class UserController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|string|min:8',
             'role' => 'required|in:admin,instructor,student',
+            'school' => 'nullable|string|max:255',
+            'class' => 'nullable|string|max:255',
         ]);
 
         User::create($validated);
@@ -55,10 +57,10 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:8',
             'role' => 'required|in:admin,instructor,student',
+            'school' => 'nullable|string|max:255',
+            'class' => 'nullable|string|max:255',
         ]);
-
 
         if ($request->filled('password')) {
             $validated['password'] = Hash::make($validated['password']);
