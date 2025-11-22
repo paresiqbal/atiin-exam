@@ -1,14 +1,12 @@
-// QuestionBankShow.tsx
+// resources/js/pages/teacher/question-banks/QuestionBankShow.tsx
 
 import { Head, router } from '@inertiajs/react';
-import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { Plus } from 'lucide-react';
 
-import { QuestionFormDialog } from '@/components/QuestionFormDialog';
 import { QuestionList } from '@/components/QuestionList';
 import type { Question, QuestionBank } from '@/types/question';
 
@@ -17,11 +15,6 @@ export default function QuestionBankShow({
 }: {
     questionBank: QuestionBank;
 }) {
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingQuestion, setEditingQuestion] = useState<Question | null>(
-        null,
-    );
-
     const breadcrumbs = [
         { title: 'Bank Soal', href: '/teacher/question-banks' },
         {
@@ -31,13 +24,15 @@ export default function QuestionBankShow({
     ];
 
     const handleCreateClick = () => {
-        setEditingQuestion(null);
-        setDialogOpen(true);
+        // go to QuestionFormPage (create mode)
+        router.visit(
+            `/teacher/question-banks/${questionBank.id}/questions/create`,
+        );
     };
 
     const handleEditQuestion = (question: Question) => {
-        setEditingQuestion(question);
-        setDialogOpen(true);
+        // go to QuestionFormPage (edit mode)
+        router.visit(`/teacher/questions/${question.id}/edit`);
     };
 
     const handleDeleteQuestion = (id: number) => {
@@ -69,13 +64,6 @@ export default function QuestionBankShow({
                         <Plus className="h-4 w-4" />
                         Tambah Soal
                     </Button>
-
-                    <QuestionFormDialog
-                        open={dialogOpen}
-                        onOpenChange={setDialogOpen}
-                        questionBankId={questionBank.id}
-                        editingQuestion={editingQuestion}
-                    />
                 </div>
 
                 {questionBank.questions.length > 0 ? (

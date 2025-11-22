@@ -34,9 +34,6 @@ import { History } from 'reactjs-tiptap-editor/history';
 import { HorizontalRule } from 'reactjs-tiptap-editor/horizontalrule';
 import { Image } from 'reactjs-tiptap-editor/image';
 import { Italic } from 'reactjs-tiptap-editor/italic';
-import { Link } from 'reactjs-tiptap-editor/link';
-import { OrderedList } from 'reactjs-tiptap-editor/orderedlist';
-import { Strike } from 'reactjs-tiptap-editor/strike';
 import { TextAlign } from 'reactjs-tiptap-editor/textalign';
 import { TextUnderline } from 'reactjs-tiptap-editor/textunderline';
 
@@ -49,7 +46,6 @@ function getCsrfToken(): string {
     return meta?.content ?? '';
 }
 
-// editor extensions (defined once, outside component)
 const extensions = [
     BaseKit.configure({
         placeholder: { showOnlyCurrent: true },
@@ -59,11 +55,8 @@ const extensions = [
     Bold,
     Italic,
     TextUnderline,
-    Strike,
     BulletList,
-    OrderedList,
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
-    Link,
     Blockquote,
     HorizontalRule,
     Code,
@@ -217,7 +210,7 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
             <Head title={isEditing ? 'Edit Soal' : 'Buat Soal'} />
 
             <div className="p-4">
-                <Card className="mx-auto max-w-5xl">
+                <Card className="max-w-screen">
                     <CardHeader>
                         <CardTitle>
                             {isEditing ? 'Edit Soal' : 'Buat Soal Baru'}

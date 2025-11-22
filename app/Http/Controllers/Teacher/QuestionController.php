@@ -20,7 +20,7 @@ class QuestionController extends Controller
 
         return Inertia::render('teacher/question-banks/QuestionFormPage', [
             'questionBank' => $questionBank,
-            'question' => null,
+            'question'     => null,
         ]);
     }
 
@@ -34,7 +34,7 @@ class QuestionController extends Controller
 
         return Inertia::render('teacher/question-banks/QuestionFormPage', [
             'questionBank' => $question->questionBank,
-            'question' => $question,
+            'question'     => $question,
         ]);
     }
 
