@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
+import { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -52,15 +53,16 @@ export default function AttemptDetail({
         null,
     );
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Admin Dashboard', href: '/admin/dashboard' },
+        { title: 'Ujian', href: '/admin/exams' },
+        { title: exam.name, href: `/admin/exams/${exam.id}` },
+        { title: 'Attempts', href: `/admin/exams/${exam.id}/attempts` },
+        { title: 'Details', href: '#' },
+    ];
+
     return (
-        <AppLayout
-            breadcrumbs={[
-                { title: 'Exams', href: '/admin/exams' },
-                { title: exam.name, href: `/admin/exams/${exam.id}` },
-                { title: 'Attempts', href: `/admin/exams/${exam.id}/attempts` },
-                { title: 'Details', href: '#' },
-            ]}
-        >
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Attempt Details" />
             <div className="space-y-4 p-4">
                 <h1 className="text-3xl font-bold">Attempt Details</h1>

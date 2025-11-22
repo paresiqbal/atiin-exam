@@ -35,7 +35,7 @@ export default function IndexExam({ exams }: { exams: { data: ExamData[] } }) {
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Admin', href: '/admin/dashboard' },
+        { title: 'Admin Dashboard', href: '/admin/dashboard' },
         { title: 'Ujian', href: '/admin/exams' },
     ];
 

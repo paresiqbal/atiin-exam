@@ -55,15 +55,16 @@ export default function EditExam({ exam, questionBanks }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Exams', href: '/admin/exams' },
-                { title: 'Edit', href: `/admin/exams/${exam.id}/edit` },
+                { title: 'Admin Dashboard', href: '/admin/dashboard' },
+                { title: 'Ujian', href: '/admin/exams' },
+                { title: 'Edit Ujian', href: `/admin/exams/${exam.id}/edit` },
             ]}
         >
-            <Head title="Edit Exam" />
+            <Head title="Edit Ujian" />
             <div className="p-4">
                 <Card className="max-w-2xl">
                     <CardHeader>
-                        <CardTitle>Edit Exam</CardTitle>
+                        <CardTitle>Edit Ujian</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
