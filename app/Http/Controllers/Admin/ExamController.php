@@ -47,7 +47,8 @@ class ExamController extends Controller
             'time_limit_minutes' => 'required|integer|min:1|max:300',
             'shuffle_questions' => 'boolean',
             'allow_review' => 'boolean',
-            'class' => 'required|string|max:50',
+            'school_id' => 'required|exists:schools,id',
+            'class'     => 'required|string|max:50',
         ]);
 
         $admin = auth()->user();
@@ -102,7 +103,7 @@ class ExamController extends Controller
 
     public function update(Request $request, Exam $exam)
     {
-        // Optional: only allow the admin who owns it
+
         if ($exam->admin_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
@@ -111,20 +112,17 @@ class ExamController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'question_bank_id' => 'required|exists:question_banks,id',
-
             'start_at' => 'required|date',
             'end_at'   => 'required|date|after_or_equal:start_at',
-
             'time_limit_minutes' => 'required|integer|min:1|max:300',
             'shuffle_questions'  => 'boolean',
             'allow_review'       => 'boolean',
+            'school_id'       => 'required|exists:schools,id',
+            'class' => 'required|string|max:50',
 
-            'class' => 'required|string|max:50', // 👈 same as in store()
-            // if you ever want admin to change school:
-            // 'school_id' => 'required|exists:schools,id',
+
         ]);
 
-        // Update exam core data
         $exam->update([
             'name'             => $validated['name'],
             'description'      => $validated['description'],
@@ -132,10 +130,9 @@ class ExamController extends Controller
             'start_at'         => $validated['start_at'],
             'end_at'           => $validated['end_at'],
             'class'            => $validated['class'],
-            // 'school_id'     => $validated['school_id'] ?? $exam->school_id,
+            'school_id'     => $validated['school_id'] ?? $exam->school_id,
         ]);
 
-        // Update settings
         $exam->settings()->update([
             'time_limit_minutes' => $validated['time_limit_minutes'],
             'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
@@ -150,7 +147,6 @@ class ExamController extends Controller
 
     public function destroy(Exam $exam)
     {
-        // Check if exam has attempts
         if ($exam->attempts()->exists()) {
             return back()->with('error', 'Cannot delete exam that has been taken by students');
         }
@@ -220,7 +216,6 @@ class ExamController extends Controller
                 ];
             });
 
-        // Calculate question performance
         $questionPerformance = $attempt->exam->attempts()
             ->with('responses')
             ->get()
