@@ -18,7 +18,7 @@ class QuestionController extends Controller
             abort(403);
         }
 
-        return Inertia::render('teacher/questions/QuestionFormPage', [
+        return Inertia::render('teacher/question-banks/QuestionFormPage', [
             'questionBank' => $questionBank,
             'question' => null,
         ]);
@@ -32,7 +32,7 @@ class QuestionController extends Controller
 
         $question->load('options');
 
-        return Inertia::render('teacher/questions/QuestionFormPage', [
+        return Inertia::render('teacher/question-banks/QuestionFormPage', [
             'questionBank' => $question->questionBank,
             'question' => $question,
         ]);

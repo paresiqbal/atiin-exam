@@ -25,15 +25,6 @@ interface PaginatedUsers {
 
 type RoleFilter = 'all' | 'admin' | 'instructor' | 'student';
 
-const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Users Management',
-        href: '/',
-    },
-];
-
-const baseUrl = '/admin/users';
-
 export default function UserIndex() {
     const { users } = usePage<{ users: PaginatedUsers }>().props;
 
@@ -58,109 +49,106 @@ export default function UserIndex() {
         }
     };
 
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: 'Users Management',
+            href: '/',
+        },
+    ];
+
+    const baseUrl = '/admin/users';
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Users Management" />
+            <Head title="Manajemen User" />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                {/* Header Section */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-slate-900">
-                            User Management
-                        </h1>
-                        <p className="text-slate-600">
-                            Manage system users and their permissions
-                        </p>
+                        <h1 className="text-3xl font-bold">Manajemen User</h1>
+                        <p>Mengelola pengguna sistem dan izin mereka</p>
                     </div>
 
                     <Link
                         href={`${baseUrl}/create`}
                         className="rounded-lg bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700"
                     >
-                        Add New User
+                        Tambah User Baru
                     </Link>
                 </div>
 
-                {/* Filters */}
-                <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-3 md:flex-row md:items-center md:justify-between">
-                    {/* Search */}
-                    <div className="flex flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                        <Search size={18} className="text-slate-400" />
+                <div className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 md:flex-row md:items-center md:justify-between">
+                    <div className="borderpx-3 flex flex-1 items-center gap-2 rounded-lg py-2">
+                        <Search size={18} />
                         <input
                             type="text"
                             placeholder="Search name or email..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="flex-1 bg-transparent text-sm text-slate-800 outline-none"
+                            className="flex-1 bg-transparent text-sm outline-none"
                         />
                     </div>
-
-                    {/* Role Filter */}
                     <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-600">
-                            Filter by role:
-                        </span>
+                        <span className="text-sm">Filter</span>
                         <select
                             value={roleFilter}
                             onChange={(e) =>
                                 setRoleFilter(e.target.value as RoleFilter)
                             }
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-indigo-500"
+                            className="rounded-lg border bg-accent px-3 py-2 text-sm shadow-sm outline-none"
                         >
-                            <option value="all">All</option>
+                            <option value="all">Semua</option>
                             <option value="admin">Admin</option>
-                            <option value="instructor">Instructor</option>
-                            <option value="student">Student</option>
+                            <option value="instructor">Guru</option>
+                            <option value="student">Siswa</option>
                         </select>
                     </div>
                 </div>
 
-                {/* Users Table */}
-                <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                <div className="overflow-x-auto rounded-lg border shadow-sm">
                     <table className="w-full text-sm">
-                        <thead className="border-b border-slate-200 bg-slate-50">
+                        <thead className="border-b">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                                    Name
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Nama
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                     Email
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                                    Role
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Peran
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                                    Joined
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Bergabung
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                                    Actions
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Aksi
                                 </th>
                             </tr>
                         </thead>
 
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y">
                             {filteredUsers.length > 0 ? (
                                 filteredUsers.map((user) => (
                                     <tr
                                         key={user.id}
-                                        className="transition-colors hover:bg-indigo-50/40"
+                                        className="transition-colors"
                                     >
-                                        <td className="px-6 py-3 text-slate-900">
+                                        <td className="px-6 py-3">
                                             {user.name}
                                         </td>
 
-                                        <td className="px-6 py-3 text-slate-700">
+                                        <td className="px-6 py-3">
                                             {user.email}
                                         </td>
 
                                         <td className="px-6 py-3">
-                                            <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
+                                            <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium">
                                                 {user.role}
                                             </span>
                                         </td>
 
-                                        <td className="px-6 py-3 text-slate-700">
+                                        <td className="px-6 py-3">
                                             {new Date(
                                                 user.created_at,
                                             ).toLocaleDateString()}
@@ -170,7 +158,7 @@ export default function UserIndex() {
                                             <div className="flex gap-2">
                                                 <Link
                                                     href={`${baseUrl}/${user.id}/edit`}
-                                                    className="rounded-md p-2 text-indigo-600 hover:bg-indigo-50"
+                                                    className="hover rounded-md p-2"
                                                 >
                                                     <Edit2 size={16} />
                                                 </Link>
@@ -193,7 +181,7 @@ export default function UserIndex() {
                                         colSpan={5}
                                         className="px-6 py-8 text-center text-sm text-slate-500"
                                     >
-                                        No users found
+                                        Tidak ada pengguna ditemukan
                                     </td>
                                 </tr>
                             )}
@@ -202,12 +190,13 @@ export default function UserIndex() {
                 </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
+                <div className="border-slate-200p-4 flex items-center justify-between rounded-lg border text-sm shadow-sm">
                     <div>
-                        Showing{' '}
-                        <span className="font-medium">{users.from}</span> to{' '}
-                        <span className="font-medium">{users.to}</span> of{' '}
-                        <span className="font-medium">{users.total}</span> users
+                        Menampilkan{' '}
+                        <span className="font-medium">{users.from}</span> hingga{' '}
+                        <span className="font-medium">{users.to}</span> dari{' '}
+                        <span className="font-medium">{users.total}</span>{' '}
+                        pengguna
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -238,8 +227,8 @@ export default function UserIndex() {
                                     href={`${baseUrl}?page=${page}`}
                                     className={`inline-flex items-center rounded-md px-3 py-1 ${
                                         page === users.current_page
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+                                            ? 'bg-primary/90 text-white'
+                                            : 'border border-slate-300 hover:bg-slate-50'
                                     }`}
                                 >
                                     {page}

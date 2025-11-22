@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 // layout
 import AppLayout from '@/layouts/app-layout';
@@ -124,20 +124,14 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
             ],
         });
 
-    // Local state for editor content (kept separate so typing doesn't spam setData)
-    const [editorContent, setEditorContent] = useState<string>(
-        question?.question_text || '',
-    );
-
-    // If question changes (e.g. first load / navigation), sync editor
-    useEffect(() => {
-        setEditorContent(question?.question_text || '');
-    }, [question]);
+    // Local state for editor content, initialized once from question/form
+    const [editorContent, setEditorContent] = useState<string>(() => {
+        return question?.question_text || data.question_text || '';
+    });
 
     const handleEditorChange = (value: string) => {
         setEditorContent(value);
-        // optional: if you want live validation server-side, you can also:
-        // setData('question_text', value);
+        // optional: could also do setData('question_text', value) if you want
     };
 
     const handleAddOption = () => {
