@@ -172,7 +172,7 @@ export default function ShowExam({ exam }: Props) {
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center gap-2">
-                            <code className="flex-1 rounded p-3 font-mono text-sm">
+                            <code className="text-bold flex-1 rounded px-2 text-2xl font-extrabold text-primary">
                                 {exam.tokens[0]?.token ||
                                     'Tidak ada token tersedia'}
                             </code>
