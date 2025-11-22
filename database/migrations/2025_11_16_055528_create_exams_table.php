@@ -12,13 +12,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('admin_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('question_bank_id')->constrained()->onDelete('cascade');
+            $table->foreignId('school_id')->nullable();
+            $table->string('class', 50)->nullable();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->string('school')->nullable();
-            $table->string('class')->nullable();
             $table->boolean('is_published')->default(false);
             $table->timestamp('start_at')->nullable();
             $table->timestamp('end_at')->nullable();
+
             $table->timestamps();
         });
     }

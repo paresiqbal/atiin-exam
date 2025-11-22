@@ -27,11 +27,18 @@ interface QuestionBank {
     name: string;
 }
 
-interface Props {
-    questionBanks: QuestionBank[];
+interface School {
+    id: number;
+    name: string;
 }
 
-export default function CreateExam({ questionBanks }: Props) {
+interface Props {
+    questionBanks: QuestionBank[];
+    schools: School[];
+    classes: string[];
+}
+
+export default function CreateExam({ questionBanks, schools }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         description: '',
@@ -41,6 +48,7 @@ export default function CreateExam({ questionBanks }: Props) {
         time_limit_minutes: '90',
         shuffle_questions: true,
         allow_review: true,
+        school_id: '',
         class: '',
     });
 
@@ -107,6 +115,42 @@ export default function CreateExam({ questionBanks }: Props) {
                                     </p>
                                 )}
                             </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="school_id">Sekolah *</Label>
+                                <Select
+                                    value={data.school_id}
+                                    onValueChange={(value) =>
+                                        setData('school_id', value)
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="school_id"
+                                        className={
+                                            errors.school_id
+                                                ? 'border-red-500'
+                                                : ''
+                                        }
+                                    >
+                                        <SelectValue placeholder="Pilih sekolah" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {schools.map((school) => (
+                                            <SelectItem
+                                                key={school.id}
+                                                value={school.id.toString()}
+                                            >
+                                                {school.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.school_id && (
+                                    <p className="text-sm text-red-500">
+                                        {errors.school_id}
+                                    </p>
+                                )}
+                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="class">Kelas *</Label>
                                 <Input

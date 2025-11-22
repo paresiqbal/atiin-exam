@@ -7,9 +7,10 @@ use App\Models\ExamAttempt;
 use App\Models\ExamSetting;
 use App\Models\ExamToken;
 use App\Models\QuestionBank;
+use App\Models\School;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,12 +28,24 @@ class ExamController extends Controller
         ]);
     }
 
-    public function create(): Response
+    public function create()
     {
-        $questionBanks = QuestionBank::select('id', 'name')->get();
+        $questionBanks = QuestionBank::orderBy('name')
+            ->get(['id', 'name']);
+
+        $schools = School::orderBy('name')
+            ->get(['id', 'name']);
+
+        $classes = User::where('role', 'student')
+            ->whereNotNull('class')
+            ->distinct()
+            ->orderBy('class')
+            ->pluck('class');
 
         return Inertia::render('admin/exams/CreateExam', [
             'questionBanks' => $questionBanks,
+            'schools'       => $schools,
+            'classes'       => $classes,
         ]);
     }
 
@@ -54,15 +67,15 @@ class ExamController extends Controller
         $admin = auth()->user();
 
         $exam = Exam::create([
-            'admin_id'        => $admin->id,
-            'school_id'       => $admin->school_id,
-            'class'           => $validated['class'],
+            'admin_id'         => $admin->id,
+            'school_id'        => $validated['school_id'],
+            'class'            => $validated['class'],
             'question_bank_id' => $validated['question_bank_id'],
-            'name'            => $validated['name'],
-            'description'     => $validated['description'],
-            'start_at'        => $validated['start_at'],
-            'end_at'          => $validated['end_at'],
-            'is_published'    => false,
+            'name'             => $validated['name'],
+            'description'      => $validated['description'],
+            'start_at'         => $validated['start_at'],
+            'end_at'           => $validated['end_at'],
+            'is_published'     => false,
         ]);
 
         ExamSetting::create([
