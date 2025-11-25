@@ -174,6 +174,7 @@ export default function Results({
                                 value={`item-${question.id}`}
                                 className="rounded-lg border bg-card px-4"
                             >
+                                {/* Trigger */}
                                 <AccordionTrigger className="py-4 hover:no-underline">
                                     <div className="flex w-full items-start gap-4 text-left">
                                         <div className="mt-1">
@@ -183,22 +184,35 @@ export default function Results({
                                                 <XCircle className="h-5 w-5 text-destructive" />
                                             )}
                                         </div>
+
                                         <div className="flex-1">
                                             <div className="pr-4 font-medium">
                                                 <span className="mr-2 text-muted-foreground">
                                                     Q{index + 1}.
                                                 </span>
-                                                {question.question_text}
+
+                                                {/* FIXED QUESTION TEXT HTML */}
+                                                <div
+                                                    className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: question.question_text,
+                                                    }}
+                                                />
                                             </div>
                                         </div>
+
+                                        {/* Points */}
                                         <div className="font-mono text-sm whitespace-nowrap text-muted-foreground">
                                             {question.points_earned} /{' '}
                                             {question.points} pts
                                         </div>
                                     </div>
                                 </AccordionTrigger>
+
+                                {/* Content */}
                                 <AccordionContent className="pt-2 pb-4 pl-9">
                                     <div className="grid gap-4 md:grid-cols-2">
+                                        {/* Student Answer */}
                                         <div
                                             className={cn(
                                                 'rounded-md border p-3',
@@ -210,21 +224,37 @@ export default function Results({
                                             <div className="mb-1 text-xs font-medium text-muted-foreground">
                                                 Your Answer
                                             </div>
+
                                             <div className="font-medium">
-                                                {question.student_answer || (
+                                                {question.student_answer ? (
+                                                    <div
+                                                        className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: question.student_answer,
+                                                        }}
+                                                    />
+                                                ) : (
                                                     <span className="text-muted-foreground italic">
                                                         No answer provided
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* Correct Answer */}
                                         {!question.is_correct && (
                                             <div className="rounded-md border bg-secondary/50 p-3">
                                                 <div className="mb-1 text-xs font-medium text-muted-foreground">
                                                     Correct Answer
                                                 </div>
+
                                                 <div className="font-medium text-green-600 dark:text-green-400">
-                                                    {question.correct_answer}
+                                                    <div
+                                                        className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
+                                                        dangerouslySetInnerHTML={{
+                                                            __html: question.correct_answer,
+                                                        }}
+                                                    />
                                                 </div>
                                             </div>
                                         )}
