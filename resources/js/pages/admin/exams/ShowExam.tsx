@@ -4,19 +4,11 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 
-interface Option {
-    id: number;
-    text: string;
-    is_correct: boolean;
-}
+// Your shared QuestionList component
+import { QuestionList } from '@/components/QuestionList';
 
-interface Question {
-    id: number;
-    question_text: string;
-    type: string;
-    points: number;
-    options: Option[];
-}
+// Types
+import type { Question } from '@/types/question';
 
 interface ExamToken {
     token: string;
@@ -38,7 +30,7 @@ interface ExamData {
     description: string | null;
     is_published: boolean;
     settings: ExamSettings | null;
-    question_bank: QuestionBank | null; // <-- snake_case + nullable
+    question_bank: QuestionBank | null;
     tokens: ExamToken[];
 }
 
@@ -73,6 +65,7 @@ export default function ShowExam({ exam }: Props) {
         >
             <Head title={exam.name} />
             <div className="space-y-4 p-4">
+                {/* Header */}
                 <div className="flex items-start justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">{exam.name}</h1>
@@ -84,13 +77,16 @@ export default function ShowExam({ exam }: Props) {
                             )}
                         </p>
                     </div>
+
                     <div className="flex space-x-2">
                         <Link href={`/admin/exams/${exam.id}/attempts`}>
                             <Button variant="outline">Lihat Percobaan</Button>
                         </Link>
+
                         <Link href={`/admin/exams/${exam.id}/edit`}>
                             <Button variant="outline">Edit</Button>
                         </Link>
+
                         {!exam.is_published && (
                             <Button
                                 onClick={handlePublish}
@@ -115,10 +111,10 @@ export default function ShowExam({ exam }: Props) {
                                         Batas Waktu
                                     </p>
                                     <p className="font-semibold">
-                                        {exam.settings.time_limit_minutes}{' '}
-                                        minutes
+                                        {exam.settings.time_limit_minutes} menit
                                     </p>
                                 </div>
+
                                 <div>
                                     <p className="text-sm text-gray-600">
                                         Status
@@ -135,6 +131,7 @@ export default function ShowExam({ exam }: Props) {
                                             : 'Draft'}
                                     </span>
                                 </div>
+
                                 <div>
                                     <p className="text-sm text-gray-600">
                                         Acak Soal
@@ -145,6 +142,7 @@ export default function ShowExam({ exam }: Props) {
                                             : 'No'}
                                     </p>
                                 </div>
+
                                 <div>
                                     <p className="text-sm text-gray-600">
                                         Izinkan Review
@@ -176,6 +174,7 @@ export default function ShowExam({ exam }: Props) {
                                 {exam.tokens[0]?.token ||
                                     'Tidak ada token tersedia'}
                             </code>
+
                             {exam.tokens[0] && (
                                 <Button
                                     variant="outline"
@@ -188,66 +187,17 @@ export default function ShowExam({ exam }: Props) {
                     </CardContent>
                 </Card>
 
-                {/* Questions */}
+                {/* Questions Section */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Pertanyaan ({questions.length})</CardTitle>
                     </CardHeader>
+
                     <CardContent>
-                        {questions.length === 0 ? (
-                            <p className="text-sm text-gray-500">
-                                Tidak ada pertanyaan yang ditemukan untuk bank
-                                soal ujian ini. bank.
-                            </p>
-                        ) : (
-                            <div className="space-y-4">
-                                {questions.map((question, idx) => (
-                                    <div
-                                        key={question.id}
-                                        className="rounded border p-4"
-                                    >
-                                        <div className="flex justify-between">
-                                            <div className="flex-1">
-                                                <p className="font-semibold">
-                                                    P{idx + 1}:{' '}
-                                                    {question.question_text}
-                                                </p>
-                                                <p className="mt-2 text-sm text-gray-600">
-                                                    Tipe: {question.type} |
-                                                    Poin: {question.points}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="mt-3 space-y-2">
-                                            {question.options.map((option) => (
-                                                <div
-                                                    key={option.id}
-                                                    className="flex items-center gap-2"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={
-                                                            option.is_correct
-                                                        }
-                                                        disabled
-                                                        className="h-4 w-4"
-                                                    />
-                                                    <span
-                                                        className={
-                                                            option.is_correct
-                                                                ? 'font-semibold text-green-600'
-                                                                : ''
-                                                        }
-                                                    >
-                                                        {option.text}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        <QuestionList
+                            questions={questions}
+                            readOnly={true} // Disable edit/delete for exam show page
+                        />
                     </CardContent>
                 </Card>
             </div>
