@@ -53,26 +53,26 @@ export default function JoinExam({ universities }: Props) {
 
     return (
         <AppLayout breadcrumbs={[]}>
-            <Head title="Join Exam" />
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
-                <Card className="w-full max-w-md bg-white shadow-2xl">
+            <Head title="Masuk Ujian" />
+            <div className="flex min-h-screen items-center justify-center p-4">
+                <Card className="w-full max-w-md shadow-2xl">
                     <CardHeader className="space-y-2 text-center">
                         <CardTitle className="text-3xl font-bold">
-                            Join Exam
+                            Masuk Ujian
                         </CardTitle>
                         <CardDescription>
-                            Enter your exam token and select your university
+                            Masukkan token ujian Anda dan pilih universitas Anda
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Token Input */}
                             <div className="space-y-2">
-                                <Label htmlFor="token">Exam Token *</Label>
+                                <Label htmlFor="token">Token Ujian *</Label>
                                 <Input
                                     id="token"
                                     type="text"
-                                    placeholder="Enter exam token"
+                                    placeholder="Masukkan token ujian"
                                     value={data.token}
                                     onChange={(e) =>
                                         setData('token', e.target.value)
@@ -90,7 +90,9 @@ export default function JoinExam({ universities }: Props) {
 
                             {/* University Select */}
                             <div className="space-y-2">
-                                <Label htmlFor="university">University *</Label>
+                                <Label htmlFor="university">
+                                    Universitas *
+                                </Label>
                                 <Select
                                     value={selectedUniversityId}
                                     onValueChange={(value) => {
@@ -110,7 +112,7 @@ export default function JoinExam({ universities }: Props) {
                                                 : ''
                                         }
                                     >
-                                        <SelectValue placeholder="Select university" />
+                                        <SelectValue placeholder="Pilih universitas" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {universities.map((uni) => (
@@ -132,7 +134,7 @@ export default function JoinExam({ universities }: Props) {
 
                             {/* Major Select */}
                             <div className="space-y-2">
-                                <Label htmlFor="major">Major *</Label>
+                                <Label htmlFor="major">Jurusan *</Label>
                                 <Select
                                     value={data.major_id}
                                     onValueChange={(value) =>
@@ -151,8 +153,8 @@ export default function JoinExam({ universities }: Props) {
                                         <SelectValue
                                             placeholder={
                                                 selectedUniversityId
-                                                    ? 'Select major'
-                                                    : 'Select university first'
+                                                    ? 'Pilih jurusan'
+                                                    : 'Pilih universitas terlebih dahulu'
                                             }
                                         />
                                     </SelectTrigger>
@@ -178,9 +180,11 @@ export default function JoinExam({ universities }: Props) {
                             <Button
                                 type="submit"
                                 disabled={processing}
-                                className="w-full bg-blue-600 hover:bg-blue-700"
+                                className="w-full"
                             >
-                                {processing ? 'Starting Exam...' : 'Start Exam'}
+                                {processing
+                                    ? 'Memulai Ujian...'
+                                    : 'Mulai Ujian'}
                             </Button>
                         </form>
                     </CardContent>
