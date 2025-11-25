@@ -12,17 +12,17 @@ const statusConfig = {
     available: {
         bg: 'bg-green-100',
         text: 'text-green-800',
-        label: 'Available',
+        label: 'Tersedia',
     },
     coming_soon: {
         bg: 'bg-blue-100',
         text: 'text-blue-800',
-        label: 'Coming Soon',
+        label: 'Segera Hadir',
     },
     ended: {
         bg: 'bg-red-100',
         text: 'text-red-800',
-        label: 'Ended',
+        label: 'Berakhir',
     },
 } as const;
 
@@ -46,17 +46,20 @@ function formatDateTime(date: string) {
 export default function IndexExam({ exams }: StudentExamIndexProps) {
     return (
         <AppLayout
-            breadcrumbs={[{ title: 'Available Exams', href: '/student/exams' }]}
+            breadcrumbs={[
+                { title: 'Ujian yang tersedia', href: '/student/exams' },
+            ]}
         >
-            <Head title="Available Exams" />
+            <Head title="Ujian yang tersedia" />
 
             <div className="space-y-4 p-4">
-                <h1 className="text-3xl font-bold">Available Exams</h1>
+                <h1 className="text-3xl font-bold">Ujian yang tersedia</h1>
 
                 {exams.data.length === 0 ? (
                     <Card>
                         <CardContent className="pt-8 text-center text-gray-500">
-                            No exams available for your class at this time.
+                            Tidak ada ujian yang tersedia untuk kelas Anda saat
+                            ini.
                         </CardContent>
                     </Card>
                 ) : (
@@ -74,14 +77,13 @@ export default function IndexExam({ exams }: StudentExamIndexProps) {
                                             </CardTitle>
 
                                             <p className="mt-1 text-sm text-gray-600">
-                                                Questions:{' '}
+                                                Soal:{' '}
                                                 {
                                                     exam.question_bank.questions
                                                         .length
                                                 }{' '}
-                                                | Time:{' '}
-                                                {exam.settings.time_limit}{' '}
-                                                minutes
+                                                | Waktu:{' '}
+                                                {exam.settings.time_limit} menit
                                             </p>
                                         </div>
 
@@ -92,33 +94,33 @@ export default function IndexExam({ exams }: StudentExamIndexProps) {
                                 <CardContent>
                                     <div className="space-y-3">
                                         <div className="text-sm">
-                                            <p className="text-gray-600">
-                                                Starts:{' '}
+                                            <p>
+                                                Mulai:{' '}
                                                 {formatDateTime(exam.start_at)}
                                             </p>
-                                            <p className="text-gray-600">
-                                                Ends:{' '}
+                                            <p>
+                                                Berakhir:{' '}
                                                 {formatDateTime(exam.end_at)}
                                             </p>
                                         </div>
 
                                         {exam.status === 'available' && (
                                             <Link href="/student/exams/join">
-                                                <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                                                    Join Exam
+                                                <Button className="w-full">
+                                                    Mulai Ujian
                                                 </Button>
                                             </Link>
                                         )}
 
                                         {exam.status === 'coming_soon' && (
                                             <Button className="w-full" disabled>
-                                                Coming Soon
+                                                Akan Datang
                                             </Button>
                                         )}
 
                                         {exam.status === 'ended' && (
                                             <Button className="w-full" disabled>
-                                                Exam Ended
+                                                Ujian Telah Berakhir
                                             </Button>
                                         )}
                                     </div>
