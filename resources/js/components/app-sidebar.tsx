@@ -56,7 +56,10 @@ export function AppSidebar() {
                 icon: User,
                 items: [
                     { title: 'Semua User', href: '/admin/users' },
-                    { title: 'Buat User', href: '/admin/users/create' },
+                    {
+                        title: 'Buat / Import User',
+                        href: '/admin/users/create',
+                    },
                 ],
             },
         ];
