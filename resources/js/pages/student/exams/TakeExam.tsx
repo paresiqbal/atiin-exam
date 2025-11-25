@@ -1,24 +1,20 @@
+import { QuestionMap } from '@/components/QuestionMap';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-    Card,
-    CardContent,
-    CardFooter,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 import { Head, router } from '@inertiajs/react';
 import axios from 'axios';
-import {
-    AlertCircle,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface Option {
@@ -65,15 +61,16 @@ export default function TakeExam({
         responses || {},
     );
     const [timeLeft, setTimeLeft] = useState(
-        Math.max(0, timeLimit * 60 - elapsedMinutes * 60),
+        Math.max(0, timeLimit * 60 - Math.floor(elapsedMinutes) * 60),
     );
-    const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>(
-        'saved',
-    );
+
     const submitRef = useRef(false);
 
     const currentQuestion = questions[currentQuestionIndex];
     const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [unansweredCount, setUnansweredCount] = useState(0);
 
     useEffect(() => {
         if (timeLeft <= 0 && !submitRef.current) {
@@ -91,29 +88,31 @@ export default function TakeExam({
 
     const handleOptionSelect = (optionId: string) => {
         const id = parseInt(optionId);
+
         setAnswers((prev) => ({
             ...prev,
             [currentQuestion.id]: id,
         }));
 
-        setSaveStatus('saving');
         axios
             .post(`/student/exams/${attempt.id}/save-answer`, {
                 question_id: currentQuestion.id,
                 selected_option_id: id,
             })
-            .then(() => {
-                setSaveStatus('saved');
-            })
             .catch(() => {
-                setSaveStatus('error');
+                console.error('Failed to save answer');
             });
     };
 
     const handleSubmit = () => {
-        if (submitRef.current) return;
-        submitRef.current = true;
-        router.post(`/student/exams/${attempt.id}/submit`);
+        const answeredIds = Object.keys(answers).map(Number);
+        const totalQuestions = questions.length;
+
+        const totalAnswered = answeredIds.length;
+        const diff = totalQuestions - totalAnswered;
+
+        setUnansweredCount(diff);
+        setConfirmOpen(true); // open dialog instead of immediate submit
     };
 
     const formatTime = (seconds: number) => {
@@ -122,21 +121,28 @@ export default function TakeExam({
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    const confirmSubmit = () => {
+        if (submitRef.current) return;
+        submitRef.current = true;
+        router.post(`/student/exams/${attempt.id}/submit`);
+    };
+
     return (
         <div className="flex min-h-screen flex-col bg-background text-foreground">
             <Head title={`Taking Exam: ${exam.title}`} />
 
             {/* Header */}
             <header className="sticky top-0 z-10 border-b bg-card">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="mb-4 flex items-center justify-between">
-                        <div>
+                <div className="mx-auto w-full max-w-3xl px-4 py-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
                             <h1 className="text-xl font-bold">{exam.title}</h1>
                             <p className="text-sm text-muted-foreground">
                                 Question {currentQuestionIndex + 1} of{' '}
                                 {questions.length}
                             </p>
                         </div>
+
                         <div
                             className={cn(
                                 'flex items-center gap-2 rounded-full border px-4 py-2 font-mono text-lg font-medium',
@@ -149,87 +155,77 @@ export default function TakeExam({
                             {formatTime(timeLeft)}
                         </div>
                     </div>
-                    <Progress value={progress} className="h-2" />
+
+                    <Progress value={progress} className="mt-4 h-2" />
                 </div>
             </header>
 
-            {/* Main Content */}
-            <main className="container mx-auto max-w-4xl flex-1 px-4 py-8">
-                <div className="grid gap-6">
-                    <Card className="border-2">
-                        <CardHeader>
-                            <div className="flex items-start justify-between gap-4">
-                                <CardTitle className="text-xl leading-relaxed">
-                                    {currentQuestion.question_text}
-                                </CardTitle>
-                                <span className="rounded bg-secondary px-2 py-1 text-sm font-medium whitespace-nowrap text-muted-foreground">
-                                    {currentQuestion.points} points
-                                </span>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <RadioGroup
-                                value={
-                                    answers[currentQuestion.id]?.toString() ||
-                                    ''
-                                }
-                                onValueChange={handleOptionSelect}
-                                className="space-y-3"
-                            >
-                                {currentQuestion.options.map((option) => (
-                                    <div
-                                        key={option.id}
-                                        className={cn(
-                                            'flex cursor-pointer items-center space-x-3 rounded-lg border p-4 transition-all hover:bg-accent',
-                                            answers[currentQuestion.id] ===
-                                                option.id
-                                                ? 'border-primary bg-accent ring-1 ring-primary'
-                                                : 'border-input',
-                                        )}
-                                    >
-                                        <RadioGroupItem
-                                            value={option.id.toString()}
-                                            id={`option-${option.id}`}
+            {/* Main */}
+            <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
+                <Card className="border-2">
+                    <CardHeader>
+                        <div className="flex items-start justify-between gap-4">
+                            <CardTitle className="text-lg leading-relaxed">
+                                <div
+                                    className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
+                                    dangerouslySetInnerHTML={{
+                                        __html: currentQuestion.question_text,
+                                    }}
+                                />
+                            </CardTitle>
+
+                            <span className="rounded bg-secondary px-2 py-1 text-sm font-medium whitespace-nowrap text-muted-foreground">
+                                {currentQuestion.points} poin
+                            </span>
+                        </div>
+                    </CardHeader>
+
+                    <CardContent>
+                        <RadioGroup
+                            value={
+                                answers[currentQuestion.id]?.toString() || ''
+                            }
+                            onValueChange={handleOptionSelect}
+                            className="space-y-3"
+                        >
+                            {currentQuestion.options.map((option) => (
+                                <div
+                                    key={option.id}
+                                    onClick={() =>
+                                        handleOptionSelect(option.id.toString())
+                                    }
+                                    className={cn(
+                                        'flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all hover:bg-accent',
+                                        answers[currentQuestion.id] ===
+                                            option.id
+                                            ? 'border-primary bg-accent ring-1 ring-primary'
+                                            : 'border-input',
+                                    )}
+                                >
+                                    <RadioGroupItem
+                                        value={option.id.toString()}
+                                        id={`option-${option.id}`}
+                                        className="pointer-events-none mt-1"
+                                    />
+
+                                    <div className="flex-1">
+                                        <div
+                                            className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
+                                            dangerouslySetInnerHTML={{
+                                                __html: option.option_text,
+                                            }}
                                         />
-                                        <Label
-                                            htmlFor={`option-${option.id}`}
-                                            className="flex-1 cursor-pointer text-base font-normal"
-                                        >
-                                            {option.option_text}
-                                        </Label>
                                     </div>
-                                ))}
-                            </RadioGroup>
-                        </CardContent>
-                        <CardFooter className="justify-between border-t bg-muted/20 p-4">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                {saveStatus === 'saving' && (
-                                    <span className="flex animate-pulse items-center gap-2">
-                                        <div className="h-2 w-2 rounded-full bg-primary" />
-                                        Saving...
-                                    </span>
-                                )}
-                                {saveStatus === 'saved' && (
-                                    <span className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                                        <CheckCircle2 className="h-4 w-4" />
-                                        Saved
-                                    </span>
-                                )}
-                                {saveStatus === 'error' && (
-                                    <span className="flex items-center gap-2 text-destructive">
-                                        <AlertCircle className="h-4 w-4" />
-                                        Error saving
-                                    </span>
-                                )}
-                            </div>
-                        </CardFooter>
-                    </Card>
-                </div>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                    </CardContent>
+                </Card>
             </main>
 
             {/* Footer Navigation */}
             <footer className="sticky bottom-0 border-t bg-card p-4">
-                <div className="container mx-auto flex max-w-4xl items-center justify-between">
+                <div className="mx-auto flex w-full max-w-3xl items-center justify-between">
                     <Button
                         variant="outline"
                         onClick={() =>
@@ -240,7 +236,7 @@ export default function TakeExam({
                         disabled={currentQuestionIndex === 0}
                     >
                         <ChevronLeft className="mr-2 h-4 w-4" />
-                        Previous
+                        Sebelumnya
                     </Button>
 
                     {currentQuestionIndex === questions.length - 1 ? (
@@ -248,7 +244,7 @@ export default function TakeExam({
                             onClick={handleSubmit}
                             className="bg-green-600 text-white hover:bg-green-700"
                         >
-                            Submit Exam
+                            Kirim Ujian
                         </Button>
                     ) : (
                         <Button
@@ -258,12 +254,54 @@ export default function TakeExam({
                                 )
                             }
                         >
-                            Next
+                            Lanjut
                             <ChevronRight className="ml-2 h-4 w-4" />
                         </Button>
                     )}
                 </div>
             </footer>
+            <QuestionMap
+                questions={questions}
+                currentIndex={currentQuestionIndex}
+                answers={answers}
+                onJump={(index) => setCurrentQuestionIndex(index)}
+            />
+
+            <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {unansweredCount > 0
+                                ? 'Beberapa pertanyaan belum terjawab'
+                                : 'Kirim Ujian?'}
+                        </DialogTitle>
+
+                        <DialogDescription>
+                            {unansweredCount > 0
+                                ? `Kamu masih punya soal ${unansweredCount} yang belum${
+                                      unansweredCount > 1 ? 's' : ''
+                                  }. Yakin ingin mengirim?`
+                                : 'Kamu sudah menjawab semua pertanyaan. Siap untuk mengirim?'}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <DialogFooter className="flex justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setConfirmOpen(false)}
+                        >
+                            Batal
+                        </Button>
+
+                        <Button
+                            className="bg-green-600 text-white hover:bg-green-700"
+                            onClick={confirmSubmit}
+                        >
+                            Ya, Kirim Ujian
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
