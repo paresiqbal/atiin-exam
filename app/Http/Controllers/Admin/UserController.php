@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Controller;
+use App\Models\School;
 use App\Models\University;
 use App\Models\User;
 use Inertia\Inertia;
@@ -23,7 +24,7 @@ class UserController extends Controller
     public function create()
     {
         return Inertia::render('admin/users/UserCreate', [
-            'universities' => University::with('majors')->get(),
+            'schools' => School::all(),
         ]);
     }
 
@@ -33,22 +34,24 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:admin,instructor,student',
-            'school' => 'nullable|string|max:255',
+            'role' => 'required|in:admin,teacher,student',
+            'school_id' => 'nullable|exists:schools,id',
             'class' => 'nullable|string|max:255',
         ]);
 
+        $validated['password'] = Hash::make($validated['password']);
         User::create($validated);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User created successfully');
     }
 
+
     public function edit(User $user)
     {
         return Inertia::render('admin/users/UserEdit', [
             'user' => $user,
-            'universities' => University::with('majors')->get(),
+            'schools' => School::all(),
         ]);
     }
 
