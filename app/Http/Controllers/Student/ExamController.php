@@ -25,7 +25,6 @@ class ExamController extends Controller
             ->orderBy('start_at')
             ->paginate(15);
 
-        // Add status to each exam
         $exams->getCollection()->transform(function ($exam) {
             $exam->status = match (true) {
                 now() < $exam->start_at => 'coming_soon',
@@ -39,6 +38,7 @@ class ExamController extends Controller
             'exams' => $exams,
         ]);
     }
+
 
     public function joinForm(): Response
     {
