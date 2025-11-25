@@ -8,6 +8,7 @@ use Laravel\Fortify\Features;
 
 // controllers
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Student\ExamController;
 use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\QuestionController;
@@ -28,6 +29,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
             ->name('dashboard');
 
         Route::resource('users', UserController::class);
+        Route::post('users/import/preview', [UserImportController::class, 'preview'])->name('users.import.preview');
+        Route::post('users/import', [UserImportController::class, 'import'])->name('users.import');
+        Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
 
         Route::resource('exams', AdminExamController::class);
         Route::post('exams/{exam}/publish', [AdminExamController::class, 'publish'])->name('exams.publish');

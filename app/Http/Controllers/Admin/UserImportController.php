@@ -1,0 +1,157 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\School;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
+
+class UserImportController extends Controller
+{
+    public function preview(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+        ]);
+
+        try {
+            $file = $request->file('file');
+            $rows = Excel::toArray(new \stdClass, $file);
+
+            if (!$rows || empty($rows[0])) {
+                return back()->withErrors(['file' => 'File is empty']);
+            }
+
+            $data = array_slice($rows[0], 1); // skip header row
+
+            $preview = [];
+            $errors = [];
+
+            foreach ($data as $index => $row) {
+                if (empty(array_filter($row))) continue;
+
+                $rowNum = $index + 2;
+
+                $student = [
+                    'name' => $row[0] ?? null,
+                    'email' => $row[1] ?? null,
+                    'school_id' => $row[2] ?? null,
+                    'class' => $row[3] ?? null,
+                    'password' => Str::random(10), // auto password
+                    'role' => 'student',
+                ];
+
+                $error = $this->validateRow($student);
+
+                if ($error) {
+                    $errors[] = "Row $rowNum: $error";
+                } else {
+                    $preview[] = array_merge(['row' => $rowNum], $student);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'preview' => $preview,
+                'errors' => $errors,
+                'total_rows' => count($preview),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => "Failed to parse file: {$e->getMessage()}",
+            ], 400);
+        }
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+        ]);
+
+        try {
+            $rows = Excel::toArray(new \stdClass, $request->file('file'));
+
+            if (!$rows || empty($rows[0])) {
+                return back()->withErrors(['file' => 'File is empty']);
+            }
+
+            $data = array_slice($rows[0], 1);
+
+            $created = 0;
+            $failed = 0;
+            $errors = [];
+
+            foreach ($data as $index => $row) {
+                if (empty(array_filter($row))) continue;
+                $rowNum = $index + 2;
+
+                $student = [
+                    'name' => $row[0] ?? null,
+                    'email' => $row[1] ?? null,
+                    'school_id' => $row[2] ?? null,
+                    'class' => $row[3] ?? null,
+                    'password' => Hash::make(Str::random(10)),
+                    'role' => 'student',
+                ];
+
+                $error = $this->validateRow($student);
+
+                if ($error) {
+                    $failed++;
+                    $errors[] = "Row $rowNum: $error";
+                    continue;
+                }
+
+                User::create($student);
+                $created++;
+            }
+
+            return redirect()->route('admin.users.index')
+                ->with('success', "Import completed! Created: $created, Failed: $failed")
+                ->with('errors', $errors);
+        } catch (\Exception $e) {
+            return back()->withErrors(['file' => "Import failed: {$e->getMessage()}"]);
+        }
+    }
+
+    private function validateRow($data)
+    {
+        if (!$data['name']) return 'Name is required';
+        if (!$data['email']) return 'Email is required';
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) return 'Invalid email format';
+        if (User::where('email', $data['email'])->exists()) return 'Email already exists';
+        if (!empty($data['school_id']) && !School::where('id', $data['school_id'])->exists())
+            return 'School not found';
+
+        return null; // No errors
+    }
+
+    public function downloadTemplate()
+    {
+        $headers = ['Name', 'Email', 'School ID', 'Class'];
+        $rows = [
+            ['John Doe', 'john@example.com', '1', '10A'],
+            ['Jane Smith', 'jane@example.com', '1', '10B'],
+        ];
+
+        $filename = 'students_import_template.csv';
+        $handle = fopen('php://memory', 'w');
+        fputcsv($handle, $headers);
+
+        foreach ($rows as $row) fputcsv($handle, $row);
+
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', "attachment; filename=\"$filename\"");
+    }
+}
