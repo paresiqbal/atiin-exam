@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\ExamResultsExport;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamSetting;
@@ -13,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Excel;
 
 class ExamController extends Controller
 {
@@ -254,5 +256,12 @@ class ExamController extends Controller
             'questionDetails' => $questionDetails,
             'questionPerformance' => $questionPerformance,
         ]);
+    }
+
+    public function exportResults(Exam $exam)
+    {
+        $filename = 'exam-results-' . $exam->id . '-' . now()->format('Y-m-d') . '.xlsx';
+
+        return Excel::download(new ExamResultsExport($exam), $filename);
     }
 }

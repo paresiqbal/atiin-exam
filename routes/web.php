@@ -44,6 +44,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('exams/{exam}/publish', [AdminExamController::class, 'publish'])->name('exams.publish');
         Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');
         Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
+        Route::get('exams/{exam}/export-results', [ExamController::class, 'exportResults'])->name('exams.exportResults');
 
         Route::get('universities/options', [UniversityController::class, 'options'])
             ->name('universities.options');

@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
+import { Download } from 'lucide-react';
 
 interface Attempt {
     id: number;
@@ -56,6 +57,18 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
 
             <div className="space-y-4 p-4">
                 <h1 className="text-3xl font-bold">{exam.name} - Attempts</h1>
+                <div className="mb-6 flex items-center justify-between">
+                    <h1 className="text-2xl font-bold">{exam.name}</h1>
+                    <a
+                        href={`/admin/exams/${exam.id}/export-results`}
+                        className="inline-flex items-center gap-2"
+                    >
+                        <Button variant="outline">
+                            <Download className="mr-2 h-4 w-4" />
+                            Export to Excel
+                        </Button>
+                    </a>
+                </div>
 
                 {/* Analytics Cards */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
