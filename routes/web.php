@@ -43,13 +43,20 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');
         Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
 
-        // University and Major management routes
+        Route::get('universities/options', [UniversityController::class, 'options'])
+            ->name('universities.options');
+
         Route::resource('universities', UniversityController::class);
+
         Route::resource('majors', MajorController::class, ['only' => ['store', 'edit', 'update', 'destroy']]);
+        Route::post('majors', [MajorController::class, 'store'])
+            ->name('majors.store');
+
         Route::post('universities/import/preview', [UniversityImportController::class, 'preview'])->name('universities.import.preview');
         Route::post('universities/import', [UniversityImportController::class, 'import'])->name('universities.import');
         Route::get('universities/import/template', [UniversityImportController::class, 'downloadTemplate'])->name('universities.import.template');
     });
+
 
 
 // Route Teacher

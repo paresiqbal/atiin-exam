@@ -20,6 +20,12 @@ class UniversityController extends Controller
         ]);
     }
 
+    public function options()
+    {
+        // Return JSON with all universities (id + name only)
+        return University::orderBy('name')->get(['id', 'name']);
+    }
+
     public function create()
     {
         return Inertia::render('admin/universities/UnivCreate');

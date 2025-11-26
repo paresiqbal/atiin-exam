@@ -10,15 +10,15 @@ use Inertia\Inertia;
 
 class MajorController extends Controller
 {
-    public function store(Request $request, University $university)
+    public function store(Request $request)
     {
         $validated = $request->validate([
+            'university_id' => 'required|exists:universities,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'minimum_passing_grade' => 'required|integer|min:0|max:100',
         ]);
 
-        $university->majors()->create($validated);
+        Major::create($validated);
 
         return back()->with('success', 'Major created successfully');
     }

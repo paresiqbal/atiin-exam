@@ -1,4 +1,7 @@
 // resources/js/components/admin/universities/MajorForm.tsx
+
+import { FormEvent, useEffect, useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +13,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { FormEvent, useState } from 'react';
 
 type UniversityOption = {
     id: number;
@@ -18,11 +20,13 @@ type UniversityOption = {
 };
 
 type MajorFormProps = {
-    universities: UniversityOption[];
     onCreated?: () => void;
 };
 
 export function MajorForm({ onCreated }: MajorFormProps) {
+    const [universities, setUniversities] = useState<UniversityOption[]>([]);
+    const [universitiesLoading, setUniversitiesLoading] = useState(true);
+
     const [universityId, setUniversityId] = useState<string>('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -33,8 +37,41 @@ export function MajorForm({ onCreated }: MajorFormProps) {
         text: string;
     } | null>(null);
 
+    // 1) Fetch all universities once when component mounts
+    useEffect(() => {
+        const loadUniversities = async () => {
+            try {
+                const res = await fetch('/admin/universities/options', {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!res.ok) {
+                    throw new Error('Failed to load universities');
+                }
+
+                const data: UniversityOption[] = await res.json();
+                setUniversities(data);
+                console.log('Loaded universities:', data);
+            } catch (error) {
+                console.error(error);
+                setMessage({
+                    type: 'error',
+                    text: 'Failed to load universities.',
+                });
+            } finally {
+                setUniversitiesLoading(false);
+            }
+        };
+
+        loadUniversities();
+    }, []);
+
+    // 2) Handle submit, sending university_id + other fields
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+
         if (!universityId) {
             setErrors(['Please select a university.']);
             return;
@@ -45,11 +82,18 @@ export function MajorForm({ onCreated }: MajorFormProps) {
         setMessage(null);
 
         try {
+            // Get CSRF token from <meta> tag to avoid 419
+            const token =
+                document
+                    .querySelector('meta[name="csrf-token"]')
+                    ?.getAttribute('content') ?? '';
+
             const response = await fetch('/admin/majors', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': token,
                 },
                 body: JSON.stringify({
                     university_id: Number(universityId),
@@ -139,12 +183,23 @@ export function MajorForm({ onCreated }: MajorFormProps) {
                                 console.log('changed to:', v);
                                 setUniversityId(v);
                             }}
+                            disabled={universitiesLoading}
                         >
                             <SelectTrigger>
-                                <SelectValue placeholder="Choose university" />
+                                <SelectValue
+                                    placeholder={
+                                        universitiesLoading
+                                            ? 'Loading...'
+                                            : 'Choose university'
+                                    }
+                                />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="1">Test Univ</SelectItem>
+                                {universities.map((u) => (
+                                    <SelectItem key={u.id} value={String(u.id)}>
+                                        {u.name}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
