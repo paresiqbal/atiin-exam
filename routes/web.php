@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController as AdminExamController;
+use App\Http\Controllers\Admin\MajorController;
+use App\Http\Controllers\Admin\UniversityController;
+use App\Http\Controllers\Admin\UniversityImportController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Laravel\Fortify\Features;
@@ -28,15 +31,24 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('/dashboard', [DashboardController::class, 'index'])
             ->name('dashboard');
 
+        // User management routes
         Route::resource('users', UserController::class);
         Route::post('users/import/preview', [UserImportController::class, 'preview'])->name('users.import.preview');
         Route::post('users/import', [UserImportController::class, 'import'])->name('users.import');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
 
+        // Exam management routes
         Route::resource('exams', AdminExamController::class);
         Route::post('exams/{exam}/publish', [AdminExamController::class, 'publish'])->name('exams.publish');
         Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');
         Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
+
+        // University and Major management routes
+        Route::resource('universities', UniversityController::class);
+        Route::resource('majors', MajorController::class, ['only' => ['store', 'edit', 'update', 'destroy']]);
+        Route::post('universities/import/preview', [UniversityImportController::class, 'preview'])->name('universities.import.preview');
+        Route::post('universities/import', [UniversityImportController::class, 'import'])->name('universities.import');
+        Route::get('universities/import/template', [UniversityImportController::class, 'downloadTemplate'])->name('universities.import.template');
     });
 
 

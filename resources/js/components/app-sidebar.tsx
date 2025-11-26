@@ -62,6 +62,18 @@ export function AppSidebar() {
                     },
                 ],
             },
+            {
+                title: 'Manajemen Universitas',
+                href: '#',
+                icon: Folder,
+                items: [
+                    { title: 'Semua Universitas', href: '/admin/universities' },
+                    {
+                        title: 'Buat Universitas',
+                        href: '/admin/universities/create',
+                    },
+                ],
+            },
         ];
     } else if (role === 'teacher') {
         mainNavItems = [
