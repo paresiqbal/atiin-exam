@@ -22,7 +22,7 @@ type MajorFormProps = {
     onCreated?: () => void;
 };
 
-export function MajorForm({ universities, onCreated }: MajorFormProps) {
+export function MajorForm({ onCreated }: MajorFormProps) {
     const [universityId, setUniversityId] = useState<string>('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -135,20 +135,16 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
                         </label>
                         <Select
                             value={universityId}
-                            onValueChange={(value) => {
-                                console.log('Selected id:', value);
-                                setUniversityId(value);
+                            onValueChange={(v) => {
+                                console.log('changed to:', v);
+                                setUniversityId(v);
                             }}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Choose university" />
                             </SelectTrigger>
                             <SelectContent>
-                                {universities.map((u) => (
-                                    <SelectItem key={u.id} value={String(u.id)}>
-                                        {u.name}
-                                    </SelectItem>
-                                ))}
+                                <SelectItem value="1">Test Univ</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
