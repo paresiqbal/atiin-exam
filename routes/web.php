@@ -13,6 +13,7 @@ use Laravel\Fortify\Features;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Student\ExamController;
+use App\Http\Controllers\Student\UniversityController as StudentUniversityController;
 use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\QuestionController;
 
@@ -81,6 +82,8 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     Route::get('/dashboard', function () {
         return inertia('student/StudentDashboard');
     })->name('dashboard');
+
+    Route::get('/universities', [StudentUniversityController::class, 'index'])->name('universities.index');
 
     Route::get('/exams', [ExamController::class, 'index'])->name('exams.index');
     Route::get('/exams/join', [ExamController::class, 'joinForm'])->name('exams.join');

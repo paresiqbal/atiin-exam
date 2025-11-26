@@ -114,6 +114,11 @@ export function AppSidebar() {
                     { title: 'Ujian Saya', href: '/student/exams' },
                 ],
             },
+            {
+                title: 'Universitas',
+                href: '/student/universities',
+                icon: Book,
+            },
         ];
     }
 
