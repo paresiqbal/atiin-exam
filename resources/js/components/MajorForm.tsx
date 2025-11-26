@@ -1,5 +1,4 @@
 // resources/js/components/admin/universities/MajorForm.tsx
-
 import { FormEvent, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -30,6 +29,7 @@ export function MajorForm({ onCreated }: MajorFormProps) {
     const [universityId, setUniversityId] = useState<string>('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [minimumPassingGrade, setMinimumPassingGrade] = useState(''); // 👈 new state
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<string[]>([]);
     const [message, setMessage] = useState<{
@@ -37,7 +37,7 @@ export function MajorForm({ onCreated }: MajorFormProps) {
         text: string;
     } | null>(null);
 
-    // 1) Fetch all universities once when component mounts
+    // load universities
     useEffect(() => {
         const loadUniversities = async () => {
             try {
@@ -47,9 +47,7 @@ export function MajorForm({ onCreated }: MajorFormProps) {
                     },
                 });
 
-                if (!res.ok) {
-                    throw new Error('Failed to load universities');
-                }
+                if (!res.ok) throw new Error('Failed to load universities');
 
                 const data: UniversityOption[] = await res.json();
                 setUniversities(data);
@@ -68,7 +66,6 @@ export function MajorForm({ onCreated }: MajorFormProps) {
         loadUniversities();
     }, []);
 
-    // 2) Handle submit, sending university_id + other fields
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
@@ -77,16 +74,30 @@ export function MajorForm({ onCreated }: MajorFormProps) {
             return;
         }
 
+        if (!minimumPassingGrade) {
+            setErrors(['Please fill minimum passing grade.']);
+            return;
+        }
+
         setSubmitting(true);
         setErrors([]);
         setMessage(null);
 
         try {
-            // Get CSRF token from <meta> tag to avoid 419
             const token =
                 document
                     .querySelector('meta[name="csrf-token"]')
                     ?.getAttribute('content') ?? '';
+
+            const payload = {
+                university_id: Number(universityId),
+                name,
+                description: description || null,
+                // 👇 VERY IMPORTANT: key name must match backend
+                minimum_passing_grade: Number(minimumPassingGrade),
+            };
+
+            console.log('Submitting payload:', payload);
 
             const response = await fetch('/admin/majors', {
                 method: 'POST',
@@ -95,11 +106,7 @@ export function MajorForm({ onCreated }: MajorFormProps) {
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': token,
                 },
-                body: JSON.stringify({
-                    university_id: Number(universityId),
-                    name,
-                    description: description || null,
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (response.status === 422) {
@@ -127,6 +134,7 @@ export function MajorForm({ onCreated }: MajorFormProps) {
                 setName('');
                 setDescription('');
                 setUniversityId('');
+                setMinimumPassingGrade(''); // reset
                 setErrors([]);
                 onCreated?.();
             } else {
@@ -213,6 +221,22 @@ export function MajorForm({ onCreated }: MajorFormProps) {
                             onChange={(e) => setName(e.target.value)}
                             required
                             placeholder="Teknik Informatika"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="mb-1 block text-sm font-medium">
+                            Minimum Passing Grade{' '}
+                            <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                            type="number"
+                            value={minimumPassingGrade}
+                            onChange={(e) =>
+                                setMinimumPassingGrade(e.target.value)
+                            }
+                            required
+                            placeholder="75"
                         />
                     </div>
 

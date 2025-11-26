@@ -9,10 +9,10 @@ class Major extends Model
     protected $table = 'majors';
 
     protected $fillable = [
+        'university_id',
         'name',
         'description',
         'minimum_passing_grade',
-        'university_id',
     ];
 
     public function university()

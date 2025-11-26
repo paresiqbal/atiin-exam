@@ -16,6 +16,7 @@ class MajorController extends Controller
             'university_id' => 'required|exists:universities,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'minimum_passing_grade' => 'required|integer',
         ]);
 
         Major::create($validated);
