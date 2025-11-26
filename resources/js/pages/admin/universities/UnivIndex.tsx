@@ -89,9 +89,6 @@ export default function UnivIndex() {
                         <Link href="/admin/universities/create">
                             <Button>Tambah Universitas</Button>
                         </Link>
-                        <Link href="/admin/universities/import">
-                            <Button variant="outline">Import CSV</Button>
-                        </Link>
                     </div>
                 </div>
 

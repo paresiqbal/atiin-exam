@@ -135,7 +135,10 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
                         </label>
                         <Select
                             value={universityId}
-                            onValueChange={setUniversityId}
+                            onValueChange={(value) => {
+                                console.log('Selected id:', value);
+                                setUniversityId(value);
+                            }}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Choose university" />
