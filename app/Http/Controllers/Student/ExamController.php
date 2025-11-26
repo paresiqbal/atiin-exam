@@ -6,6 +6,7 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamToken;
 use App\Models\University;
+use App\Services\ExamResultsPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
@@ -251,5 +252,18 @@ class ExamController extends Controller
             'isPassed' => $isPassed,
             'questionDetails' => $questionDetails,
         ]);
+    }
+
+    public function downloadResults(ExamAttempt $attempt)
+    {
+        // Check if student owns this attempt
+        if ($attempt->student_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $pdfService = new ExamResultsPdfService();
+        $pdf = $pdfService->generate($attempt);
+
+        return $pdf->download('exam-results-' . $attempt->id . '.pdf');
     }
 }

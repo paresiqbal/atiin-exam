@@ -16,6 +16,7 @@ use App\Http\Controllers\Student\ExamController;
 use App\Http\Controllers\Student\UniversityController as StudentUniversityController;
 use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\QuestionController;
+use App\Http\Controllers\Teacher\QuestionImportController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -74,6 +75,11 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')
 
     Route::get('question-banks/{questionBank}/questions/create', [QuestionController::class, 'create'])->name('questions.create');
     Route::get('questions/{question}/edit', [QuestionController::class, 'edit'])->name('questions.edit');
+
+    // Import routes
+    Route::post('question-banks/{questionBank}/questions/import/preview', [QuestionImportController::class, 'preview'])->name('questions.import.preview');
+    Route::post('question-banks/{questionBank}/questions/import', [QuestionImportController::class, 'import'])->name('questions.import');
+    Route::get('question-banks/{questionBank}/questions/import/template', [QuestionImportController::class, 'downloadTemplate'])->name('questions.import.template');
 });
 
 
@@ -92,6 +98,7 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     Route::post('/exams/{attempt}/save-answer', [ExamController::class, 'saveAnswer'])->name('exams.saveAnswer');
     Route::post('/exams/{attempt}/submit', [ExamController::class, 'submitExam'])->name('exams.submit');
     Route::get('/exams/{attempt}/results', [ExamController::class, 'results'])->name('exams.results');
+    Route::get('/exams/{attempt}/download-pdf', [ExamController::class, 'downloadResults'])->name('exams.downloadPdf');
 });
 
 

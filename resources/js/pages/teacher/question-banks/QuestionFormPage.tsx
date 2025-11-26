@@ -24,6 +24,7 @@ import type { BreadcrumbItem } from '@/types';
 import type { Question, QuestionBank, QuestionOption } from '@/types/question';
 
 // rich editor
+import QuestionBulkImport from '@/components/QuestionBulkImport';
 import RichTextEditor, { BaseKit } from 'reactjs-tiptap-editor';
 import { Blockquote } from 'reactjs-tiptap-editor/blockquote';
 import { Bold } from 'reactjs-tiptap-editor/bold';
@@ -210,6 +211,9 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
             <Head title={isEditing ? 'Edit Soal' : 'Buat Soal'} />
 
             <div className="p-4">
+                {!isEditing && (
+                    <QuestionBulkImport questionBankId={questionBank.id} />
+                )}
                 <Card className="max-w-screen">
                     <CardHeader>
                         <CardTitle>

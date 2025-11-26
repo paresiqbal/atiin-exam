@@ -31,6 +31,7 @@ interface QuestionDetail {
 
 interface Props {
     attempt: {
+        id: number;
         score: number;
         total_score: number;
         completed_at: string;
@@ -69,10 +70,16 @@ export default function Results({
                             Back to Dashboard
                         </Button>
                     </Link>
-                    <Button variant="outline">
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Results
-                    </Button>
+                    <Link
+                        href={`/student/exams/${attempt.id}/download-pdf`}
+                        as="a"
+                        method="get"
+                    >
+                        <Button variant="outline">
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Results
+                        </Button>
+                    </Link>
                 </div>
 
                 {/* Score Card */}
