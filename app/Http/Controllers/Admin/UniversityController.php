@@ -11,7 +11,9 @@ class UniversityController extends Controller
 {
     public function index()
     {
-        $universities = University::withCount('majors')->paginate(15);
+        $universities = University::with('majors')
+            ->withCount('majors')
+            ->paginate(15);
 
         return Inertia::render('admin/universities/UnivIndex', [
             'universities' => $universities,
@@ -20,7 +22,7 @@ class UniversityController extends Controller
 
     public function create()
     {
-        return Inertia::render('admin/universities/Create');
+        return Inertia::render('admin/universities/UnivCreate');
     }
 
     public function store(Request $request)

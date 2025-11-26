@@ -1,3 +1,4 @@
+import { MajorForm } from '@/components/MajorForm';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,6 +8,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { UniversityForm } from '@/components/UniversityForm';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
@@ -37,6 +39,11 @@ interface ImportResponse {
     message?: string;
 }
 
+type UniversityOption = {
+    id: number;
+    name: string;
+};
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Admin Dashboard',
@@ -49,7 +56,11 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Import CSV', href: '/admin/universities/import' },
 ];
 
-export default function UniversityImport() {
+export default function UniversityImport({
+    universities,
+}: {
+    universities: UniversityOption[];
+}) {
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<PreviewRow[]>([]);
     const [errors, setErrors] = useState<string[]>([]);
@@ -131,6 +142,7 @@ export default function UniversityImport() {
                 });
             }
         } catch (error) {
+            console.error(error); // <-- use it here
             setMessage({ type: 'error', text: 'Error uploading file' });
         } finally {
             setLoading(false);
@@ -174,6 +186,7 @@ export default function UniversityImport() {
                 });
             }
         } catch (error) {
+            console.error(error);
             setMessage({ type: 'error', text: 'Error during import' });
         } finally {
             setImporting(false);
@@ -288,6 +301,20 @@ export default function UniversityImport() {
                             </form>
                         </CardContent>
                     </Card>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <UniversityForm
+                            onCreated={() => {
+                                // optional: refetch universities list, or just ignore
+                            }}
+                        />
+                        <MajorForm
+                            universities={universities ?? []}
+                            onCreated={() => {
+                                // optional: do something after create
+                            }}
+                        />
+                    </div>
 
                     {/* Message Display */}
                     {message && (
