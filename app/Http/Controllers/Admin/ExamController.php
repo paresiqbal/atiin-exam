@@ -63,7 +63,7 @@ class ExamController extends Controller
             'shuffle_questions' => 'boolean',
             'allow_review' => 'boolean',
             'school_id' => 'required|exists:schools,id',
-            'class'     => 'required|string|max:50',
+
         ]);
 
         $admin = auth()->user();
@@ -71,7 +71,6 @@ class ExamController extends Controller
         $exam = Exam::create([
             'admin_id'         => $admin->id,
             'school_id'        => $validated['school_id'],
-            'class'            => $validated['class'],
             'question_bank_id' => $validated['question_bank_id'],
             'name'             => $validated['name'],
             'description'      => $validated['description'],
@@ -133,7 +132,7 @@ class ExamController extends Controller
             'shuffle_questions'  => 'boolean',
             'allow_review'       => 'boolean',
             'school_id'       => 'required|exists:schools,id',
-            'class' => 'required|string|max:50',
+
 
 
         ]);
@@ -144,7 +143,7 @@ class ExamController extends Controller
             'question_bank_id' => $validated['question_bank_id'],
             'start_at'         => $validated['start_at'],
             'end_at'           => $validated['end_at'],
-            'class'            => $validated['class'],
+
             'school_id'     => $validated['school_id'] ?? $exam->school_id,
         ]);
 

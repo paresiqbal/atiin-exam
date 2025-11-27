@@ -20,7 +20,6 @@ class ExamController extends Controller
         $student = auth()->user();
 
         $exams = Exam::where('school_id', $student->school_id)
-            ->where('class', $student->class)
             ->where('is_published', true)
             ->with('questionBank.questions', 'settings')
             ->orderBy('start_at')
