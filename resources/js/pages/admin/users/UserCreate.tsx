@@ -438,6 +438,18 @@ export default function UserCreate({ schools }: UserCreateProps) {
                                     <Download className="mr-2 h-4 w-4" />
                                     Unduh Template
                                 </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() =>
+                                        (window.location.href =
+                                            '/admin/users/import/schools')
+                                    }
+                                >
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Daftar Sekolah
+                                </Button>
+
                                 <span className="text-xs text-muted-foreground">
                                     Gunakan format template untuk impor yang
                                     lebih lancar.

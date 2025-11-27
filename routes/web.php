@@ -41,7 +41,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('users/import/preview', [UserImportController::class, 'preview'])->name('users.import.preview');
         Route::post('users/import', [UserImportController::class, 'import'])->name('users.import');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
+        Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])
+            ->name('users.import.template');
 
+        Route::get('users/import/schools', [UserImportController::class, 'downloadSchoolList'])
+            ->name('users.import.schools');
         Route::resource('schools', SchoolController::class);
 
         // Exam management routes
@@ -51,15 +55,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
         Route::get('exams/{exam}/export-results', [AdminExamController::class, 'exportResults'])->name('exams.exportResults');
 
-        Route::get('universities/options', [UniversityController::class, 'options'])
-            ->name('universities.options');
+        Route::resource('majors', MajorController::class, ['only' => ['store', 'edit', 'update', 'destroy']]);
+        Route::post('majors', [MajorController::class, 'store'])->name('majors.store');
 
         Route::resource('universities', UniversityController::class);
-
-        Route::resource('majors', MajorController::class, ['only' => ['store', 'edit', 'update', 'destroy']]);
-        Route::post('majors', [MajorController::class, 'store'])
-            ->name('majors.store');
-
+        Route::get('universities/options', [UniversityController::class, 'options'])->name('universities.options');
         Route::post('universities/import/preview', [UniversityImportController::class, 'preview'])->name('universities.import.preview');
         Route::post('universities/import', [UniversityImportController::class, 'import'])->name('universities.import');
         Route::get('universities/import/template', [UniversityImportController::class, 'downloadTemplate'])->name('universities.import.template');

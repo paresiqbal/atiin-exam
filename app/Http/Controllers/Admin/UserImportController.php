@@ -26,7 +26,7 @@ class UserImportController extends Controller
                 return back()->withErrors(['file' => 'File is empty']);
             }
 
-            $data = array_slice($rows[0], 1); // skip header row
+            $data = array_slice($rows[0], 1);
 
             $preview = [];
             $errors = [];
@@ -41,7 +41,7 @@ class UserImportController extends Controller
                     'email' => $row[1] ?? null,
                     'school_id' => $row[2] ?? null,
                     'class' => $row[3] ?? null,
-                    'password' => Str::random(10), // auto password
+                    'password' => Str::random(10),
                     'role' => 'student',
                 ];
 
@@ -129,22 +129,34 @@ class UserImportController extends Controller
         if (!empty($data['school_id']) && !School::where('id', $data['school_id'])->exists())
             return 'School not found';
 
-        return null; // No errors
+        return null;
     }
 
     public function downloadTemplate()
     {
-        $headers = ['Name', 'Email', 'School ID', 'Class'];
+        $filename = 'students_import_template.csv';
+
+        $handle = fopen('php://memory', 'w');
+
+        fputcsv($handle, ['name', 'email', 'school_id', 'class']);
+
+        fputcsv($handle, [
+            '# required',
+            '# required, must be unique & valid email',
+            '# optional, use ID from school list',
+            '# optional, e.g. 10A, 9B',
+        ]);
+
+        $exampleSchoolId = School::value('id') ?? 1;
+
         $rows = [
-            ['John Doe', 'john@example.com', '1', '10A'],
-            ['Jane Smith', 'jane@example.com', '1', '10B'],
+            ['John Doe', 'john@example.com', $exampleSchoolId, '10A'],
+            ['Jane Smith', 'jane@example.com', $exampleSchoolId, '10B'],
         ];
 
-        $filename = 'students_import_template.csv';
-        $handle = fopen('php://memory', 'w');
-        fputcsv($handle, $headers);
-
-        foreach ($rows as $row) fputcsv($handle, $row);
+        foreach ($rows as $row) {
+            fputcsv($handle, $row);
+        }
 
         rewind($handle);
         $csv = stream_get_contents($handle);
@@ -152,6 +164,29 @@ class UserImportController extends Controller
 
         return response($csv)
             ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', "attachment; filename=\"$filename\"");
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+    }
+
+    public function downloadSchoolList()
+    {
+        $filename = 'schools_reference.csv';
+
+        $handle = fopen('php://memory', 'w');
+
+        fputcsv($handle, ['id', 'name']);
+
+        School::orderBy('name')->chunk(200, function ($schools) use ($handle) {
+            foreach ($schools as $school) {
+                fputcsv($handle, [$school->id, $school->name]);
+            }
+        });
+
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
     }
 }
