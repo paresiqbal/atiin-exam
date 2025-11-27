@@ -12,7 +12,14 @@ import {
 } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { Book, BookOpen, Folder, LayoutGrid, User } from 'lucide-react';
+import {
+    Book,
+    BookOpen,
+    Folder,
+    LayoutGrid,
+    University,
+    UsersRound,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
 const footerNavItems: NavItem[] = [
@@ -42,7 +49,7 @@ export function AppSidebar() {
                 icon: LayoutGrid,
             },
             {
-                title: 'Manajemen Ujian',
+                title: 'Ujian',
                 href: '#',
                 icon: Book,
                 items: [
@@ -51,26 +58,26 @@ export function AppSidebar() {
                 ],
             },
             {
-                title: 'Manajemen User',
+                title: 'Universitas',
                 href: '#',
-                icon: User,
-                items: [
-                    { title: 'Semua User', href: '/admin/users' },
-                    {
-                        title: 'Buat / Import User',
-                        href: '/admin/users/create',
-                    },
-                ],
-            },
-            {
-                title: 'Manajemen Universitas',
-                href: '#',
-                icon: Folder,
+                icon: University,
                 items: [
                     { title: 'Semua Universitas', href: '/admin/universities' },
                     {
                         title: 'Buat Universitas',
                         href: '/admin/universities/create',
+                    },
+                ],
+            },
+            {
+                title: 'Pengguna',
+                href: '#',
+                icon: UsersRound,
+                items: [
+                    { title: 'Semua Pengguna', href: '/admin/users' },
+                    {
+                        title: 'Buat Pengguna',
+                        href: '/admin/users/create',
                     },
                 ],
             },

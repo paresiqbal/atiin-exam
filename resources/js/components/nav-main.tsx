@@ -52,6 +52,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                     <Link
                                         href={resolveUrl(item.href) || '#'}
                                         prefetch
+                                        className="py-6"
                                     >
                                         {item.icon && <item.icon />}
                                         <span>{item.title}</span>
@@ -71,6 +72,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                             'hover:bg-accent',
                                             'data-[active=true]:bg-accent data-[active=true]:text-accent-foreground',
                                             'data-[state=open]:bg-accent/60',
+                                            'py-5',
                                         )}
                                         isActive={groupActive}
                                         tooltip={{ children: item.title }}
