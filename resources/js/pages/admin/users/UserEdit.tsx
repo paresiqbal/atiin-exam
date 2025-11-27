@@ -1,5 +1,3 @@
-'use client';
-
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,8 +39,15 @@ interface BreadcrumbItem {
 
 const createBreadcrumbs = (userId: number): BreadcrumbItem[] => {
     return [
-        { title: 'Users Management', href: '/admin/users' },
-        { title: 'Edit User', href: `/admin/users/${userId}/edit` },
+        {
+            title: 'Admin Dashboard',
+            href: '/admin/dashboard',
+        },
+        {
+            title: 'Manajemen Pengguna',
+            href: '/admin/users',
+        },
+        { title: 'Edit Pengguna', href: `/admin/users/${userId}/edit` },
     ];
 };
 
@@ -79,33 +84,30 @@ export default function UserEdit({ user }: Props) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Edit User" />
+            <Head title="Edit Pengguna" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {/* Header Section */}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold text-foreground">
-                        Edit User
+                        Edit Pengguna
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Update user information. Fields marked with * are
-                        required.
+                        Perbarui informasi pengguna. Kolom yang ditandai dengan
+                        * adalah wajib diisi.
                     </p>
                 </div>
 
-                {/* Form Card */}
-                <Card className="w-full max-w-2xl">
+                <Card className="max-w-auto w-full">
                     <CardHeader>
-                        <CardTitle>User Information</CardTitle>
+                        <CardTitle>Informasi Pengguna</CardTitle>
                         <CardDescription>
-                            Update the user details below.
+                            Perbarui detail pengguna di bawah ini.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Name Field */}
                             <div className="space-y-2">
                                 <Label htmlFor="name">
-                                    Full Name{' '}
+                                    Nama Lengkap{' '}
                                     <span className="text-destructive">*</span>
                                 </Label>
                                 <Input
@@ -127,10 +129,9 @@ export default function UserEdit({ user }: Props) {
                                 )}
                             </div>
 
-                            {/* Email Field */}
                             <div className="space-y-2">
                                 <Label htmlFor="email">
-                                    Email Address{' '}
+                                    Alamat Email{' '}
                                     <span className="text-destructive">*</span>
                                 </Label>
                                 <Input
@@ -152,7 +153,6 @@ export default function UserEdit({ user }: Props) {
                                 )}
                             </div>
 
-                            {/* Password Field */}
                             <div className="space-y-2">
                                 <Label htmlFor="password">
                                     Password{' '}
@@ -178,15 +178,15 @@ export default function UserEdit({ user }: Props) {
                                     </p>
                                 )}
                                 <p className="text-xs text-muted-foreground">
-                                    Minimum 8 characters required. Leave empty
-                                    to keep current password.
+                                    Minimum 8 karakter diperlukan. Biarkan
+                                    kosong untuk mempertahankan kata sandi saat
+                                    ini.
                                 </p>
                             </div>
 
-                            {/* Role Field */}
                             <div className="space-y-2">
                                 <Label htmlFor="role">
-                                    Role{' '}
+                                    Peran{' '}
                                     <span className="text-destructive">*</span>
                                 </Label>
                                 <Select
@@ -207,10 +207,10 @@ export default function UserEdit({ user }: Props) {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="student">
-                                            Student
+                                            Siswa
                                         </SelectItem>
                                         <SelectItem value="instructor">
-                                            Instructor
+                                            Guru
                                         </SelectItem>
                                         <SelectItem value="admin">
                                             Admin
@@ -224,14 +224,15 @@ export default function UserEdit({ user }: Props) {
                                 )}
                             </div>
 
-                            {/* Form Actions */}
                             <div className="flex gap-3 pt-4">
                                 <Button
                                     type="submit"
                                     disabled={processing}
                                     className="flex-1"
                                 >
-                                    {processing ? 'Updating...' : 'Update User'}
+                                    {processing
+                                        ? 'Memperbarui...'
+                                        : 'Perbarui Pengguna'}
                                 </Button>
                                 <Button
                                     type="button"
@@ -239,7 +240,7 @@ export default function UserEdit({ user }: Props) {
                                     onClick={handleCancel}
                                     className="flex-1"
                                 >
-                                    Cancel
+                                    Batal
                                 </Button>
                                 <Button
                                     type="button"
@@ -249,19 +250,18 @@ export default function UserEdit({ user }: Props) {
                                     className="flex-1"
                                 >
                                     <Trash2 className="mr-2 h-4 w-4" />
-                                    {isDeleting ? 'Deleting...' : 'Delete'}
+                                    {isDeleting ? 'Menghapus...' : 'Hapus'}
                                 </Button>
                             </div>
                         </form>
                     </CardContent>
                 </Card>
 
-                {/* Info Section */}
                 <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                        Changes will be saved immediately. The delete action
-                        cannot be undone.
+                        Perubahan akan disimpan segera. Tindakan hapus tidak
+                        dapat dibatalkan.
                     </AlertDescription>
                 </Alert>
             </div>
