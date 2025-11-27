@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController as AdminExamController;
 use App\Http\Controllers\Admin\MajorController;
+use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\UniversityController;
 use App\Http\Controllers\Admin\UniversityImportController;
 use Illuminate\Support\Facades\Route;
@@ -40,6 +41,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('users/import/preview', [UserImportController::class, 'preview'])->name('users.import.preview');
         Route::post('users/import', [UserImportController::class, 'import'])->name('users.import');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
+
+        Route::resource('schools', SchoolController::class);
 
         // Exam management routes
         Route::resource('exams', AdminExamController::class);
