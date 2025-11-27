@@ -53,7 +53,7 @@ const breadcrumbs: BreadcrumbItem[] = [
         title: 'Daftar Universitas',
         href: '/admin/universities',
     },
-    { title: 'Import CSV', href: '/admin/universities/import' },
+    { title: 'Buat Universitas', href: '/admin/universities/create' },
 ];
 
 export default function UnivCreate({
