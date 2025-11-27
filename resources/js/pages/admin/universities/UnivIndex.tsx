@@ -1,6 +1,7 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { Edit2 } from 'lucide-react';
 
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +20,9 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
+
+import type { BreadcrumbItem } from '@/types';
+import type { Paginated } from '@/types/pagination';
 import type { PageProps as InertiaPageProps } from '@inertiajs/core';
 
 interface Major {
@@ -29,13 +33,9 @@ interface Major {
 interface University {
     id: number;
     name: string;
-    code: string;
-    city: string;
+    code?: string | null;
+    city?: string | null;
     majors: Major[];
-}
-
-interface Paginated<T> {
-    data: T[];
 }
 
 interface UnivPageProps extends InertiaPageProps {
@@ -43,29 +43,20 @@ interface UnivPageProps extends InertiaPageProps {
     total: number;
 }
 
-const breadcrumbs = [
+const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Admin Dashboard', href: '/admin/dashboard' },
     { title: 'Daftar Universitas', href: '/admin/universities' },
 ];
 
+const baseUrl = '/admin/universities';
+
 export default function UnivIndex() {
     const { universities } = usePage<UnivPageProps>().props;
 
-    const [data, setData] = useState<University[]>(universities.data ?? []);
-
-    const handleDelete = (id: number) => {
-        if (!confirm('Hapus universitas ini?')) return;
-
-        router.delete(`/admin/universities/${id}`, {
-            onSuccess: () => {
-                setData((prev) => prev.filter((u) => u.id !== id));
-            },
-            onError: () => alert('Gagal menghapus universitas'),
-        });
-    };
+    // Use data directly from Inertia props
+    const data = universities.data ?? [];
 
     const totalMajors = data.reduce((sum, u) => sum + u.majors.length, 0);
-
     const avgMajors =
         data.length > 0 ? (totalMajors / data.length).toFixed(1) : '0';
 
@@ -86,7 +77,7 @@ export default function UnivIndex() {
                     </div>
 
                     <div className="flex gap-2">
-                        <Link href="/admin/universities/create">
+                        <Link href={`${baseUrl}/create`}>
                             <Button>Tambah Universitas</Button>
                         </Link>
                     </div>
@@ -142,7 +133,7 @@ export default function UnivIndex() {
                             <div className="py-10 text-center text-muted-foreground">
                                 Belum ada universitas
                                 <div className="mt-4">
-                                    <Link href="/admin/universities/create">
+                                    <Link href={`${baseUrl}/create`}>
                                         <Button>
                                             Tambah Universitas Pertama
                                         </Button>
@@ -165,18 +156,41 @@ export default function UnivIndex() {
                                             </TableHead>
                                         </TableRow>
                                     </TableHeader>
+
                                     <TableBody>
                                         {data.map((u) => (
                                             <TableRow key={u.id}>
+                                                {/* Name */}
                                                 <TableCell className="font-medium">
                                                     {u.name}
                                                 </TableCell>
+
+                                                {/* Code (improved display) */}
                                                 <TableCell>
-                                                    <Badge variant="secondary">
-                                                        {u.code}
-                                                    </Badge>
+                                                    {u.code ? (
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="font-mono uppercase"
+                                                        >
+                                                            {u.code}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground italic">
+                                                            Tidak ada kode
+                                                        </span>
+                                                    )}
                                                 </TableCell>
-                                                <TableCell>{u.city}</TableCell>
+
+                                                {/* City */}
+                                                <TableCell>
+                                                    {u.city || (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            -
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+
+                                                {/* Majors */}
                                                 <TableCell>
                                                     <div className="flex flex-wrap gap-1">
                                                         {u.majors.length > 0 ? (
@@ -199,30 +213,30 @@ export default function UnivIndex() {
                                                         )}
                                                     </div>
                                                 </TableCell>
+
+                                                {/* Actions */}
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
+                                                        {/* Edit as icon button */}
                                                         <Link
-                                                            href={`/admin/universities/${u.id}/edit`}
+                                                            href={`${baseUrl}/${u.id}/edit`}
                                                         >
                                                             <Button
-                                                                size="sm"
+                                                                size="icon"
                                                                 variant="ghost"
+                                                                className="hover:bg-foreground/10"
+                                                                aria-label="Edit universitas"
                                                             >
-                                                                Edit
+                                                                <Edit2 className="h-4 w-4" />
                                                             </Button>
                                                         </Link>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            className="text-red-600 hover:text-red-700"
-                                                            onClick={() =>
-                                                                handleDelete(
-                                                                    u.id,
-                                                                )
-                                                            }
-                                                        >
-                                                            Hapus
-                                                        </Button>
+
+                                                        {/* Delete with dialog */}
+                                                        <ConfirmDeleteButton
+                                                            deleteUrl={`${baseUrl}/${u.id}`}
+                                                            resourceLabel="universitas"
+                                                            itemName={u.name}
+                                                        />
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
