@@ -1,4 +1,21 @@
+import { Head, router, useForm } from '@inertiajs/react';
+import { AlertCircle, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+
+import AppLayout from '@/layouts/app-layout';
+
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -16,68 +33,66 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import AppLayout from '@/layouts/app-layout';
-import { Head, router, useForm } from '@inertiajs/react';
-import { AlertCircle, Trash2 } from 'lucide-react';
-import { useState } from 'react';
 
-interface User {
-    id: number;
+import type { BreadcrumbItem } from '@/types';
+import type { User } from '@/types/user';
+
+type UserRole = 'admin' | 'instructor' | 'student';
+
+interface UserEditFormData {
     name: string;
     email: string;
-    role: string;
+    password: string;
+    role: UserRole;
 }
 
-interface Props {
+interface UserEditProps {
     user: User;
 }
 
-interface BreadcrumbItem {
-    title: string;
-    href: string;
-}
+const baseUrl = '/admin/users';
 
-const createBreadcrumbs = (userId: number): BreadcrumbItem[] => {
-    return [
-        {
-            title: 'Admin Dashboard',
-            href: '/admin/dashboard',
-        },
-        {
-            title: 'Manajemen Pengguna',
-            href: '/admin/users',
-        },
-        { title: 'Edit Pengguna', href: `/admin/users/${userId}/edit` },
-    ];
-};
+const createBreadcrumbs = (userId: number): BreadcrumbItem[] => [
+    {
+        title: 'Admin Dashboard',
+        href: '/admin/dashboard',
+    },
+    {
+        title: 'Manajemen Pengguna',
+        href: baseUrl,
+    },
+    {
+        title: 'Edit Pengguna',
+        href: `${baseUrl}/${userId}/edit`,
+    },
+];
 
-export default function UserEdit({ user }: Props) {
-    const { data, setData, put, errors, processing } = useForm({
-        name: user.name,
-        email: user.email,
-        password: '',
-        role: user.role,
-    });
+export default function UserEdit({ user }: UserEditProps) {
+    const { data, setData, put, errors, processing } =
+        useForm<UserEditFormData>({
+            name: user.name,
+            email: user.email,
+            password: '',
+            role: user.role as UserRole,
+        });
 
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        put(`/admin/users/${user.id}`);
+        put(`${baseUrl}/${user.id}`);
     };
 
     const handleDelete = () => {
-        if (window.confirm('Are you sure you want to delete this user?')) {
-            setIsDeleting(true);
+        setIsDeleting(true);
 
-            router.delete(`/admin/users/${user.id}`, {
-                onFinish: () => setIsDeleting(false),
-            });
-        }
+        router.delete(`${baseUrl}/${user.id}`, {
+            onFinish: () => setIsDeleting(false),
+        });
     };
 
     const handleCancel = () => {
-        window.location.href = '/admin/users';
+        window.location.href = baseUrl;
     };
 
     const breadcrumbs = createBreadcrumbs(user.id);
@@ -85,17 +100,20 @@ export default function UserEdit({ user }: Props) {
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Edit Pengguna" />
+
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
+                {/* Page header */}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold text-foreground">
                         Edit Pengguna
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Perbarui informasi pengguna. Kolom yang ditandai dengan
-                        * adalah wajib diisi.
+                        Perbarui informasi pengguna. Kolom yang ditandai dengan{' '}
+                        <span className="text-destructive">*</span> wajib diisi.
                     </p>
                 </div>
 
+                {/* Main card */}
                 <Card className="max-w-auto w-full">
                     <CardHeader>
                         <CardTitle>Informasi Pengguna</CardTitle>
@@ -103,8 +121,10 @@ export default function UserEdit({ user }: Props) {
                             Perbarui detail pengguna di bawah ini.
                         </CardDescription>
                     </CardHeader>
+
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Name */}
                             <div className="space-y-2">
                                 <Label htmlFor="name">
                                     Nama Lengkap{' '}
@@ -129,6 +149,7 @@ export default function UserEdit({ user }: Props) {
                                 )}
                             </div>
 
+                            {/* Email */}
                             <div className="space-y-2">
                                 <Label htmlFor="email">
                                     Alamat Email{' '}
@@ -153,11 +174,9 @@ export default function UserEdit({ user }: Props) {
                                 )}
                             </div>
 
+                            {/* Password */}
                             <div className="space-y-2">
-                                <Label htmlFor="password">
-                                    Password{' '}
-                                    <span className="text-destructive">*</span>
-                                </Label>
+                                <Label htmlFor="password">Password</Label>
                                 <Input
                                     id="password"
                                     type="password"
@@ -178,12 +197,13 @@ export default function UserEdit({ user }: Props) {
                                     </p>
                                 )}
                                 <p className="text-xs text-muted-foreground">
-                                    Minimum 8 karakter diperlukan. Biarkan
-                                    kosong untuk mempertahankan kata sandi saat
-                                    ini.
+                                    Minimum 8 karakter diperlukan jika diisi.
+                                    Biarkan kosong untuk mempertahankan kata
+                                    sandi saat ini.
                                 </p>
                             </div>
 
+                            {/* Role */}
                             <div className="space-y-2">
                                 <Label htmlFor="role">
                                     Peran{' '}
@@ -192,7 +212,7 @@ export default function UserEdit({ user }: Props) {
                                 <Select
                                     value={data.role}
                                     onValueChange={(value) =>
-                                        setData('role', value)
+                                        setData('role', value as UserRole)
                                     }
                                 >
                                     <SelectTrigger
@@ -203,7 +223,7 @@ export default function UserEdit({ user }: Props) {
                                                 : ''
                                         }
                                     >
-                                        <SelectValue placeholder="Select a role" />
+                                        <SelectValue placeholder="Pilih peran" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="student">
@@ -224,7 +244,8 @@ export default function UserEdit({ user }: Props) {
                                 )}
                             </div>
 
-                            <div className="flex gap-3 pt-4">
+                            {/* Actions */}
+                            <div className="flex flex-col gap-3 pt-4 md:flex-row">
                                 <Button
                                     type="submit"
                                     disabled={processing}
@@ -234,6 +255,7 @@ export default function UserEdit({ user }: Props) {
                                         ? 'Memperbarui...'
                                         : 'Perbarui Pengguna'}
                                 </Button>
+
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -242,26 +264,68 @@ export default function UserEdit({ user }: Props) {
                                 >
                                     Batal
                                 </Button>
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    onClick={handleDelete}
-                                    disabled={isDeleting}
-                                    className="flex-1"
-                                >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    {isDeleting ? 'Menghapus...' : 'Hapus'}
-                                </Button>
+
+                                {/* Delete with dialog */}
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            className="flex-1"
+                                            disabled={isDeleting}
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            {isDeleting
+                                                ? 'Menghapus...'
+                                                : 'Hapus'}
+                                        </Button>
+                                    </AlertDialogTrigger>
+
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>
+                                                Hapus pengguna ini?
+                                            </AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Anda akan menghapus pengguna{' '}
+                                                <span className="font-semibold">
+                                                    {user.name}
+                                                </span>
+                                                . Tindakan ini tidak dapat
+                                                dibatalkan dan dapat
+                                                mempengaruhi data terkait.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel
+                                                disabled={isDeleting}
+                                            >
+                                                Batal
+                                            </AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={handleDelete}
+                                                disabled={isDeleting}
+                                                className="bg-red-600 hover:bg-red-700"
+                                            >
+                                                {isDeleting
+                                                    ? 'Menghapus...'
+                                                    : 'Ya, hapus'}
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
                         </form>
                     </CardContent>
                 </Card>
 
+                {/* Info alert */}
                 <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                        Perubahan akan disimpan segera. Tindakan hapus tidak
-                        dapat dibatalkan.
+                        Hapus pengguna dengan hati-hati. Pastikan untuk meninjau
+                        dampak potensial pada data terkait sebelum melanjutkan.
                     </AlertDescription>
                 </Alert>
             </div>
