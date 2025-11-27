@@ -56,7 +56,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Import CSV', href: '/admin/universities/import' },
 ];
 
-export default function UniversityImport({
+export default function UnivCreate({
     universities,
 }: {
     universities: UniversityOption[];
@@ -311,7 +311,7 @@ export default function UniversityImport({
                         <MajorForm
                             universities={universities ?? []}
                             onCreated={() => {
-                                // optional: do something after create
+                                /* optional */
                             }}
                         />
                     </div>

@@ -35,6 +35,8 @@ class UniversityController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:universities',
+            'code' => 'nullable|string|max:50|unique:universities,code',
+            'city' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'website' => 'nullable|url',
         ]);
@@ -66,6 +68,8 @@ class UniversityController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:universities,name,' . $university->id,
+            'code' => 'nullable|string|max:50|unique:universities,code,' . $university->id,
+            'city' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'website' => 'nullable|url',
         ]);
@@ -74,6 +78,15 @@ class UniversityController extends Controller
 
         return redirect()->route('admin.universities.index')
             ->with('success', 'University updated successfully');
+    }
+
+    public function importPage()
+    {
+        $universities = University::orderBy('name')->get(['id', 'name']);
+
+        return Inertia::render('admin/universities/UnivCreate', [
+            'universities' => $universities,
+        ]);
     }
 
     public function destroy(University $university)

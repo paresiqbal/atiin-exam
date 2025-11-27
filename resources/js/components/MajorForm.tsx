@@ -1,5 +1,5 @@
 // resources/js/components/admin/universities/MajorForm.tsx
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,52 +19,22 @@ type UniversityOption = {
 };
 
 type MajorFormProps = {
+    universities: UniversityOption[]; // ✅ passed from parent
     onCreated?: () => void;
 };
 
-export function MajorForm({ onCreated }: MajorFormProps) {
-    const [universities, setUniversities] = useState<UniversityOption[]>([]);
-    const [universitiesLoading, setUniversitiesLoading] = useState(true);
-
+export function MajorForm({ universities, onCreated }: MajorFormProps) {
+    console.log('MajorForm universities:', universities);
     const [universityId, setUniversityId] = useState<string>('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    const [minimumPassingGrade, setMinimumPassingGrade] = useState(''); // 👈 new state
+    const [minimumPassingGrade, setMinimumPassingGrade] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<string[]>([]);
     const [message, setMessage] = useState<{
         type: 'success' | 'error';
         text: string;
     } | null>(null);
-
-    // load universities
-    useEffect(() => {
-        const loadUniversities = async () => {
-            try {
-                const res = await fetch('/admin/universities/options', {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                });
-
-                if (!res.ok) throw new Error('Failed to load universities');
-
-                const data: UniversityOption[] = await res.json();
-                setUniversities(data);
-                console.log('Loaded universities:', data);
-            } catch (error) {
-                console.error(error);
-                setMessage({
-                    type: 'error',
-                    text: 'Failed to load universities.',
-                });
-            } finally {
-                setUniversitiesLoading(false);
-            }
-        };
-
-        loadUniversities();
-    }, []);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -93,7 +63,6 @@ export function MajorForm({ onCreated }: MajorFormProps) {
                 university_id: Number(universityId),
                 name,
                 description: description || null,
-                // 👇 VERY IMPORTANT: key name must match backend
                 minimum_passing_grade: Number(minimumPassingGrade),
             };
 
@@ -134,7 +103,7 @@ export function MajorForm({ onCreated }: MajorFormProps) {
                 setName('');
                 setDescription('');
                 setUniversityId('');
-                setMinimumPassingGrade(''); // reset
+                setMinimumPassingGrade('');
                 setErrors([]);
                 onCreated?.();
             } else {
@@ -187,17 +156,14 @@ export function MajorForm({ onCreated }: MajorFormProps) {
                         </label>
                         <Select
                             value={universityId}
-                            onValueChange={(v) => {
-                                console.log('changed to:', v);
-                                setUniversityId(v);
-                            }}
-                            disabled={universitiesLoading}
+                            onValueChange={(v) => setUniversityId(v)}
+                            // disabled={universities.length === 0}
                         >
                             <SelectTrigger>
                                 <SelectValue
                                     placeholder={
-                                        universitiesLoading
-                                            ? 'Loading...'
+                                        universities.length === 0
+                                            ? 'No universities available'
                                             : 'Choose university'
                                     }
                                 />
