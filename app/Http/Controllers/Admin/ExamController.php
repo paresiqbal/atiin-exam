@@ -260,8 +260,67 @@ class ExamController extends Controller
 
     public function exportResults(Exam $exam)
     {
-        $filename = 'exam-results-' . $exam->id . '-' . now()->format('Y-m-d') . '.xlsx';
+        $attempts = $exam->attempts()
+            ->with('student.university', 'student.major', 'student.school', 'responses.question')
+            ->get();
 
-        return Excel::download(new ExamResultsExport($exam), $filename);
+        $questions = $exam->questionBank->questions()->orderBy('id')->get();
+
+        // Create CSV data
+        $headers = ['Name', 'Email', 'School', 'Class', 'University', 'Major'];
+
+        foreach ($questions as $question) {
+            $headers[] = "Q{$question->id}";
+        }
+
+        $headers[] = 'Total Score';
+        $headers[] = 'Status';
+
+        $rows = [];
+        $rows[] = $headers;
+
+        foreach ($attempts as $attempt) {
+            $student = $attempt->student;
+
+            $row = [
+                $student->name,
+                $student->email,
+                $student->school?->name ?? 'N/A',
+                $student->class ?? 'N/A',
+                $student->university?->name ?? 'N/A',
+                $student->major?->name ?? 'N/A',
+            ];
+
+            foreach ($questions as $question) {
+                $response = $attempt->responses()
+                    ->where('question_id', $question->id)
+                    ->first();
+
+                $isCorrect = $response && $response->selectedOption && $response->selectedOption->is_correct;
+                $row[] = $isCorrect ? 'Correct' : 'Wrong';
+            }
+
+            $row[] = "{$attempt->score}/{$attempt->total_score}";
+            $passingScore = $student->major?->minimum_passing_grade ?? 0;
+            $row[] = $attempt->score >= $passingScore ? 'PASSED' : 'FAILED';
+
+            $rows[] = $row;
+        }
+
+        // Generate CSV
+        $filename = 'exam-results-' . $exam->id . '-' . now()->format('Y-m-d') . '.csv';
+        $handle = fopen('php://memory', 'w');
+
+        foreach ($rows as $row) {
+            fputcsv($handle, $row);
+        }
+
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', "attachment; filename=\"$filename\"");
     }
 }
