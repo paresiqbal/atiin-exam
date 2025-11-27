@@ -13,45 +13,73 @@ class MajorController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'university_id' => 'required|exists:universities,id',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'minimum_passing_grade' => 'required|integer',
+            'university_id'          => 'required|exists:universities,id',
+            'name'                   => 'required|string|max:255',
+            'description'            => 'nullable|string',
+            'minimum_passing_grade'  => 'required|numeric|min:0|max:100',
         ]);
 
-        Major::create($validated);
+        $major = Major::create($validated);
 
-        return back()->with('success', 'Major created successfully');
+        // If called via fetch (AJAX / JSON)
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Major created successfully.',
+                'major'   => $major->load('university:id,name'),
+            ], 201);
+        }
+
+        // If called via Inertia form / normal POST
+        return redirect()
+            ->route('admin.universities.show', $major->university_id)
+            ->with('success', 'Program studi berhasil ditambahkan');
     }
 
     public function edit(Major $major)
     {
-        return Inertia::render('admin/majors/Edit', [
+        return Inertia::render('admin/majors/MajorEdit', [
             'major' => $major,
-            'university' => $major->university,
+            'universities' => University::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
     public function update(Request $request, Major $major)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'minimum_passing_grade' => 'required|integer|min:0|max:100',
+            'university_id'          => 'required|exists:universities,id',
+            'name'                   => 'required|string|max:255',
+            'description'            => 'nullable|string',
+            'minimum_passing_grade'  => 'required|numeric|min:0|max:100',
         ]);
 
         $major->update($validated);
 
-        return redirect()->route('admin.universities.show', $major->university_id)
-            ->with('success', 'Major updated successfully');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Major updated successfully.',
+                'major'   => $major->load('university:id,name'),
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.universities.show', $major->university_id)
+            ->with('success', 'Program studi berhasil diperbarui');
     }
 
-    public function destroy(Major $major)
+    public function destroy(Request $request, Major $major)
     {
-        $university_id = $major->university_id;
+        $universityId = $major->university_id;
+
         $major->delete();
 
-        return redirect()->route('admin.universities.show', $university_id)
-            ->with('success', 'Major deleted successfully');
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Major deleted successfully.',
+            ]);
+        }
+
+        return redirect()
+            ->route('admin.universities.show', $universityId)
+            ->with('success', 'Program studi berhasil dihapus');
     }
 }

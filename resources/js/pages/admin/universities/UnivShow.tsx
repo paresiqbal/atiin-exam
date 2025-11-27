@@ -197,10 +197,6 @@ export default function UnivShow() {
                                 universitas ini
                             </CardDescription>
                         </div>
-
-                        {/* Placeholder for future "Tambah Prodi" */}
-                        {/* Uncomment when you have a create flow */}
-                        {/* <Button size="sm">Tambah Program Studi</Button> */}
                     </CardHeader>
 
                     <CardContent>

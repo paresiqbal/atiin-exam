@@ -28,7 +28,11 @@ class UniversityController extends Controller
 
     public function create()
     {
-        return Inertia::render('admin/universities/UnivCreate');
+        $universities = University::orderBy('name')->get(['id', 'name']);
+
+        return Inertia::render('admin/universities/UnivCreate', [
+            'universities' => $universities,
+        ]);
     }
 
     public function store(Request $request)

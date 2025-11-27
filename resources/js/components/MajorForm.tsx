@@ -74,6 +74,7 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-CSRF-TOKEN': token,
+                    Accept: 'application/json',
                 },
                 body: JSON.stringify(payload),
             });
