@@ -53,7 +53,6 @@ const baseUrl = '/admin/universities';
 export default function UnivIndex() {
     const { universities } = usePage<UnivPageProps>().props;
 
-    // Use data directly from Inertia props
     const data = universities.data ?? [];
 
     const totalMajors = data.reduce((sum, u) => sum + u.majors.length, 0);
@@ -65,7 +64,6 @@ export default function UnivIndex() {
             <Head title="Daftar Universitas" />
 
             <div className="space-y-6 p-4">
-                {/* Header */}
                 <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
                     <div>
                         <h1 className="text-3xl font-bold">
@@ -83,7 +81,6 @@ export default function UnivIndex() {
                     </div>
                 </div>
 
-                {/* Stats */}
                 <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader>
@@ -119,7 +116,6 @@ export default function UnivIndex() {
                     </Card>
                 </div>
 
-                {/* Table */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Universitas</CardTitle>
@@ -160,12 +156,10 @@ export default function UnivIndex() {
                                     <TableBody>
                                         {data.map((u) => (
                                             <TableRow key={u.id}>
-                                                {/* Name */}
                                                 <TableCell className="font-medium">
                                                     {u.name}
                                                 </TableCell>
 
-                                                {/* Code (improved display) */}
                                                 <TableCell>
                                                     {u.code ? (
                                                         <Badge
@@ -181,7 +175,6 @@ export default function UnivIndex() {
                                                     )}
                                                 </TableCell>
 
-                                                {/* City */}
                                                 <TableCell>
                                                     {u.city || (
                                                         <span className="text-xs text-muted-foreground">
@@ -190,7 +183,6 @@ export default function UnivIndex() {
                                                     )}
                                                 </TableCell>
 
-                                                {/* Majors */}
                                                 <TableCell>
                                                     <div className="flex flex-wrap gap-1">
                                                         {u.majors.length > 0 ? (
@@ -214,10 +206,8 @@ export default function UnivIndex() {
                                                     </div>
                                                 </TableCell>
 
-                                                {/* Actions */}
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
-                                                        {/* Edit as icon button */}
                                                         <Link
                                                             href={`${baseUrl}/${u.id}/edit`}
                                                         >
@@ -231,7 +221,6 @@ export default function UnivIndex() {
                                                             </Button>
                                                         </Link>
 
-                                                        {/* Delete with dialog */}
                                                         <ConfirmDeleteButton
                                                             deleteUrl={`${baseUrl}/${u.id}`}
                                                             resourceLabel="universitas"
