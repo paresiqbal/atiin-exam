@@ -1,5 +1,5 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Edit2, Search, Trash2 } from 'lucide-react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { Edit2, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import {
     InputGroup,
     InputGroupAddon,
@@ -59,12 +60,6 @@ export default function UserIndex() {
             }),
         [users.data, searchQuery, roleFilter],
     );
-
-    const handleDelete = (userId: number) => {
-        if (confirm('Are you sure you want to delete this user?')) {
-            router.delete(`${baseUrl}/${userId}`);
-        }
-    };
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -196,14 +191,11 @@ export default function UserIndex() {
                                                     <Edit2 size={16} />
                                                 </Link>
 
-                                                <button
-                                                    onClick={() =>
-                                                        handleDelete(user.id)
-                                                    }
-                                                    className="rounded-md p-2 text-red-600 hover:bg-foreground/20"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                <ConfirmDeleteButton
+                                                    deleteUrl={`${baseUrl}/${user.id}`}
+                                                    resourceLabel="pengguna"
+                                                    itemName={user.name}
+                                                />
                                             </div>
                                         </td>
                                     </tr>
