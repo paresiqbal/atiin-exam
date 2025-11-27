@@ -68,8 +68,12 @@ export default function UserIndex() {
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
-            title: 'Users Management',
-            href: '/',
+            title: 'Admin Dashboard',
+            href: '/admin/dashboard',
+        },
+        {
+            title: 'Manajemen Pengguna',
+            href: '/admin/users',
         },
     ];
 

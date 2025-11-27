@@ -53,13 +53,6 @@ interface ImportPreviewResponse {
     message?: string;
 }
 
-const createBreadcrumbs = (): BreadcrumbItem[] => {
-    return [
-        { title: 'Users Management', href: '/admin/users' },
-        { title: 'Create / Import Users', href: '/admin/users/create' },
-    ];
-};
-
 export default function UserCreate({ schools }: Props) {
     // ---- Single user form ----
     const { data, setData, post, errors, processing } = useForm<{
@@ -186,21 +179,34 @@ export default function UserCreate({ schools }: Props) {
         });
     };
 
-    const breadcrumbs = createBreadcrumbs();
+    const breadcrumbs: BreadcrumbItem[] = [
+        {
+            title: 'Admin Dashboard',
+            href: '/admin/dashboard',
+        },
+        {
+            title: 'Manajemen Pengguna',
+            href: '/admin/users',
+        },
+        {
+            title: 'Buat Pengguna',
+            href: '/admin/users/create',
+        },
+    ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Create / Import Users" />
+            <Head title="Buat Pengguna" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 {/* Header */}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold">
-                        User Management – Create & Import
+                        Manajemen Pengguna – Buat
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Create a single user (admin/teacher/student) or import
-                        multiple students in bulk from a file.
+                        Buat satu pengguna (admin/guru/siswa) atau impor
+                        beberapa siswa secara massal dari file.
                     </p>
                 </div>
 
@@ -208,9 +214,10 @@ export default function UserCreate({ schools }: Props) {
                     {/* -------- LEFT: Single User Create -------- */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Create Single User</CardTitle>
+                            <CardTitle>Buat Pengguna Tunggal</CardTitle>
                             <CardDescription>
-                                Add one admin, teacher, or student at a time.
+                                Tambahkan satu admin, guru, atau siswa
+                                sekaligus.
                             </CardDescription>
                         </CardHeader>
 
@@ -219,7 +226,7 @@ export default function UserCreate({ schools }: Props) {
                                 {/* Name */}
                                 <div className="space-y-2">
                                     <Label htmlFor="name">
-                                        Full Name{' '}
+                                        Nama Lengkap{' '}
                                         <span className="text-destructive">
                                             *
                                         </span>
@@ -247,7 +254,7 @@ export default function UserCreate({ schools }: Props) {
                                 {/* Email */}
                                 <div className="space-y-2">
                                     <Label htmlFor="email">
-                                        Email Address{' '}
+                                        Alamat Email{' '}
                                         <span className="text-destructive">
                                             *
                                         </span>
@@ -300,7 +307,7 @@ export default function UserCreate({ schools }: Props) {
                                         </p>
                                     )}
                                     <p className="text-xs text-muted-foreground">
-                                        Minimum 8 characters required
+                                        Minimum 8 karakter diperlukan
                                     </p>
                                 </div>
 
@@ -338,13 +345,13 @@ export default function UserCreate({ schools }: Props) {
 
                                         <SelectContent>
                                             <SelectItem value="teacher">
-                                                Teacher
+                                                Guru
                                             </SelectItem>
                                             <SelectItem value="admin">
                                                 Admin
                                             </SelectItem>
                                             <SelectItem value="student">
-                                                Student
+                                                Siswa
                                             </SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -401,7 +408,7 @@ export default function UserCreate({ schools }: Props) {
                                         {/* Class */}
                                         <div className="space-y-2">
                                             <Label htmlFor="class">
-                                                Class (optional)
+                                                Kelas (optional)
                                             </Label>
                                             <Input
                                                 id="class"
@@ -436,8 +443,8 @@ export default function UserCreate({ schools }: Props) {
                                         className="flex-1"
                                     >
                                         {processing
-                                            ? 'Creating...'
-                                            : 'Create User'}
+                                            ? 'Membuat...'
+                                            : 'Buat Pengguna'}
                                     </Button>
                                     <Button
                                         type="button"
@@ -445,7 +452,7 @@ export default function UserCreate({ schools }: Props) {
                                         onClick={handleCancel}
                                         className="flex-1"
                                     >
-                                        Cancel
+                                        Batal
                                     </Button>
                                 </div>
                             </form>
@@ -455,10 +462,10 @@ export default function UserCreate({ schools }: Props) {
                     {/* -------- RIGHT: Bulk Import Students -------- */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Import Students (Bulk)</CardTitle>
+                            <CardTitle>Impor Siswa (Massal)</CardTitle>
                             <CardDescription>
-                                Upload a CSV / Excel file to create many student
-                                accounts at once.
+                                Upload file CSV atau Excel untuk menambahkan
+                                beberapa siswa sekaligus.
                             </CardDescription>
                         </CardHeader>
 
@@ -470,16 +477,16 @@ export default function UserCreate({ schools }: Props) {
                                     onClick={handleDownloadTemplate}
                                 >
                                     <Download className="mr-2 h-4 w-4" />
-                                    Download Template
+                                    Unduh Template
                                 </Button>
                                 <span className="text-xs text-muted-foreground">
-                                    Use the template format for a smoother
-                                    import.
+                                    Gunakan format template untuk impor yang
+                                    lebih lancar.
                                 </span>
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Upload File</Label>
+                                <Label>Unggah File</Label>
                                 <Input
                                     type="file"
                                     accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
@@ -527,26 +534,26 @@ export default function UserCreate({ schools }: Props) {
                             {preview.length > 0 && (
                                 <div className="mt-4">
                                     <h2 className="mb-2 text-lg font-semibold">
-                                        Preview ({preview.length} rows)
+                                        Pratinjau ({preview.length} baris)
                                     </h2>
                                     <div className="max-h-64 overflow-auto rounded border">
                                         <table className="w-full text-left text-sm">
                                             <thead className="bg-muted">
                                                 <tr>
                                                     <th className="px-3 py-2">
-                                                        Row
+                                                        Baris
                                                     </th>
                                                     <th className="px-3 py-2">
-                                                        Name
+                                                        Nama
                                                     </th>
                                                     <th className="px-3 py-2">
                                                         Email
                                                     </th>
                                                     <th className="px-3 py-2">
-                                                        School ID
+                                                        ID Sekolah
                                                     </th>
                                                     <th className="px-3 py-2">
-                                                        Class
+                                                        Kelas
                                                     </th>
                                                 </tr>
                                             </thead>
@@ -583,10 +590,10 @@ export default function UserCreate({ schools }: Props) {
                             <Alert>
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertDescription>
-                                    During import, existing emails will be
-                                    skipped. Import is intended for{' '}
+                                    Selama impor, email yang sudah ada akan
+                                    dilewati. Impor ditujukan untuk{' '}
                                     <span className="font-semibold">
-                                        students only
+                                        siswa saja
                                     </span>
                                     .
                                 </AlertDescription>
