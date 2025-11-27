@@ -12,12 +12,12 @@ class SchoolController extends Controller
     public function index()
     {
         $schools = School::withCount('users', 'exams')->paginate(15);
-        return Inertia::render('admin/schools/School', ['schools' => $schools]);
+        return Inertia::render('admin/schools/SchoolIndex', ['schools' => $schools]);
     }
 
     public function create()
     {
-        return Inertia::render('admin/schools/Create');
+        return Inertia::render('admin/schools/SchoolCreate');
     }
 
     public function store(Request $request)
@@ -35,7 +35,7 @@ class SchoolController extends Controller
 
     public function edit(School $school)
     {
-        return Inertia::render('admin/schools/Edit', ['school' => $school]);
+        return Inertia::render('admin/schools/SchoolEdit', ['school' => $school]);
     }
 
     public function update(Request $request, School $school)

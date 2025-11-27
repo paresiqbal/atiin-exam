@@ -13,6 +13,7 @@ import {
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Backpack,
     Book,
     BookOpen,
     Folder,
@@ -67,6 +68,15 @@ export function AppSidebar() {
                         title: 'Buat Universitas',
                         href: '/admin/universities/create',
                     },
+                ],
+            },
+            {
+                title: 'Sekolah',
+                href: '#',
+                icon: Backpack,
+                items: [
+                    { title: 'Semua Sekolah', href: '/admin/schools' },
+                    { title: 'Buat Sekolah', href: '/admin/schools/create' },
                 ],
             },
             {

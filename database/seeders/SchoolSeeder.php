@@ -9,8 +9,9 @@ class SchoolSeeder extends Seeder
 {
     public function run(): void
     {
-        School::create(['name' => 'Senior High School A', 'description' => 'Public school']);
-        School::create(['name' => 'Senior High School B', 'description' => 'Public school']);
-        School::create(['name' => 'Private Academy C', 'description' => 'Private school']);
+        School::create(['name' => 'SMA Negeri 1 Rejang Lebong', 'description' => 'Sekolah negeri']);
+        School::create(['name' => 'SMA Negeri 2 Rejang Lebong', 'description' => 'Sekolah negeri']);
+        School::create(['name' => 'SMA Negeri 3 Rejang Lebong', 'description' => 'Sekolah negeri']);
+        School::create(['name' => 'SMK Negeri 1 Rejang Lebong', 'description' => 'Sekolah negeri kejuruan']);
     }
 }
