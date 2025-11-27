@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Edit2 } from 'lucide-react';
+import { Edit2, Eye } from 'lucide-react';
 
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Badge } from '@/components/ui/badge';
@@ -208,18 +208,33 @@ export default function UnivIndex() {
 
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
-                                                        <Link
-                                                            href={`${baseUrl}/${u.id}/edit`}
+                                                        <Button
+                                                            asChild
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="hover:bg-foreground/10"
                                                         >
-                                                            <Button
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                className="hover:bg-foreground/10"
-                                                                aria-label="Edit universitas"
+                                                            <Link
+                                                                href={`${baseUrl}/${u.id}`}
+                                                                aria-label={`Lihat detail universitas ${u.name}`}
+                                                            >
+                                                                <Eye className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+
+                                                        <Button
+                                                            asChild
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="hover:bg-foreground/10"
+                                                        >
+                                                            <Link
+                                                                href={`${baseUrl}/${u.id}/edit`}
+                                                                aria-label={`Edit universitas ${u.name}`}
                                                             >
                                                                 <Edit2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </Link>
+                                                            </Link>
+                                                        </Button>
 
                                                         <ConfirmDeleteButton
                                                             deleteUrl={`${baseUrl}/${u.id}`}

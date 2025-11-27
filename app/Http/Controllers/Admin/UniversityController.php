@@ -51,16 +51,17 @@ class UniversityController extends Controller
     {
         $majors = $university->majors()->paginate(15);
 
-        return Inertia::render('admin/universities/Show', [
+        return Inertia::render('admin/universities/UnivShow', [
             'university' => $university,
             'majors' => $majors,
         ]);
     }
 
+
     public function edit(University $university)
     {
-        return Inertia::render('admin/universities/Edit', [
-            'university' => $university,
+        return Inertia::render('admin/universities/UnivEdit', [
+            'university' => $university->only('id', 'name', 'code', 'city', 'description', 'website'),
         ]);
     }
 
@@ -78,15 +79,6 @@ class UniversityController extends Controller
 
         return redirect()->route('admin.universities.index')
             ->with('success', 'University updated successfully');
-    }
-
-    public function importPage()
-    {
-        $universities = University::orderBy('name')->get(['id', 'name']);
-
-        return Inertia::render('admin/universities/UnivCreate', [
-            'universities' => $universities,
-        ]);
     }
 
     public function destroy(University $university)
