@@ -111,7 +111,7 @@ export function AppSidebar() {
                 icon: Folder,
                 items: [
                     { title: 'Daftar Ujian', href: '/student/exams' },
-                    { title: 'Ujian Saya', href: '/student/exams' },
+                    { title: 'Ujian Saya', href: '/student/exams/history' },
                 ],
             },
             {

@@ -12,7 +12,9 @@ use Laravel\Fortify\Features;
 // controllers
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
+use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
 use App\Http\Controllers\Student\ExamController;
+use App\Http\Controllers\Student\ExamHistoryController;
 use App\Http\Controllers\Student\UniversityController as StudentUniversityController;
 use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\QuestionController;
@@ -100,6 +102,7 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     Route::post('/exams/{attempt}/submit', [ExamController::class, 'submitExam'])->name('exams.submit');
     Route::get('/exams/{attempt}/results', [ExamController::class, 'results'])->name('exams.results');
     Route::get('/exams/{attempt}/download-pdf', [ExamController::class, 'downloadResults'])->name('exams.downloadPdf');
+    Route::get('/exams/history', [ExamHistoryController::class, 'index'])->name('exams.history');
 });
 
 
