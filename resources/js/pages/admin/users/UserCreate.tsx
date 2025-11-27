@@ -129,11 +129,13 @@ export default function UserCreate({ schools }: UserCreateProps) {
     };
 
     const handleImport = () => {
-        if (!file || !csrfToken) return;
+        if (!file) {
+            setImportErrors(['Silakan pilih file terlebih dahulu.']);
+            return;
+        }
 
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('_token', csrfToken);
 
         setLoadingImport(true);
         setImportErrors([]);
@@ -146,10 +148,24 @@ export default function UserCreate({ schools }: UserCreateProps) {
             onSuccess: () => {
                 router.visit('/admin/users');
             },
-            onError: () => {
-                setImportErrors([
-                    'Import failed. Please check the file and try again.',
-                ]);
+            onError: (errors) => {
+                const messages: string[] = [];
+
+                Object.values(errors).forEach((err) => {
+                    if (Array.isArray(err)) {
+                        messages.push(...err);
+                    } else if (err) {
+                        messages.push(err as string);
+                    }
+                });
+
+                setImportErrors(
+                    messages.length
+                        ? messages
+                        : [
+                              'Import failed. Please check the file and try again.',
+                          ],
+                );
             },
         });
     };

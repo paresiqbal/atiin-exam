@@ -8,56 +8,73 @@ use App\Models\School;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Maatwebsite\Excel\Facades\Excel;
 
 class UserImportController extends Controller
 {
     public function preview(Request $request)
     {
+        // CSV / text only now
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
 
         try {
             $file = $request->file('file');
-            $rows = Excel::toArray(new \stdClass, $file);
 
-            if (!$rows || empty($rows[0])) {
-                return back()->withErrors(['file' => 'File is empty']);
+            $handle = fopen($file->getRealPath(), 'r');
+            if (! $handle) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Could not open the file.',
+                ], 400);
             }
 
-            $data = array_slice($rows[0], 1);
+            // Header row
+            $header = fgetcsv($handle);
+            if ($header === false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File is empty.',
+                ], 400);
+            }
 
             $preview = [];
-            $errors = [];
+            $errors  = [];
+            $rowNum  = 1; // header row
 
-            foreach ($data as $index => $row) {
-                if (empty(array_filter($row))) continue;
+            // Rows: name, email, school_id, class
+            while (($row = fgetcsv($handle)) !== false) {
+                $rowNum++;
 
-                $rowNum = $index + 2;
+                // Skip completely empty lines
+                if (empty(array_filter($row))) {
+                    continue;
+                }
 
                 $student = [
-                    'name' => $row[0] ?? null,
-                    'email' => $row[1] ?? null,
+                    'name'      => $row[0] ?? null,
+                    'email'     => $row[1] ?? null,
                     'school_id' => $row[2] ?? null,
-                    'class' => $row[3] ?? null,
-                    'password' => Str::random(10),
-                    'role' => 'student',
+                    'class'     => $row[3] ?? null,
+                    'password'  => Str::random(10),
+                    'role'      => 'student',
                 ];
 
                 $error = $this->validateRow($student);
 
                 if ($error) {
-                    $errors[] = "Row $rowNum: $error";
+                    $errors[] = "Row {$rowNum}: {$error}";
                 } else {
                     $preview[] = array_merge(['row' => $rowNum], $student);
                 }
             }
 
+            fclose($handle);
+
             return response()->json([
-                'success' => true,
-                'preview' => $preview,
-                'errors' => $errors,
+                'success'    => true,
+                'preview'    => $preview,
+                'errors'     => $errors,
                 'total_rows' => count($preview),
             ]);
         } catch (\Exception $e) {
@@ -70,41 +87,51 @@ class UserImportController extends Controller
 
     public function import(Request $request)
     {
+        // CSV / text only now
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
 
         try {
-            $rows = Excel::toArray(new \stdClass, $request->file('file'));
+            $file = $request->file('file');
 
-            if (!$rows || empty($rows[0])) {
-                return back()->withErrors(['file' => 'File is empty']);
+            $handle = fopen($file->getRealPath(), 'r');
+            if (! $handle) {
+                return back()->withErrors(['file' => 'Could not open the file.']);
             }
 
-            $data = array_slice($rows[0], 1);
+            // Header row
+            $header = fgetcsv($handle);
+            if ($header === false) {
+                return back()->withErrors(['file' => 'File is empty.']);
+            }
 
             $created = 0;
-            $failed = 0;
-            $errors = [];
+            $failed  = 0;
+            $errors  = [];
+            $rowNum  = 1;
 
-            foreach ($data as $index => $row) {
-                if (empty(array_filter($row))) continue;
-                $rowNum = $index + 2;
+            while (($row = fgetcsv($handle)) !== false) {
+                $rowNum++;
+
+                if (empty(array_filter($row))) {
+                    continue;
+                }
 
                 $student = [
-                    'name' => $row[0] ?? null,
-                    'email' => $row[1] ?? null,
+                    'name'      => $row[0] ?? null,
+                    'email'     => $row[1] ?? null,
                     'school_id' => $row[2] ?? null,
-                    'class' => $row[3] ?? null,
-                    'password' => Hash::make(Str::random(10)),
-                    'role' => 'student',
+                    'class'     => $row[3] ?? null,
+                    'password'  => Hash::make(Str::random(10)),
+                    'role'      => 'student',
                 ];
 
                 $error = $this->validateRow($student);
 
                 if ($error) {
                     $failed++;
-                    $errors[] = "Row $rowNum: $error";
+                    $errors[] = "Row {$rowNum}: {$error}";
                     continue;
                 }
 
@@ -112,9 +139,11 @@ class UserImportController extends Controller
                 $created++;
             }
 
+            fclose($handle);
+
             return redirect()->route('admin.users.index')
-                ->with('success', "Import completed! Created: $created, Failed: $failed")
-                ->with('errors', $errors);
+                ->with('success', "Import completed! Created: {$created}, Failed: {$failed}")
+                ->with('import_errors', $errors);
         } catch (\Exception $e) {
             return back()->withErrors(['file' => "Import failed: {$e->getMessage()}"]);
         }
@@ -122,12 +151,25 @@ class UserImportController extends Controller
 
     private function validateRow($data)
     {
-        if (!$data['name']) return 'Name is required';
-        if (!$data['email']) return 'Email is required';
-        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) return 'Invalid email format';
-        if (User::where('email', $data['email'])->exists()) return 'Email already exists';
-        if (!empty($data['school_id']) && !School::where('id', $data['school_id'])->exists())
+        if (! $data['name']) {
+            return 'Name is required';
+        }
+
+        if (! $data['email']) {
+            return 'Email is required';
+        }
+
+        if (! filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            return 'Invalid email format';
+        }
+
+        if (User::where('email', $data['email'])->exists()) {
+            return 'Email already exists';
+        }
+
+        if (! empty($data['school_id']) && ! School::where('id', $data['school_id'])->exists()) {
             return 'School not found';
+        }
 
         return null;
     }
@@ -138,8 +180,11 @@ class UserImportController extends Controller
 
         $handle = fopen('php://memory', 'w');
 
+        // Header row - must match import order
         fputcsv($handle, ['name', 'email', 'school_id', 'class']);
 
+        // Helper row (only for humans, import skips it because we only skip the first row in code.
+        // If you keep this helper row, remember that admins should delete it or we adjust the code.)
         fputcsv($handle, [
             '# required',
             '# required, must be unique & valid email',

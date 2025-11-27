@@ -14,7 +14,6 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
 use Inertia\Response;
-use Maatwebsite\Excel\Excel;
 
 class ExamController extends Controller
 {
