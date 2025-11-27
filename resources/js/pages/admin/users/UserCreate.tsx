@@ -23,53 +23,29 @@ import {
 } from '@/components/ui/select';
 import { AlertCircle, Download } from 'lucide-react';
 
-interface BreadcrumbItem {
-    title: string;
-    href: string;
-}
+import type { BreadcrumbItem } from '@/types';
+import type {
+    ImportPreviewResponse,
+    PreviewRow,
+    School,
+    UserCreateFormData,
+    UserRole,
+} from '@/types/user-import';
 
-interface School {
-    id: number;
-    name: string;
-}
-
-interface Props {
+interface UserCreateProps {
     schools: School[];
 }
 
-interface PreviewRow {
-    row: number;
-    name: string;
-    email: string;
-    school_id: number | string | null;
-    class: string | null;
-}
-
-interface ImportPreviewResponse {
-    success: boolean;
-    preview: PreviewRow[];
-    errors: string[];
-    total_rows: number;
-    message?: string;
-}
-
-export default function UserCreate({ schools }: Props) {
-    // ---- Single user form ----
-    const { data, setData, post, errors, processing } = useForm<{
-        name: string;
-        email: string;
-        password: string;
-        role: 'admin' | 'teacher' | 'student';
-        school_id: string;
-        class: string;
-    }>({
-        name: '',
-        email: '',
-        password: '',
-        role: 'teacher',
-        school_id: '',
-        class: '',
-    });
+export default function UserCreate({ schools }: UserCreateProps) {
+    const { data, setData, post, errors, processing } =
+        useForm<UserCreateFormData>({
+            name: '',
+            email: '',
+            password: '',
+            role: 'teacher',
+            school_id: '',
+            class: '',
+        });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -82,7 +58,6 @@ export default function UserCreate({ schools }: Props) {
 
     const isStudent = data.role === 'student';
 
-    // ---- Bulk import state (students only) ----
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<PreviewRow[]>([]);
     const [importErrors, setImportErrors] = useState<string[]>([]);
@@ -199,7 +174,6 @@ export default function UserCreate({ schools }: Props) {
             <Head title="Buat Pengguna" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {/* Header */}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold">
                         Manajemen Pengguna – Buat
@@ -211,7 +185,6 @@ export default function UserCreate({ schools }: Props) {
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
-                    {/* -------- LEFT: Single User Create -------- */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Buat Pengguna Tunggal</CardTitle>
@@ -223,7 +196,6 @@ export default function UserCreate({ schools }: Props) {
 
                         <CardContent>
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Name */}
                                 <div className="space-y-2">
                                     <Label htmlFor="name">
                                         Nama Lengkap{' '}
@@ -251,7 +223,6 @@ export default function UserCreate({ schools }: Props) {
                                     )}
                                 </div>
 
-                                {/* Email */}
                                 <div className="space-y-2">
                                     <Label htmlFor="email">
                                         Alamat Email{' '}
@@ -279,7 +250,6 @@ export default function UserCreate({ schools }: Props) {
                                     )}
                                 </div>
 
-                                {/* Password */}
                                 <div className="space-y-2">
                                     <Label htmlFor="password">
                                         Password{' '}
@@ -311,10 +281,9 @@ export default function UserCreate({ schools }: Props) {
                                     </p>
                                 </div>
 
-                                {/* Role */}
                                 <div className="space-y-2">
                                     <Label htmlFor="role">
-                                        Role{' '}
+                                        Peran{' '}
                                         <span className="text-destructive">
                                             *
                                         </span>
@@ -323,13 +292,7 @@ export default function UserCreate({ schools }: Props) {
                                     <Select
                                         value={data.role}
                                         onValueChange={(value) =>
-                                            setData(
-                                                'role',
-                                                value as
-                                                    | 'admin'
-                                                    | 'teacher'
-                                                    | 'student',
-                                            )
+                                            setData('role', value as UserRole)
                                         }
                                     >
                                         <SelectTrigger
@@ -363,7 +326,6 @@ export default function UserCreate({ schools }: Props) {
                                     )}
                                 </div>
 
-                                {/* Extra fields for students: school + class */}
                                 {isStudent && (
                                     <>
                                         {/* School */}
@@ -405,7 +367,6 @@ export default function UserCreate({ schools }: Props) {
                                             )}
                                         </div>
 
-                                        {/* Class */}
                                         <div className="space-y-2">
                                             <Label htmlFor="class">
                                                 Kelas (optional)
@@ -435,7 +396,6 @@ export default function UserCreate({ schools }: Props) {
                                     </>
                                 )}
 
-                                {/* Actions */}
                                 <div className="flex gap-3 pt-4">
                                     <Button
                                         type="submit"
@@ -459,7 +419,6 @@ export default function UserCreate({ schools }: Props) {
                         </CardContent>
                     </Card>
 
-                    {/* -------- RIGHT: Bulk Import Students -------- */}
                     <Card>
                         <CardHeader>
                             <CardTitle>Impor Siswa (Massal)</CardTitle>
@@ -595,7 +554,6 @@ export default function UserCreate({ schools }: Props) {
                                     <span className="font-semibold">
                                         siswa saja
                                     </span>
-                                    .
                                 </AlertDescription>
                             </Alert>
                         </CardContent>
