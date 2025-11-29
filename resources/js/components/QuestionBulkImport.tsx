@@ -12,8 +12,6 @@ import {
 import {
     AlertCircle,
     CheckCircle2,
-    ChevronDown,
-    ChevronUp,
     Download,
     Loader2,
     Upload,
@@ -43,6 +41,14 @@ interface QuestionBulkImportProps {
     onImportSuccess?: () => void;
 }
 
+// helper: CSRF
+function getCsrfToken(): string {
+    const meta = document.querySelector(
+        "meta[name='csrf-token']",
+    ) as HTMLMetaElement | null;
+    return meta?.content ?? '';
+}
+
 export default function QuestionBulkImport({
     questionBankId,
     onImportSuccess,
@@ -57,14 +63,6 @@ export default function QuestionBulkImport({
         text: string;
     } | null>(null);
     const [dragActive, setDragActive] = useState(false);
-    const [expanded, setExpanded] = useState(false);
-
-    function getCsrfToken(): string {
-        const meta = document.querySelector(
-            "meta[name='csrf-token']",
-        ) as HTMLMetaElement | null;
-        return meta?.content ?? '';
-    }
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
@@ -111,6 +109,7 @@ export default function QuestionBulkImport({
         setLoading(true);
         setErrors([]);
         setMessage(null);
+        setPreview([]);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -135,17 +134,19 @@ export default function QuestionBulkImport({
             if (data.success) {
                 setPreview(data.preview || []);
                 setErrors(data.errors || []);
-                setExpanded(true);
+                setMessage(null);
             } else {
                 setMessage({
                     type: 'error',
-                    text: data.message || 'Failed to preview file',
+                    text: data.message || 'Gagal melakukan preview file',
                 });
             }
         } catch (error) {
-            console.log(error);
-
-            setMessage({ type: 'error', text: 'Error uploading file' });
+            console.error(error);
+            setMessage({
+                type: 'error',
+                text: 'Terjadi kesalahan saat mengupload file',
+            });
         } finally {
             setLoading(false);
         }
@@ -179,25 +180,28 @@ export default function QuestionBulkImport({
             if (response.ok) {
                 setMessage({
                     type: 'success',
-                    text: 'Import completed successfully!',
+                    text: 'Import soal berhasil!',
                 });
                 setFile(null);
                 setPreview([]);
                 setErrors([]);
+
                 setTimeout(() => {
                     onImportSuccess?.();
                     window.location.reload();
-                }, 1500);
+                }, 1000);
             } else {
                 setMessage({
                     type: 'error',
-                    text: 'Import failed. Please try again.',
+                    text: 'Import gagal. Silakan coba lagi.',
                 });
             }
         } catch (error) {
-            console.log(error);
-
-            setMessage({ type: 'error', text: 'Error during import' });
+            console.error(error);
+            setMessage({
+                type: 'error',
+                text: 'Terjadi kesalahan saat proses import',
+            });
         } finally {
             setImporting(false);
         }
@@ -208,229 +212,212 @@ export default function QuestionBulkImport({
     };
 
     return (
-        <div className="space-y-4">
-            <Card>
-                <CardHeader
-                    className="cursor-pointer"
-                    onClick={() => setExpanded(!expanded)}
+        <Card className="mb-6">
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
+                <div>
+                    <CardTitle className="text-base">
+                        Bulk Import Soal
+                    </CardTitle>
+                    <CardDescription className="mt-1">
+                        Upload file CSV / Excel untuk membuat banyak soal
+                        sekaligus.
+                    </CardDescription>
+                </div>
+                <Button
+                    onClick={downloadTemplate}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
                 >
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="flex items-center gap-2 text-lg">
-                                {expanded ? (
-                                    <ChevronUp className="h-5 w-5" />
-                                ) : (
-                                    <ChevronDown className="h-5 w-5" />
-                                )}
-                                Bulk Import Soal
-                            </CardTitle>
-                            <CardDescription>
-                                Upload CSV untuk mengimpor multiple soal
-                                sekaligus
-                            </CardDescription>
-                        </div>
+                    <Download className="h-4 w-4" />
+                    Template CSV
+                </Button>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+                {/* Info format */}
+                <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+                    <div className="font-semibold text-foreground">
+                        Format Kolom:
                     </div>
-                </CardHeader>
+                    <div className="mt-1">
+                        <span className="font-mono">
+                            Pertanyaan | Tipe | Poin | URL Gambar | Opsi
+                        </span>
+                        <br />
+                        Gunakan <span className="font-mono">|</span> sebagai
+                        pemisah opsi, dan awali opsi benar dengan{' '}
+                        <span className="font-mono">*</span>.
+                        <br />
+                        Contoh:{' '}
+                        <span className="font-mono">
+                            *4|3|5|6 (4 adalah jawaban benar)
+                        </span>
+                    </div>
+                </div>
 
-                {expanded && (
-                    <CardContent className="space-y-4 border-t pt-4">
-                        {/* Template Download */}
-                        <div className="rounded-lg bg-muted p-4">
-                            <p className="mb-2 text-sm font-medium">
-                                Panduan Format File
+                {/* Upload + Preview */}
+                <form onSubmit={handlePreview} className="space-y-3">
+                    <div
+                        className={`rounded-lg border-2 border-dashed p-6 text-center text-sm transition-colors ${
+                            dragActive
+                                ? 'border-primary bg-primary/5'
+                                : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                        }`}
+                        onDragEnter={handleDrag}
+                        onDragLeave={handleDrag}
+                        onDragOver={handleDrag}
+                        onDrop={handleDrop}
+                    >
+                        <input
+                            type="file"
+                            id="question-file-input"
+                            className="hidden"
+                            accept=".csv,.xlsx,.xls"
+                            onChange={handleFileChange}
+                        />
+                        <label
+                            htmlFor="question-file-input"
+                            className="cursor-pointer"
+                        >
+                            <Upload className="mx-auto mb-2 h-7 w-7 text-muted-foreground" />
+                            <p className="font-medium text-foreground">
+                                {file
+                                    ? file.name
+                                    : 'Drag & drop file di sini, atau klik untuk memilih'}
                             </p>
-                            <p className="mb-3 text-sm text-muted-foreground">
-                                Format kolom: Pertanyaan | Tipe | Poin | URL
-                                Gambar | Opsi (gunakan | untuk pemisah, * untuk
-                                jawaban benar)
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Format: CSV, XLS, XLSX &mdash; Maksimal 2MB
                             </p>
-                            <Button
-                                onClick={downloadTemplate}
-                                variant="outline"
-                                size="sm"
-                                className="gap-2 bg-transparent"
-                            >
-                                <Download className="h-4 w-4" />
-                                Unduh Template CSV
-                            </Button>
+                        </label>
+                    </div>
+
+                    <Button
+                        type="submit"
+                        disabled={!file || loading}
+                        className="w-full gap-2"
+                    >
+                        {loading ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Preview File...
+                            </>
+                        ) : (
+                            'Preview File'
+                        )}
+                    </Button>
+                </form>
+
+                {/* Message */}
+                {message && (
+                    <Alert
+                        variant={
+                            message.type === 'error' ? 'destructive' : 'default'
+                        }
+                    >
+                        {message.type === 'error' ? (
+                            <AlertCircle className="h-4 w-4" />
+                        ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                        )}
+                        <AlertDescription>{message.text}</AlertDescription>
+                    </Alert>
+                )}
+
+                {/* Validation Errors */}
+                {errors.length > 0 && (
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                            <div className="mb-1 text-sm font-semibold">
+                                Error pada data:
+                            </div>
+                            <ul className="space-y-1 text-xs">
+                                {errors.map((error, idx) => (
+                                    <li key={idx} className="ml-4 list-disc">
+                                        {error}
+                                    </li>
+                                ))}
+                            </ul>
+                        </AlertDescription>
+                    </Alert>
+                )}
+
+                {/* Preview */}
+                {preview.length > 0 && (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>
+                                Preview {preview.length} soal pertama dari file
+                            </span>
+                            {errors.length > 0 && (
+                                <span>{errors.length} baris bermasalah</span>
+                            )}
                         </div>
 
-                        {/* File Upload */}
-                        <form onSubmit={handlePreview} className="space-y-3">
-                            <div
-                                className={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                                    dragActive
-                                        ? 'border-primary bg-primary/5'
-                                        : 'border-muted-foreground/25 hover:border-muted-foreground/50'
-                                }`}
-                                onDragEnter={handleDrag}
-                                onDragLeave={handleDrag}
-                                onDragOver={handleDrag}
-                                onDrop={handleDrop}
-                            >
-                                <input
-                                    type="file"
-                                    id="question-file-input"
-                                    className="hidden"
-                                    accept=".csv,.xlsx,.xls"
-                                    onChange={handleFileChange}
-                                />
-                                <label
-                                    htmlFor="question-file-input"
-                                    className="cursor-pointer"
+                        <div className="max-h-80 space-y-2 overflow-y-auto">
+                            {preview.slice(0, 10).map((question, idx) => (
+                                <div
+                                    key={idx}
+                                    className="rounded-md border bg-card p-3 text-xs"
                                 >
-                                    <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-                                    <p className="font-semibold text-foreground">
-                                        {file
-                                            ? file.name
-                                            : 'Drag and drop file di sini, atau klik untuk memilih'}
+                                    <div className="mb-1 flex items-start justify-between">
+                                        <span className="font-semibold text-foreground">
+                                            Row {question.row}
+                                        </span>
+                                        <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-medium tracking-wide uppercase">
+                                            {question.points} poin
+                                        </span>
+                                    </div>
+                                    <p className="mb-2 line-clamp-2 text-muted-foreground">
+                                        {question.question_text}
                                     </p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        CSV, XLS, atau XLSX (Max 2MB)
-                                    </p>
-                                </label>
-                            </div>
+                                    <div className="flex flex-wrap gap-1">
+                                        {question.options.map((opt, optIdx) => (
+                                            <span
+                                                key={optIdx}
+                                                className={`rounded px-2 py-0.5 text-[10px] ${
+                                                    opt.is_correct
+                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                                }`}
+                                            >
+                                                {opt.text}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
 
+                        {preview.length > 10 && (
+                            <p className="text-[10px] text-muted-foreground">
+                                Menampilkan 10 dari {preview.length} soal.
+                            </p>
+                        )}
+
+                        <form onSubmit={handleImport}>
                             <Button
                                 type="submit"
-                                disabled={!file || loading}
-                                className="w-full gap-2"
+                                disabled={importing}
+                                className="mt-1 w-full gap-2"
                             >
-                                {loading ? (
+                                {importing ? (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Preview...
+                                        Mengimpor...
                                     </>
                                 ) : (
-                                    'Preview File'
+                                    <>
+                                        <Upload className="h-4 w-4" />
+                                        Import {preview.length} Soal
+                                    </>
                                 )}
                             </Button>
                         </form>
-
-                        {/* Message Display */}
-                        {message && (
-                            <Alert
-                                variant={
-                                    message.type === 'error'
-                                        ? 'destructive'
-                                        : 'default'
-                                }
-                            >
-                                {message.type === 'error' ? (
-                                    <AlertCircle className="h-4 w-4" />
-                                ) : (
-                                    <CheckCircle2 className="h-4 w-4" />
-                                )}
-                                <AlertDescription>
-                                    {message.text}
-                                </AlertDescription>
-                            </Alert>
-                        )}
-
-                        {/* Errors */}
-                        {errors.length > 0 && (
-                            <Alert variant="destructive">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>
-                                    <div className="mb-2 font-semibold">
-                                        Validation Errors:
-                                    </div>
-                                    <ul className="space-y-1 text-sm">
-                                        {errors.map((error, idx) => (
-                                            <li
-                                                key={idx}
-                                                className="ml-4 list-disc"
-                                            >
-                                                {error}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </AlertDescription>
-                            </Alert>
-                        )}
-
-                        {/* Preview Table */}
-                        {preview.length > 0 && (
-                            <div>
-                                <div className="mb-3 flex items-center justify-between">
-                                    <h3 className="font-semibold">
-                                        Preview ({preview.length} soal)
-                                    </h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        {errors.length > 0 &&
-                                            `${errors.length} error(s)`}
-                                    </p>
-                                </div>
-                                <div className="max-h-96 space-y-2 overflow-y-auto">
-                                    {preview
-                                        .slice(0, 10)
-                                        .map((question, idx) => (
-                                            <div
-                                                key={idx}
-                                                className="rounded-lg border bg-card p-3 text-sm"
-                                            >
-                                                <div className="mb-1 flex items-start justify-between">
-                                                    <span className="font-medium text-foreground">
-                                                        Row {question.row}
-                                                    </span>
-                                                    <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium">
-                                                        {question.points} poin
-                                                    </span>
-                                                </div>
-                                                <p className="mb-2 line-clamp-2 text-muted-foreground">
-                                                    {question.question_text}
-                                                </p>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {question.options.map(
-                                                        (opt, optIdx) => (
-                                                            <span
-                                                                key={optIdx}
-                                                                className={`rounded px-2 py-0.5 text-xs ${
-                                                                    opt.is_correct
-                                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                                                }`}
-                                                            >
-                                                                {opt.text}
-                                                            </span>
-                                                        ),
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))}
-                                </div>
-
-                                {preview.length > 10 && (
-                                    <p className="mt-2 text-xs text-muted-foreground">
-                                        Showing 10 of {preview.length} soal
-                                    </p>
-                                )}
-
-                                {/* Import Button */}
-                                <form onSubmit={handleImport} className="mt-4">
-                                    <Button
-                                        type="submit"
-                                        disabled={importing}
-                                        className="w-full gap-2"
-                                    >
-                                        {importing ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                Mengimpor...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Upload className="h-4 w-4" />
-                                                Import {preview.length} Soal
-                                            </>
-                                        )}
-                                    </Button>
-                                </form>
-                            </div>
-                        )}
-                    </CardContent>
+                    </div>
                 )}
-            </Card>
-        </div>
+            </CardContent>
+        </Card>
     );
 }
