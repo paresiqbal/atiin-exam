@@ -21,17 +21,21 @@ import AppLayout from '@/layouts/app-layout';
 
 interface Attempt {
     id: number;
-    score: number | string;
-    total_score?: number; // recommended from backend
-    started_at?: string | null; // recommended from backend
-    completed_at: string | null;
-    is_passed?: boolean; // optional from backend
+    score: number;
+    total_score: number;
+    percentage: number;
+    is_passed: boolean;
+    started_at: string;
+    completed_at: string;
     student: {
         id: number;
         name: string;
         email: string;
-        university: { name: string | null } | null;
-        major: { name: string | null } | null;
+        university: { name: string | null };
+        major: {
+            name: string | null;
+            minimum_passing_grade: number | null;
+        } | null;
     };
 }
 

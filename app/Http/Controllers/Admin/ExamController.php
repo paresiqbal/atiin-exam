@@ -206,27 +206,77 @@ class ExamController extends Controller
 
     public function attempts(Exam $exam)
     {
-        $attempts = $exam->attempts()
-            ->with('student.university', 'student.major')
-            ->orderByDesc('completed_at')
-            ->paginate(15);
+        $attemptsQuery = $exam->attempts()
+            ->with(['student.university', 'student.major'])
+            ->orderByDesc('completed_at');
 
-        $analytics = [
-            'total_attempts' => $exam->attempts()->count(),
-            'passed' => $exam->attempts()
-                ->whereRaw('score >= (SELECT minimum_passing_grade FROM majors WHERE id = exam_attempts.student_id)')
-                ->count(),
-            'average_score' => $exam->attempts()
-                ->whereNotNull('score')
-                ->avg('score'),
-        ];
+        $attempts = $attemptsQuery->paginate(15);
+
+        // Transform attempts for frontend
+        $attemptsTransformed = $attempts->through(function ($attempt) {
+            $score      = (float) $attempt->score;
+            $totalScore = (float) ($attempt->total_score ?? 0);
+
+            $percentage = $totalScore > 0
+                ? round(($score / $totalScore) * 100, 2)
+                : 0;
+
+            $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
+            $isPassed   = $score >= $minPassing;
+
+            return [
+                'id'           => $attempt->id,
+                'score'        => $score,
+                'total_score'  => $totalScore,
+                'percentage'   => $percentage,
+                'is_passed'    => $isPassed,
+                'started_at'   => optional($attempt->started_at)->toIso8601String(),
+                'completed_at' => optional($attempt->completed_at)->toIso8601String(),
+                'student'      => [
+                    'id'    => $attempt->student->id,
+                    'name'  => $attempt->student->name,
+                    'email' => $attempt->student->email,
+                    'university' => [
+                        'name' => $attempt->student->university->name ?? '-',
+                    ],
+                    'major' => [
+                        'name'                  => $attempt->student->major->name ?? '-',
+                        'minimum_passing_grade' => $minPassing,
+                    ],
+                ],
+            ];
+        });
+
+        // Analytics using the SAME rule
+        $totalAttempts = $attemptsQuery->count();
+
+        $passed = $exam->attempts()
+            ->whereHas('student.major', function ($q) {
+                $q->whereColumn('exam_attempts.score', '>=', 'majors.minimum_passing_grade');
+            })
+            ->count();
+
+        $averagePercentage = $exam->attempts()
+            ->whereNotNull('score')
+            ->whereNotNull('total_score')
+            ->where('total_score', '>', 0)
+            ->selectRaw('AVG(score / total_score * 100) as avg_pct')
+            ->value('avg_pct') ?? 0;
 
         return Inertia::render('admin/exams/ExamAttempts', [
-            'exam' => $exam,
-            'attempts' => $attempts,
-            'analytics' => $analytics,
+            'exam' => [
+                'id'   => $exam->id,
+                'name' => $exam->name,
+            ],
+            'attempts' => $attemptsTransformed,
+            'analytics' => [
+                'total_attempts' => $totalAttempts,
+                'passed'         => $passed,
+                'average_score'  => round($averagePercentage, 2),
+            ],
         ]);
     }
+
 
     public function attemptDetail(ExamAttempt $attempt)
     {
