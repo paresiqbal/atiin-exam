@@ -189,11 +189,11 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">
-                            Attempts - {exam.name}
+                            Percobaan - {exam.name}
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Monitor student performance and detailed attempt
-                            data.
+                            Pantau kinerja siswa dan data percobaan secara
+                            rinci.
                         </p>
                     </div>
 
@@ -203,7 +203,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                     >
                         <Button variant="outline">
                             <Download className="mr-2 h-4 w-4" />
-                            Export to CSV
+                            Ekspor ke CSV
                         </Button>
                     </a>
                 </div>
@@ -213,7 +213,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Total Attempts
+                                Total Percobaan
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -226,7 +226,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Passed
+                                Lulus
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -239,7 +239,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Pass Rate
+                                Tingkat Kelulusan
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -252,7 +252,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Average Score
+                                Skor Rata-rata
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -299,9 +299,11 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="passed">Passed</SelectItem>
-                                <SelectItem value="failed">Failed</SelectItem>
+                                <SelectItem value="all">
+                                    Semua Status
+                                </SelectItem>
+                                <SelectItem value="passed">Lulus</SelectItem>
+                                <SelectItem value="failed">Gagal</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -309,7 +311,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <Filter className="h-3 w-3" />
-                                Date:
+                                Tanggal:
                             </div>
                             <input
                                 type="date"
@@ -318,7 +320,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                 className="h-9 rounded-md border px-2 text-xs"
                             />
                             <span className="text-xs text-muted-foreground">
-                                to
+                                sampai
                             </span>
                             <input
                                 type="date"
@@ -339,12 +341,12 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="date">
-                                        Completed Date
+                                        Tanggal Selesai
                                     </SelectItem>
                                     <SelectItem value="name">
-                                        Student Name
+                                        Nama Siswa
                                     </SelectItem>
-                                    <SelectItem value="score">Score</SelectItem>
+                                    <SelectItem value="score">Skor</SelectItem>
                                 </SelectContent>
                             </Select>
 
@@ -364,7 +366,8 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                 {processedAttempts.length === 0 ? (
                     <Card>
                         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                            No attempts found with current filters.
+                            Tidak ada percobaan yang ditemukan dengan filter
+                            saat ini.
                         </CardContent>
                     </Card>
                 ) : (
@@ -373,28 +376,28 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                             <thead className="border-b bg-muted/40">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Student
+                                        Nama Siswa
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        University
+                                        Universitas
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Major
+                                        Jurusan
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                         Status
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Score
+                                        Skor
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Time Taken
+                                        Waktu Pengambilan
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Completed At
+                                        Tanggal Selesai
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Actions
+                                        Aksi
                                     </th>
                                 </tr>
                             </thead>
@@ -527,7 +530,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                                         variant="outline"
                                                         size="sm"
                                                     >
-                                                        View Details
+                                                        Lihat Detail
                                                     </Button>
                                                 </Link>
                                             </td>

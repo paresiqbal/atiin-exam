@@ -103,14 +103,14 @@ export default function AttemptDetail({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`Attempt Details - ${exam.name}`} />
+            <Head title={`Detail Percobaan - ${exam.name}`} />
 
             <div className="space-y-6 p-4">
                 {/* Header */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">
-                            Attempt Details
+                            Detail Percobaan
                         </h1>
                         <p className="text-sm text-muted-foreground">
                             {exam.name} &mdash; {student.name}
@@ -121,7 +121,7 @@ export default function AttemptDetail({
                         <Link href={`/admin/exams/${exam.id}/attempts`}>
                             <Button variant="ghost" className="gap-2">
                                 <ArrowLeft className="h-4 w-4" />
-                                Back to Attempts
+                                Kembali ke Percobaan
                             </Button>
                         </Link>
 
@@ -137,7 +137,7 @@ export default function AttemptDetail({
                                 type="button"
                             >
                                 <Download className="h-4 w-4" />
-                                Download PDF
+                                Unduh PDF
                             </Button>
                         </a>
                     </div>
@@ -164,7 +164,7 @@ export default function AttemptDetail({
                                 </div>
                                 <div>
                                     <p className="text-xs font-medium text-muted-foreground uppercase">
-                                        Overall Result
+                                        Hasil Keseluruhan
                                     </p>
                                     <p
                                         className={cn(
@@ -174,7 +174,7 @@ export default function AttemptDetail({
                                                 : 'text-destructive',
                                         )}
                                     >
-                                        {isPassed ? 'PASSED' : 'FAILED'}
+                                        {isPassed ? 'LULUS' : 'GAGAL'}
                                     </p>
                                     <p className="text-sm text-muted-foreground">
                                         Completed on{' '}
@@ -190,7 +190,7 @@ export default function AttemptDetail({
                             <div className="grid grid-cols-2 gap-3 text-right md:grid-cols-3 md:text-left">
                                 <div className="rounded-lg border bg-background px-4 py-3 text-left">
                                     <p className="text-xs font-medium text-muted-foreground">
-                                        Raw Score
+                                        Skor
                                     </p>
                                     <p className="text-xl font-bold">
                                         {attempt.score}{' '}
@@ -202,7 +202,7 @@ export default function AttemptDetail({
 
                                 <div className="rounded-lg border bg-background px-4 py-3 text-left">
                                     <p className="text-xs font-medium text-muted-foreground">
-                                        Percentage
+                                        Persentase
                                     </p>
                                     <p
                                         className={cn(
@@ -218,7 +218,7 @@ export default function AttemptDetail({
 
                                 <div className="rounded-lg border bg-background px-4 py-3 text-left">
                                     <p className="text-xs font-medium text-muted-foreground">
-                                        Passing Score (points)
+                                        Passing Grade
                                     </p>
                                     <p className="text-xl font-bold">
                                         {passingScore}
@@ -228,7 +228,7 @@ export default function AttemptDetail({
                                 {timeTaken && (
                                     <div className="rounded-lg border bg-background px-4 py-3 text-left md:col-span-3">
                                         <p className="text-xs font-medium text-muted-foreground">
-                                            Time Taken
+                                            Waktu yang Dihabiskan
                                         </p>
                                         <p className="text-xl font-bold">
                                             {timeTaken}
@@ -245,13 +245,13 @@ export default function AttemptDetail({
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Student Information
+                                Informasi Siswa
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 text-sm">
                             <div className="flex justify-between gap-4">
                                 <span className="text-muted-foreground">
-                                    Name
+                                    Nama
                                 </span>
                                 <span className="font-medium">
                                     {student.name}
@@ -267,7 +267,7 @@ export default function AttemptDetail({
                             </div>
                             <div className="flex justify-between gap-4">
                                 <span className="text-muted-foreground">
-                                    University
+                                    Universitas
                                 </span>
                                 <span className="font-medium">
                                     {student.university?.name ?? '-'}
@@ -275,7 +275,7 @@ export default function AttemptDetail({
                             </div>
                             <div className="flex justify-between gap-4">
                                 <span className="text-muted-foreground">
-                                    Major
+                                    Program Studi
                                 </span>
                                 <span className="font-medium">
                                     {student.major?.name ?? '-'}
@@ -287,13 +287,13 @@ export default function AttemptDetail({
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Exam Information
+                                Informasi Ujian
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2 text-sm">
                             <div className="flex justify-between gap-4">
                                 <span className="text-muted-foreground">
-                                    Exam
+                                    Ujian
                                 </span>
                                 <span className="font-medium">{exam.name}</span>
                             </div>
@@ -309,12 +309,13 @@ export default function AttemptDetail({
                 {/* Question Breakdown */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Question Breakdown</CardTitle>
+                        <CardTitle>Rincian Pertanyaan</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {questionDetails.length === 0 ? (
                             <p className="py-6 text-sm text-muted-foreground">
-                                No questions found for this attempt.
+                                Tidak ada pertanyaan yang ditemukan untuk
+                                percobaan ini.
                             </p>
                         ) : (
                             <Accordion
@@ -349,7 +350,7 @@ export default function AttemptDetail({
                                                     <div className="flex-1">
                                                         <div className="flex flex-wrap items-center gap-2">
                                                             <span className="text-xs font-semibold text-muted-foreground">
-                                                                Q{index + 1}
+                                                                P{index + 1}
                                                             </span>
                                                             <span className="text-xs text-muted-foreground uppercase">
                                                                 {question.question_type.replace(
@@ -365,7 +366,7 @@ export default function AttemptDetail({
                                                                 {
                                                                     question.points
                                                                 }{' '}
-                                                                pts
+                                                                poin
                                                             </span>
                                                             {perf && (
                                                                 <span className="text-xs text-muted-foreground">
@@ -401,7 +402,7 @@ export default function AttemptDetail({
                                                         )}
                                                     >
                                                         <p className="mb-1 text-xs font-medium text-muted-foreground">
-                                                            Student Answer
+                                                            Jawaban Siswa
                                                         </p>
                                                         {question.student_answer ? (
                                                             <div
@@ -412,7 +413,7 @@ export default function AttemptDetail({
                                                             />
                                                         ) : (
                                                             <p className="text-xs text-muted-foreground italic">
-                                                                Not answered
+                                                                Tidak dijawab
                                                             </p>
                                                         )}
                                                     </div>
@@ -420,7 +421,7 @@ export default function AttemptDetail({
                                                     {/* Correct Answer */}
                                                     <div className="rounded-md border bg-secondary/40 p-3">
                                                         <p className="mb-1 text-xs font-medium text-muted-foreground">
-                                                            Correct Answer
+                                                            Jawaban Benar
                                                         </p>
                                                         {question.correct_answer ? (
                                                             <div
@@ -431,7 +432,10 @@ export default function AttemptDetail({
                                                             />
                                                         ) : (
                                                             <p className="text-xs text-muted-foreground italic">
-                                                                No correct
+                                                                Tidak ada
+                                                                jawaban benar
+                                                                yang
+                                                                dikonfigurasi
                                                                 answer
                                                                 configured
                                                             </p>
