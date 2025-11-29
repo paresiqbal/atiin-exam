@@ -68,6 +68,7 @@ export default function StudentUnivIndex({
         useState<University | null>(null);
     const [showComparison, setShowComparison] = useState(false);
     const [showNoScoreDialog, setShowNoScoreDialog] = useState(false);
+    const currentYear = new Date().getFullYear();
 
     // Filter universities based on search query
     const filteredUniversities = useMemo(() => {
@@ -118,6 +119,9 @@ export default function StudentUnivIndex({
                         </h1>
                         <p className="text-gray-600 dark:text-gray-400">
                             Discover universities and their academic programs
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500">
+                            This data is up to date for {currentYear}.
                         </p>
                     </div>
 
