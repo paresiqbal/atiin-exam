@@ -29,6 +29,19 @@ interface QuestionDetail {
     points_earned: number;
 }
 
+interface StudentPlacement {
+    university: {
+        id: number;
+        name: string;
+        city?: string | null;
+    } | null;
+    major: {
+        id: number;
+        name: string;
+        minimum_passing_grade: number;
+    } | null;
+}
+
 interface Props {
     attempt: {
         id: number;
@@ -43,6 +56,7 @@ interface Props {
     passingScore: number;
     isPassed: boolean;
     questionDetails: QuestionDetail[];
+    studentPlacement?: StudentPlacement;
 }
 
 export default function Results({
@@ -51,16 +65,24 @@ export default function Results({
     passingScore,
     isPassed,
     questionDetails,
+    studentPlacement,
 }: Props) {
     const percentage = Math.round((attempt.score / attempt.total_score) * 100);
+
+    const mainMessage = isPassed
+        ? 'Congratulations! You reached the minimum grade for your chosen major.'
+        : "You haven't reached the minimum grade for your chosen major yet.";
+
+    const hasPlacementInfo =
+        studentPlacement?.university && studentPlacement?.major;
 
     return (
         <div className="min-h-screen bg-background px-4 py-8 text-foreground">
             <Head title={`Results: ${exam.title}`} />
 
             <div className="container mx-auto max-w-4xl space-y-8">
-                {/* Header / Back Link */}
-                <div className="flex items-center justify-between">
+                {/* Header / Back + Actions */}
+                <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                     <Link href="/student/dashboard">
                         <Button
                             variant="ghost"
@@ -70,16 +92,26 @@ export default function Results({
                             Back to Dashboard
                         </Button>
                     </Link>
-                    <Link
-                        href={`/student/exams/${attempt.id}/download-pdf`}
-                        as="a"
-                        method="get"
-                    >
-                        <Button variant="outline">
-                            <Download className="mr-2 h-4 w-4" />
-                            Download Results
-                        </Button>
-                    </Link>
+
+                    <div className="flex flex-wrap gap-2">
+                        <a
+                            href={`/student/exams/${attempt.id}/download-pdf`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <Button variant="outline">
+                                <Download className="mr-2 h-4 w-4" />
+                                Download Results
+                            </Button>
+                        </a>
+
+                        {/* New: go to universities */}
+                        <Link href="/student/universities">
+                            <Button variant="default">
+                                Check other universities
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Score Card */}
@@ -108,7 +140,7 @@ export default function Results({
                             <h1 className="text-3xl font-bold tracking-tight">
                                 {exam.title}
                             </h1>
-                            <div className="flex items-center justify-center gap-3">
+                            <div className="flex flex-wrap items-center justify-center gap-3">
                                 <Badge
                                     variant={
                                         isPassed ? 'default' : 'destructive'
@@ -124,6 +156,18 @@ export default function Results({
                                     ).toLocaleDateString()}
                                 </span>
                             </div>
+
+                            {/* Main message about pass/fail relative to major */}
+                            <p
+                                className={cn(
+                                    'text-sm font-medium',
+                                    isPassed
+                                        ? 'text-green-700 dark:text-green-300'
+                                        : 'text-destructive',
+                                )}
+                            >
+                                {mainMessage}
+                            </p>
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-3">
@@ -165,6 +209,67 @@ export default function Results({
                     </CardContent>
                 </Card>
 
+                {/* Selected University & Major Card */}
+                {hasPlacementInfo && (
+                    <Card className="border border-muted">
+                        <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <div className="text-xs font-semibold text-muted-foreground uppercase">
+                                    Your chosen path
+                                </div>
+                                <div className="mt-1 text-lg font-semibold">
+                                    {studentPlacement!.major!.name}
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                    at{' '}
+                                    <span className="font-medium">
+                                        {studentPlacement!.university!.name}
+                                    </span>
+                                    {studentPlacement!.university!.city && (
+                                        <>
+                                            {' '}
+                                            ·{' '}
+                                            {studentPlacement!.university!.city}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="text-right">
+                                <div className="text-xs text-muted-foreground">
+                                    Minimum passing grade
+                                </div>
+                                <div className="text-2xl font-bold">
+                                    {
+                                        studentPlacement!.major!
+                                            .minimum_passing_grade
+                                    }
+                                </div>
+                                <div
+                                    className={cn(
+                                        'mt-1 text-xs font-medium',
+                                        isPassed
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-destructive',
+                                    )}
+                                >
+                                    {isPassed
+                                        ? 'You can enter this program based on this exam.'
+                                        : 'You cannot enter this program yet based on this exam.'}
+                                </div>
+                                <div className="mt-3">
+                                    <Link href="/student/universities">
+                                        <Button variant="outline" size="sm">
+                                            Check other universities you may
+                                            qualify for
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Question Breakdown */}
                 <div className="space-y-4">
                     <h2 className="text-xl font-semibold">
@@ -198,7 +303,6 @@ export default function Results({
                                                     Q{index + 1}.
                                                 </span>
 
-                                                {/* FIXED QUESTION TEXT HTML */}
                                                 <div
                                                     className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
                                                     dangerouslySetInnerHTML={{

@@ -219,7 +219,11 @@ class ExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $passingScore = $attempt->student->major->minimum_passing_grade ?? 0;
+        $student = $attempt->student;
+        $major = $student->major;
+        $university = $student->university;
+
+        $passingScore = $major->minimum_passing_grade ?? 0;
         $isPassed = $attempt->score >= $passingScore;
 
         $questionDetails = $attempt->exam->questionBank->questions
@@ -240,22 +244,46 @@ class ExamController extends Controller
                     'student_answer' => $response?->selectedOption?->option_text,
                     'correct_answer' => $correctOption?->option_text,
                     'is_correct' => $response?->selectedOption?->is_correct ?? false,
-                    'points_earned' => $response ? ($response->selectedOption?->is_correct ? $question->points : 0) : 0,
+                    'points_earned' => $response
+                        ? ($response->selectedOption?->is_correct ? $question->points : 0)
+                        : 0,
                 ];
             });
 
         return Inertia::render('student/exams/Results', [
-            'attempt' => $attempt,
-            'exam' => $attempt->exam,
+            'attempt' => [
+                'id' => $attempt->id,
+                'score' => $attempt->score,
+                'total_score' => $attempt->total_score,
+                'completed_at' => $attempt->completed_at
+                    ? \Carbon\Carbon::parse($attempt->completed_at)->toIso8601String()
+                    : null,
+            ],
+            'exam' => [
+                'title' => $attempt->exam->title ?? $attempt->exam->name,
+                'description' => $attempt->exam->description,
+            ],
             'passingScore' => $passingScore,
             'isPassed' => $isPassed,
             'questionDetails' => $questionDetails,
+            'studentPlacement' => [
+                'university' => $university ? [
+                    'id' => $university->id,
+                    'name' => $university->name,
+                    'city' => $university->city,
+                ] : null,
+                'major' => $major ? [
+                    'id' => $major->id,
+                    'name' => $major->name,
+                    'minimum_passing_grade' => $major->minimum_passing_grade,
+                ] : null,
+            ],
         ]);
     }
 
+
     public function downloadResults(ExamAttempt $attempt)
     {
-        // Check if student owns this attempt
         if ($attempt->student_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }

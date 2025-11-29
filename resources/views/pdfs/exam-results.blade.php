@@ -183,30 +183,43 @@
                 <div class="question-header">
                     <div>
                         <div class="question-text">Question {{ $index + 1 }}</div>
-                        {{ $question['question_text'] }}
+
+                        {{-- Render question text as HTML --}}
+                        <div>
+                            {!! $question['question_text'] !!}
+                        </div>
                     </div>
                     <div style="text-align: right;">
-                        <span
-                            class="question-type">{{ ucfirst(str_replace('_', ' ', $question['question_type'])) }}</span>
-                        <span class="points-badge">{{ $question['points_earned'] }}/{{ $question['points'] }}
-                            pts</span>
+                        <span class="question-type">
+                            {{ ucfirst(str_replace('_', ' ', $question['question_type'])) }}
+                        </span>
+                        <span class="points-badge">
+                            {{ $question['points_earned'] }}/{{ $question['points'] }} pts
+                        </span>
                     </div>
                 </div>
 
+                {{-- Student Answer --}}
                 <div class="answer-row {{ $question['is_correct'] ? 'correct' : 'incorrect' }}">
                     <span class="answer-label">Your Answer:</span>
-                    {{ $question['student_answer'] ?? 'Not answered' }}
+                    @if (!empty($question['student_answer']))
+                        {!! $question['student_answer'] !!}
+                    @else
+                        Not answered
+                    @endif
                 </div>
 
+                {{-- Correct Answer (only when wrong) --}}
                 @if (!$question['is_correct'])
                     <div class="answer-row correct">
                         <span class="answer-label">Correct Answer:</span>
-                        {{ $question['correct_answer'] }}
+                        {!! $question['correct_answer'] !!}
                     </div>
                 @endif
             </div>
         @endforeach
     </div>
+
 
     <div class="footer">
         <p>This document was generated on {{ now()->format('Y-m-d H:i:s') }}</p>

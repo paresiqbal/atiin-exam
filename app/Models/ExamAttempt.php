@@ -20,6 +20,12 @@ class ExamAttempt extends Model
         'status',
     ];
 
+    protected $casts = [
+        'started_at'   => 'datetime',
+        'completed_at' => 'datetime',
+    ];
+
+
     public function exam()
     {
         return $this->belongsTo(Exam::class);
