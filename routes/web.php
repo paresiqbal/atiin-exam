@@ -57,9 +57,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('/exams/{exam}/regenerate-token', [AdminExamController::class, 'regenerateToken'])
             ->name('admin.exams.regenerate-token');
         Route::get(
-            '/admin/attempts/{attempt}/download-pdf',
+            '/attempts/{attempt}/download-pdf',
             [AdminExamController::class, 'downloadAttemptPdf']
-        )->name('admin.attempts.download-pdf');
+        )->name('attempts.download-pdf');
 
         Route::resource('majors', MajorController::class, ['only' => ['store', 'edit', 'update', 'destroy']]);
         Route::post('majors', [MajorController::class, 'store'])->name('majors.store');

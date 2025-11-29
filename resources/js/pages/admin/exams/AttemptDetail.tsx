@@ -125,16 +125,21 @@ export default function AttemptDetail({
                             </Button>
                         </Link>
 
-                        <Link
+                        <a
                             href={`/admin/attempts/${attempt.id}/download-pdf`}
-                            as="a"
-                            method="get"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex"
                         >
-                            <Button variant="outline" className="gap-2">
+                            <Button
+                                variant="outline"
+                                className="gap-2"
+                                type="button"
+                            >
                                 <Download className="h-4 w-4" />
                                 Download PDF
                             </Button>
-                        </Link>
+                        </a>
                     </div>
                 </div>
 
