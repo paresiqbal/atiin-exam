@@ -56,7 +56,7 @@ class StudentController extends Controller
 
         $attempts = $student->attempts()->with('exam')->orderByDesc('completed_at')->get();
 
-        return Inertia::render('admin/students/Show', [
+        return Inertia::render('admin/students/StudentShow', [
             'student' => $student->load('university', 'major', 'school'),
             'exam_attempts' => $attempts,
         ]);
