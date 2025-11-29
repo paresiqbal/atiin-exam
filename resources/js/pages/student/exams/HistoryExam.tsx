@@ -1,4 +1,6 @@
-'use client';
+import { Head } from '@inertiajs/react';
+import { Download, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,17 +12,22 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
-import { Download, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
 
 interface ExamAttempt {
     id: number;
     exam: {
         id: number;
-        title: string; // or name, depending on your DB
+        title: string; // or name
     };
     score: number;
     total_score: number;
@@ -40,8 +47,20 @@ interface ExamHistoryProps {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/student/dashboard' },
-    { title: 'Exam History', href: '/student/exam-history' },
+    { title: 'History Ujian', href: '/student/exam-history' },
 ];
+
+function formatDate(value: string) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
 
 export default function HistoryExam({ attempts }: ExamHistoryProps) {
     const [searchQuery, setSearchQuery] = useState('');
@@ -51,10 +70,19 @@ export default function HistoryExam({ attempts }: ExamHistoryProps) {
         const query = searchQuery.toLowerCase();
 
         return attempts.data.filter((attempt) => {
-            const name = attempt.exam?.title || ''; // or exam?.name
+            const name = attempt.exam?.title || '';
             return name.toLowerCase().includes(query);
         });
     }, [searchQuery, attempts.data]);
+
+    const passedCount = attempts.data.filter((a) => a.is_passed).length;
+    const avgPercentage =
+        attempts.data.length > 0
+            ? (
+                  attempts.data.reduce((sum, a) => sum + a.percentage, 0) /
+                  attempts.data.length
+              ).toFixed(1)
+            : '0.0';
 
     const handleDownloadPDF = async (attemptId: number) => {
         try {
@@ -79,38 +107,40 @@ export default function HistoryExam({ attempts }: ExamHistoryProps) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Exam History" />
+            <Head title="History Ujian" />
 
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 dark:from-slate-950 dark:to-slate-900">
-                <div className="mx-auto max-w-5xl space-y-8">
+            <div className="p-4">
+                <div className="mx-auto max-w-full space-y-6">
                     {/* Header */}
-                    <div className="space-y-2">
-                        <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-                            Exam History
-                        </h1>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            Review all your exam attempts and download results
+                    <div className="space-y-1">
+                        <h1 className="text-3xl font-bold">History Ujian</h1>
+                        <p className="text-muted-foreground">
+                            Tinjau semua percobaan ujian Anda dan unduh
+                            hasilnya.
                         </p>
                     </div>
 
                     {/* Search */}
-                    <div className="relative">
-                        <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                    <div className="relative max-w-md">
+                        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                            placeholder="Search exams..."
+                            placeholder="Cari ujian..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-12 pl-10"
+                            className="h-10 pl-9"
                         />
                     </div>
 
                     {/* Summary Stats */}
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-3">
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-medium">
-                                    Total Attempts
+                                    Total Percobaan
                                 </CardTitle>
+                                <CardDescription>
+                                    Jumlah semua percobaan ujian Anda.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="text-3xl font-bold">
@@ -122,15 +152,15 @@ export default function HistoryExam({ attempts }: ExamHistoryProps) {
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-medium">
-                                    Passed
+                                    Lulus
                                 </CardTitle>
+                                <CardDescription>
+                                    Total percobaan dengan status lulus.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                                    {
-                                        attempts.data.filter((a) => a.is_passed)
-                                            .length
-                                    }
+                                <div className="text-3xl font-bold">
+                                    {passedCount}
                                 </div>
                             </CardContent>
                         </Card>
@@ -138,21 +168,15 @@ export default function HistoryExam({ attempts }: ExamHistoryProps) {
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-medium">
-                                    Average Score
+                                    Skor Rata-rata
                                 </CardTitle>
+                                <CardDescription>
+                                    Rata-rata persentase dari semua percobaan.
+                                </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="text-3xl font-bold">
-                                    {attempts.data.length > 0
-                                        ? (
-                                              attempts.data.reduce(
-                                                  (sum, a) =>
-                                                      sum + a.percentage,
-                                                  0,
-                                              ) / attempts.data.length
-                                          ).toFixed(1)
-                                        : 0}
-                                    %
+                                    {avgPercentage}%
                                 </div>
                             </CardContent>
                         </Card>
@@ -161,80 +185,104 @@ export default function HistoryExam({ attempts }: ExamHistoryProps) {
                     {/* Attempts Table */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>All Attempts</CardTitle>
+                            <CardTitle>Semua Percobaan</CardTitle>
                             <CardDescription>
-                                Detailed view of each exam attempt
+                                Tinjauan rinci dari setiap percobaan ujian.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             {filteredAttempts.length > 0 ? (
-                                <div className="space-y-3">
-                                    {filteredAttempts.map((attempt) => (
-                                        <div
-                                            key={attempt.id}
-                                            className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-4 transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
-                                        >
-                                            <div className="flex-1">
-                                                <p className="font-semibold text-gray-900 dark:text-white">
-                                                    {attempt.exam?.title}
-                                                </p>
-                                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                    {attempt.completed_at}
-                                                </p>
-                                            </div>
-
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-right">
-                                                    <p className="text-lg font-bold text-gray-900 dark:text-white">
+                                <div className="overflow-x-auto rounded-lg border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Ujian</TableHead>
+                                                <TableHead>Tanggal</TableHead>
+                                                <TableHead className="text-center">
+                                                    Skor
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    Persentase
+                                                </TableHead>
+                                                <TableHead className="text-center">
+                                                    Status
+                                                </TableHead>
+                                                <TableHead className="text-right">
+                                                    Aksi
+                                                </TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {filteredAttempts.map((attempt) => (
+                                                <TableRow key={attempt.id}>
+                                                    <TableCell>
+                                                        <div className="font-medium">
+                                                            {
+                                                                attempt.exam
+                                                                    ?.title
+                                                            }
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {formatDate(
+                                                                attempt.completed_at,
+                                                            )}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
                                                         {attempt.score}/
                                                         {attempt.total_score}
-                                                    </p>
-                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                        {attempt.percentage}%
-                                                    </p>
-                                                </div>
-
-                                                <Badge
-                                                    variant={
-                                                        attempt.is_passed
-                                                            ? 'default'
-                                                            : 'destructive'
-                                                    }
-                                                    className="whitespace-nowrap"
-                                                >
-                                                    {attempt.is_passed
-                                                        ? 'Passed'
-                                                        : 'Failed'}
-                                                </Badge>
-
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        handleDownloadPDF(
-                                                            attempt.id,
-                                                        )
-                                                    }
-                                                    className="gap-2"
-                                                >
-                                                    <Download className="h-4 w-4" />
-                                                    PDF
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        {attempt.percentage.toFixed(
+                                                            1,
+                                                        )}
+                                                        %
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
+                                                        <Badge
+                                                            variant={
+                                                                attempt.is_passed
+                                                                    ? 'default'
+                                                                    : 'outline'
+                                                            }
+                                                            className="whitespace-nowrap"
+                                                        >
+                                                            {attempt.is_passed
+                                                                ? 'Lulus'
+                                                                : 'Tidak Lulus'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                handleDownloadPDF(
+                                                                    attempt.id,
+                                                                )
+                                                            }
+                                                            className="gap-2"
+                                                        >
+                                                            <Download className="h-4 w-4" />
+                                                            PDF
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             ) : (
-                                <div className="py-12 text-center">
-                                    <p className="mb-4 text-gray-500 dark:text-gray-400">
-                                        No attempts found
-                                    </p>
+                                <div className="py-10 text-center text-muted-foreground">
+                                    Tidak ada percobaan yang ditemukan.
                                 </div>
                             )}
                         </CardContent>
                     </Card>
 
-                    {/* Pagination */}
+                    {/* Pagination (client-side page state only) */}
                     {attempts.last_page > 1 && (
                         <div className="flex justify-center gap-2">
                             {Array.from(

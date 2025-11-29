@@ -108,20 +108,20 @@ export default function StudentUnivIndex({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Universities" />
+            <Head title="Universitas" />
 
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6 dark:from-slate-950 dark:to-slate-900">
+            <div className="min-h-screen p-6">
                 <div className="mx-auto max-w-7xl space-y-8">
                     {/* Header */}
                     <div className="space-y-2">
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            Explore Universities
+                            Jelajahi Universitas
                         </h1>
                         <p className="text-gray-600 dark:text-gray-400">
-                            Discover universities and their academic programs
+                            Temukan universitas dan program akademiknya
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-500">
-                            This data is up to date for {currentYear}.
+                            Data ini diperbarui untuk tahun {currentYear}.
                         </p>
                     </div>
 
@@ -131,16 +131,16 @@ export default function StudentUnivIndex({
                             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm">
                                 <div>
                                     <p className="font-semibold text-gray-900 dark:text-white">
-                                        Latest Exam: {latest_exam.exam_name}
+                                        Ujian Terbaru: {latest_exam.exam_name}
                                     </p>
                                     <p className="text-gray-600 dark:text-gray-400">
-                                        Completed on:{' '}
+                                        Selesai pada:{' '}
                                         {latest_exam.completed_at ?? '-'}
                                     </p>
                                 </div>
                                 <div className="text-right">
                                     <p className="text-xs text-gray-500">
-                                        Your score
+                                        Skor Anda
                                     </p>
                                     <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                                         {student_latest_score}
@@ -154,7 +154,7 @@ export default function StudentUnivIndex({
                     <div className="relative">
                         <Search className="pointer-events-none absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-gray-400" />
                         <Input
-                            placeholder="Search universities or majors..."
+                            placeholder="Cari universitas atau program studi..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="h-12 pl-10 text-base"
@@ -166,7 +166,7 @@ export default function StudentUnivIndex({
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    Total Universities
+                                    Total Universitas
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -179,7 +179,7 @@ export default function StudentUnivIndex({
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    Total Programs
+                                    Total Program Studi
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -192,7 +192,7 @@ export default function StudentUnivIndex({
                         <Card>
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    Results Found
+                                    Hasil Ditemukan
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
@@ -279,7 +279,7 @@ export default function StudentUnivIndex({
                                                                         .majors
                                                                         .length -
                                                                         3}{' '}
-                                                                    more
+                                                                    lagi
                                                                 </Badge>
                                                             )}
                                                         </div>
@@ -297,7 +297,7 @@ export default function StudentUnivIndex({
                                                     );
                                                 }}
                                             >
-                                                View Details
+                                                Lihat Detail
                                             </Button>
                                         </CardContent>
                                     </Card>
@@ -309,10 +309,10 @@ export default function StudentUnivIndex({
                                     <Search className="mx-auto h-12 w-12 text-gray-400" />
                                     <div>
                                         <h3 className="font-semibold text-gray-900 dark:text-white">
-                                            No universities found
+                                            Tidak ada universitas ditemukan
                                         </h3>
                                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                                            Try adjusting your search query
+                                            Coba sesuaikan kueri pencarian Anda
                                         </p>
                                     </div>
                                 </CardContent>
@@ -325,7 +325,7 @@ export default function StudentUnivIndex({
             {/* Details Modal */}
             {selectedUniversity && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
                     onClick={handleCloseModal}
                 >
                     <Card
@@ -355,7 +355,7 @@ export default function StudentUnivIndex({
                             {selectedUniversity.description && (
                                 <div>
                                     <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">
-                                        About
+                                        Tentang
                                     </h3>
                                     <p className="text-gray-600 dark:text-gray-400">
                                         {selectedUniversity.description}
@@ -370,7 +370,7 @@ export default function StudentUnivIndex({
                                         <div className="mb-3 flex items-center gap-2">
                                             <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                             <h3 className="font-semibold text-gray-900 dark:text-white">
-                                                Available Programs
+                                                Program Tersedia
                                             </h3>
                                         </div>
                                         <div className="space-y-2">
@@ -414,7 +414,8 @@ export default function StudentUnivIndex({
                                                                         badgeClasses
                                                                     }
                                                                 >
-                                                                    Min. Grade:{' '}
+                                                                    Minimal
+                                                                    Nilai:{' '}
                                                                     {
                                                                         major.minimum_passing_grade
                                                                     }
@@ -432,8 +433,8 @@ export default function StudentUnivIndex({
                                                                             }
                                                                         >
                                                                             {meets
-                                                                                ? 'You can enter this program.'
-                                                                                : 'You cannot enter this program yet.'}
+                                                                                ? 'Anda dapat masuk ke program ini.'
+                                                                                : 'Anda belum dapat masuk ke program ini.'}
                                                                         </p>
                                                                     )}
                                                             </div>
@@ -454,7 +455,7 @@ export default function StudentUnivIndex({
                                         rel="noopener noreferrer"
                                         className="text-sm text-blue-600 hover:underline dark:text-blue-400"
                                     >
-                                        Visit University Website →
+                                        Kunjungi Website Universitas →
                                     </a>
                                 </div>
                             )}
@@ -464,7 +465,7 @@ export default function StudentUnivIndex({
                                 size="lg"
                                 onClick={handleCompareClick}
                             >
-                                Compare Grade
+                                Bandingkan Nilai
                             </Button>
                         </CardContent>
                     </Card>
@@ -475,13 +476,14 @@ export default function StudentUnivIndex({
                     >
                         <DialogContent className="max-w-sm">
                             <DialogHeader>
-                                <DialogTitle>No Exam Score Found</DialogTitle>
+                                <DialogTitle>Tidak ada skor ujian</DialogTitle>
                             </DialogHeader>
 
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                                You haven’t completed any exam yet. Please
-                                finish a test first so we can compare your score
-                                with the university program requirements.
+                                Anda belum menyelesaikan ujian apapun. Silakan
+                                selesaikan sebuah ujian terlebih dahulu agar
+                                kami dapat membandingkan skor Anda dengan
+                                persyaratan program universitas.
                             </p>
 
                             <DialogFooter>
