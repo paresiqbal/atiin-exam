@@ -16,12 +16,11 @@ class MajorController extends Controller
             'university_id'          => 'required|exists:universities,id',
             'name'                   => 'required|string|max:255',
             'description'            => 'nullable|string',
-            'minimum_passing_grade'  => 'required|numeric|min:0|max:100',
+            'minimum_passing_grade'  => 'required|numeric|min:0',
         ]);
 
         $major = Major::create($validated);
 
-        // If called via fetch (AJAX / JSON)
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Major created successfully.',
@@ -29,7 +28,6 @@ class MajorController extends Controller
             ], 201);
         }
 
-        // If called via Inertia form / normal POST
         return redirect()
             ->route('admin.universities.show', $major->university_id)
             ->with('success', 'Program studi berhasil ditambahkan');
@@ -49,7 +47,7 @@ class MajorController extends Controller
             'university_id'          => 'required|exists:universities,id',
             'name'                   => 'required|string|max:255',
             'description'            => 'nullable|string',
-            'minimum_passing_grade'  => 'required|numeric|min:0|max:100',
+            'minimum_passing_grade'  => 'required|numeric|min:0',
         ]);
 
         $major->update($validated);

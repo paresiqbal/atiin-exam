@@ -199,12 +199,12 @@ export default function UnivCreate({
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Import Universities & Majors" />
+            <Head title="Buat Universitas dan Jurusan Baru" />
 
             <div className="space-y-6 p-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
-                        Bulk Import Universitas & Program Studi
+                        Buat Universitas dan Jurusan Baru
                     </h1>
                     <p className="mt-2 text-muted-foreground">
                         Upload file CSV untuk mengimpor multiple universitas dan

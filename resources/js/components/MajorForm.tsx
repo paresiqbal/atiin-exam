@@ -1,4 +1,3 @@
-// resources/js/components/admin/universities/MajorForm.tsx
 import { FormEvent, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -19,12 +18,11 @@ type UniversityOption = {
 };
 
 type MajorFormProps = {
-    universities: UniversityOption[]; // ✅ passed from parent
+    universities: UniversityOption[];
     onCreated?: () => void;
 };
 
 export function MajorForm({ universities, onCreated }: MajorFormProps) {
-    console.log('MajorForm universities:', universities);
     const [universityId, setUniversityId] = useState<string>('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -40,12 +38,12 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
         e.preventDefault();
 
         if (!universityId) {
-            setErrors(['Please select a university.']);
+            setErrors(['Harap pilih universitas.']);
             return;
         }
 
         if (!minimumPassingGrade) {
-            setErrors(['Please fill minimum passing grade.']);
+            setErrors(['Harap isi nilai kelulusan minimum.']);
             return;
         }
 
@@ -94,12 +92,12 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
                 setErrors(validationErrors);
                 setMessage({
                     type: 'error',
-                    text: 'Please fix the errors below.',
+                    text: 'Harap perbaiki kesalahan di bawah.',
                 });
             } else if (response.ok) {
                 setMessage({
                     type: 'success',
-                    text: 'Major created successfully.',
+                    text: 'Jurusan berhasil dibuat.',
                 });
                 setName('');
                 setDescription('');
@@ -110,14 +108,14 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
             } else {
                 setMessage({
                     type: 'error',
-                    text: 'Failed to create major.',
+                    text: 'Gagal membuat jurusan.',
                 });
             }
         } catch (_error) {
             console.error(_error);
             setMessage({
                 type: 'error',
-                text: 'Unexpected error while creating major.',
+                text: 'Terjadi kesalahan tak terduga saat membuat jurusan.',
             });
         } finally {
             setSubmitting(false);
@@ -127,7 +125,7 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Create Single Major</CardTitle>
+                <CardTitle>Buat Jurusan</CardTitle>
             </CardHeader>
             <CardContent>
                 {message && (
@@ -153,19 +151,18 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
                 <form onSubmit={handleSubmit} className="space-y-3">
                     <div>
                         <label className="mb-1 block text-sm font-medium">
-                            University <span className="text-red-500">*</span>
+                            Universitas <span className="text-red-500">*</span>
                         </label>
                         <Select
                             value={universityId}
                             onValueChange={(v) => setUniversityId(v)}
-                            // disabled={universities.length === 0}
                         >
                             <SelectTrigger>
                                 <SelectValue
                                     placeholder={
                                         universities.length === 0
-                                            ? 'No universities available'
-                                            : 'Choose university'
+                                            ? 'Tidak ada universitas tersedia'
+                                            : 'Pilih universitas'
                                     }
                                 />
                             </SelectTrigger>
@@ -181,7 +178,7 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
 
                     <div>
                         <label className="mb-1 block text-sm font-medium">
-                            Major Name <span className="text-red-500">*</span>
+                            Nama Jurusan <span className="text-red-500">*</span>
                         </label>
                         <Input
                             value={name}
@@ -193,7 +190,7 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
 
                     <div>
                         <label className="mb-1 block text-sm font-medium">
-                            Minimum Passing Grade{' '}
+                            Nilai Passing Grade{' '}
                             <span className="text-red-500">*</span>
                         </label>
                         <Input
@@ -209,7 +206,7 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
 
                     <div>
                         <label className="mb-1 block text-sm font-medium">
-                            Description
+                            Deskripsi
                         </label>
                         <Textarea
                             value={description}
@@ -218,8 +215,12 @@ export function MajorForm({ universities, onCreated }: MajorFormProps) {
                         />
                     </div>
 
-                    <Button type="submit" disabled={submitting}>
-                        {submitting ? 'Saving...' : 'Save Major'}
+                    <Button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full"
+                    >
+                        {submitting ? 'Menyimpan...' : 'Simpan Jurusan'}
                     </Button>
                 </form>
             </CardContent>
