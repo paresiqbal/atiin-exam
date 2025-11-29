@@ -1,7 +1,10 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Edit2, Plus, Search, Trash2 } from 'lucide-react';
+// resources/js/pages/admin/schools/SchoolIndex.tsx
+
+import { Head, Link, usePage } from '@inertiajs/react';
+import { Edit2, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Button } from '@/components/ui/button';
 import {
     InputGroup,
@@ -67,16 +70,6 @@ export default function SchoolIndex() {
         [schools.data, searchQuery],
     );
 
-    const handleDelete = (id: number) => {
-        if (
-            confirm(
-                'Apakah Anda yakin ingin menghapus sekolah ini? Data terkait mungkin terpengaruh.',
-            )
-        ) {
-            router.delete(`${baseUrl}/${id}`);
-        }
-    };
-
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Admin Dashboard',
@@ -92,7 +85,7 @@ export default function SchoolIndex() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manajemen Sekolah" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-4">
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 {/* Header */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -112,18 +105,20 @@ export default function SchoolIndex() {
                     </Link>
                 </div>
 
-                {/* Filters / Search */}
-                <div className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-1">
-                        <InputGroup className="w-full">
+                {/* Search (same style as UserIndex) */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
+                        <InputGroup className="flex-1">
                             <InputGroupAddon>
-                                <Search className="h-4 w-4" />
+                                <Search className="h-4 w-4 text-slate-500" />
                             </InputGroupAddon>
+
                             <InputGroupInput
                                 placeholder="Cari nama atau deskripsi sekolah..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
+
                             {searchQuery !== '' && (
                                 <InputGroupAddon align="inline-end">
                                     {filteredSchools.length} hasil
@@ -131,6 +126,9 @@ export default function SchoolIndex() {
                             )}
                         </InputGroup>
                     </div>
+
+                    {/* Right side reserve (for future filter / stats if needed) */}
+                    <div className="flex items-center gap-2"></div>
                 </div>
 
                 {/* Table */}
@@ -138,7 +136,7 @@ export default function SchoolIndex() {
                     <table className="w-full text-sm">
                         <thead className="border-b">
                             <tr>
-                                <th className="tracking-wideuppercase px-6 py-3 text-left text-xs font-semibold">
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                     Nama Sekolah
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
@@ -161,7 +159,7 @@ export default function SchoolIndex() {
                                 filteredSchools.map((school) => (
                                     <tr
                                         key={school.id}
-                                        className="transition-colors"
+                                        className="transition-colors hover:bg-foreground/10"
                                     >
                                         <td className="px-6 py-3 font-medium">
                                             {school.name}
@@ -185,20 +183,16 @@ export default function SchoolIndex() {
                                             <div className="flex gap-2">
                                                 <Link
                                                     href={`${baseUrl}/${school.id}/edit`}
-                                                    className="rounded-md p-2"
+                                                    className="rounded-md p-2 hover:bg-foreground/20"
                                                 >
                                                     <Edit2 className="h-4 w-4" />
                                                 </Link>
 
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        handleDelete(school.id)
-                                                    }
-                                                    className="rounded-md p-2 text-red-600 hover:bg-red-50"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
+                                                <ConfirmDeleteButton
+                                                    deleteUrl={`${baseUrl}/${school.id}`}
+                                                    resourceLabel="sekolah"
+                                                    itemName={school.name}
+                                                />
                                             </div>
                                         </td>
                                     </tr>
@@ -207,7 +201,7 @@ export default function SchoolIndex() {
                                 <tr>
                                     <td
                                         colSpan={5}
-                                        className="px-6 py-8 text-center text-sm"
+                                        className="px-6 py-8 text-center text-sm text-slate-500"
                                     >
                                         Tidak ada sekolah ditemukan.
                                     </td>
@@ -217,7 +211,7 @@ export default function SchoolIndex() {
                     </table>
                 </div>
 
-                {/* Pagination (shadcn + Inertia) */}
+                {/* Pagination */}
                 <div className="flex justify-center py-4">
                     <Pagination>
                         <PaginationContent>
