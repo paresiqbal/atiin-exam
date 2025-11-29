@@ -45,4 +45,9 @@ class Exam extends Model
     {
         return $this->hasMany(ExamToken::class);
     }
+
+    public function school()
+    {
+        return $this->belongsTo(School::class);
+    }
 }

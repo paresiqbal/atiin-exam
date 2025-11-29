@@ -99,10 +99,36 @@ class ExamController extends Controller
 
     public function show(Exam $exam): Response
     {
+        $exam->load(
+            'questionBank.questions.options',
+            'settings',
+            'tokens',
+            'school'
+        )->loadCount('attempts');
+
         return Inertia::render('admin/exams/ShowExam', [
-            'exam' => $exam->load('questionBank.questions.options', 'settings', 'tokens'),
+            'exam' => $exam,
         ]);
     }
+
+    public function regenerateToken(Exam $exam)
+    {
+        // Optional: only the owner admin can do this
+        if ($exam->admin_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Remove old tokens (or keep them if you want history)
+        $exam->tokens()->delete();
+
+        $newToken = ExamToken::create([
+            'exam_id' => $exam->id,
+            'token'   => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
+        ]);
+
+        return back()->with('success', 'Token regenerated successfully');
+    }
+
 
     public function edit(Exam $exam): Response
     {

@@ -1,14 +1,15 @@
+import { Head, Link, router } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
+
+import AppLayout from '@/layouts/app-layout';
+
+import { QuestionList } from '@/components/QuestionList';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import AppLayout from '@/layouts/app-layout';
-import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
 
-// Your shared QuestionList component
-import { QuestionList } from '@/components/QuestionList';
-
-// Types
 import type { Question } from '@/types/question';
+import { CalendarRange, Clock, RefreshCw, Users } from 'lucide-react';
 
 interface ExamToken {
     token: string;
@@ -29,6 +30,10 @@ interface ExamData {
     name: string;
     description: string | null;
     is_published: boolean;
+    start_at: string;
+    end_at: string;
+    attempts_count: number;
+    school?: { id: number; name: string } | null;
     settings: ExamSettings | null;
     question_bank: QuestionBank | null;
     tokens: ExamToken[];
@@ -38,8 +43,46 @@ interface Props {
     exam: ExamData;
 }
 
+function formatDateTime(value: string) {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    return d.toLocaleString();
+}
+
 export default function ShowExam({ exam }: Props) {
     const [copiedToken, setCopiedToken] = useState(false);
+    const [regenerating, setRegenerating] = useState(false);
+
+    const questions = exam.question_bank?.questions ?? [];
+
+    const statusInfo = useMemo(() => {
+        const now = new Date();
+        const start = new Date(exam.start_at);
+        const end = new Date(exam.end_at);
+
+        if (now < start) {
+            return {
+                label: 'Belum dimulai',
+                colorClass:
+                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
+            };
+        }
+
+        if (now > end) {
+            return {
+                label: 'Sudah berakhir',
+                colorClass:
+                    'bg-gray-200 text-gray-800 dark:bg-gray-800 dark:text-gray-100',
+            };
+        }
+
+        return {
+            label: 'Sedang berlangsung',
+            colorClass:
+                'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+        };
+    }, [exam.start_at, exam.end_at]);
 
     const handleCopyToken = () => {
         if (exam.tokens[0]) {
@@ -50,10 +93,26 @@ export default function ShowExam({ exam }: Props) {
     };
 
     const handlePublish = () => {
-        router.post(`/admin/exams/${exam.id}/publish`);
+        router.post(
+            `/admin/exams/${exam.id}/publish`,
+            {}, // <= data (empty)
+            {
+                preserveScroll: true,
+            },
+        );
     };
 
-    const questions = exam.question_bank?.questions ?? [];
+    const handleRegenerateToken = () => {
+        setRegenerating(true);
+        router.post(
+            `/admin/exams/${exam.id}/regenerate-token`,
+            {}, // <= data (empty)
+            {
+                preserveScroll: true,
+                onFinish: () => setRegenerating(false),
+            },
+        );
+    };
 
     return (
         <AppLayout
@@ -64,21 +123,47 @@ export default function ShowExam({ exam }: Props) {
             ]}
         >
             <Head title={exam.name} />
-            <div className="space-y-4 p-4">
+
+            <div className="space-y-6 p-4">
                 {/* Header */}
-                <div className="flex items-start justify-between">
-                    <div>
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-2">
                         <h1 className="text-3xl font-bold">{exam.name}</h1>
-                        <p className="mt-2 text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                             {exam.description || (
-                                <span className="text-gray-400 italic">
+                                <span className="italic">
                                     Tidak ada deskripsi ujian.
                                 </span>
                             )}
                         </p>
+
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <Badge
+                                className={
+                                    exam.is_published
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
+                                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
+                                }
+                            >
+                                {exam.is_published ? 'Published' : 'Draft'}
+                            </Badge>
+
+                            <Badge className={statusInfo.colorClass}>
+                                {statusInfo.label}
+                            </Badge>
+
+                            {exam.school && (
+                                <span>
+                                    Sekolah:{' '}
+                                    <span className="font-medium">
+                                        {exam.school.name}
+                                    </span>
+                                </span>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="flex space-x-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                         <Link href={`/admin/exams/${exam.id}/attempts`}>
                             <Button variant="outline">Lihat Percobaan</Button>
                         </Link>
@@ -98,79 +183,114 @@ export default function ShowExam({ exam }: Props) {
                     </div>
                 </div>
 
-                {/* Exam Settings */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Pengaturan Ujian</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {exam.settings ? (
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-sm text-gray-600">
-                                        Batas Waktu
-                                    </p>
-                                    <p className="font-semibold">
-                                        {exam.settings.time_limit_minutes} menit
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p className="text-sm text-gray-600">
-                                        Status
-                                    </p>
-                                    <span
-                                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                            exam.is_published
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-yellow-100 text-yellow-800'
-                                        }`}
-                                    >
-                                        {exam.is_published
-                                            ? 'Published'
-                                            : 'Draft'}
-                                    </span>
-                                </div>
-
-                                <div>
-                                    <p className="text-sm text-gray-600">
-                                        Acak Soal
-                                    </p>
-                                    <p className="font-semibold">
-                                        {exam.settings.shuffle_questions
-                                            ? 'Yes'
-                                            : 'No'}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p className="text-sm text-gray-600">
-                                        Izinkan Review
-                                    </p>
-                                    <p className="font-semibold">
-                                        {exam.settings.allow_review
-                                            ? 'Yes'
-                                            : 'No'}
-                                    </p>
-                                </div>
+                {/* Top summary cards */}
+                <div className="grid gap-4 md:grid-cols-3">
+                    {/* Schedule */}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                                <CalendarRange className="h-4 w-4" />
+                                Jadwal Ujian
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                            <div>
+                                <p className="text-xs text-muted-foreground">
+                                    Mulai
+                                </p>
+                                <p className="font-medium">
+                                    {formatDateTime(exam.start_at)}
+                                </p>
                             </div>
-                        ) : (
-                            <p className="text-sm text-gray-500">
-                                Tidak ada pengaturan yang dikonfigurasi untuk
-                                ujian ini.
-                            </p>
-                        )}
-                    </CardContent>
-                </Card>
+                            <div>
+                                <p className="text-xs text-muted-foreground">
+                                    Berakhir
+                                </p>
+                                <p className="font-medium">
+                                    {formatDateTime(exam.end_at)}
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                {/* Exam Token */}
+                    {/* Settings / duration */}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                                <Clock className="h-4 w-4" />
+                                Durasi & Pengaturan
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                            {exam.settings ? (
+                                <>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Batas Waktu
+                                        </p>
+                                        <p className="font-medium">
+                                            {exam.settings.time_limit_minutes}{' '}
+                                            menit
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-4 text-xs">
+                                        <div>
+                                            <p className="text-muted-foreground">
+                                                Acak soal
+                                            </p>
+                                            <p className="font-semibold">
+                                                {exam.settings.shuffle_questions
+                                                    ? 'Ya'
+                                                    : 'Tidak'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground">
+                                                Izinkan review
+                                            </p>
+                                            <p className="font-semibold">
+                                                {exam.settings.allow_review
+                                                    ? 'Ya'
+                                                    : 'Tidak'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="text-xs text-muted-foreground">
+                                    Tidak ada pengaturan yang dikonfigurasi.
+                                </p>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Attendance */}
+                    <Card>
+                        <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+                                <Users className="h-4 w-4" />
+                                Kehadiran
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-xs text-muted-foreground">
+                                Jumlah percobaan / peserta
+                            </p>
+                            <p className="text-3xl font-bold">
+                                {exam.attempts_count}
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Token card */}
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
                         <CardTitle>Token Ujian</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-2">
-                            <code className="text-bold flex-1 rounded px-2 text-2xl font-extrabold text-primary">
+                    <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-1 items-center gap-2">
+                            <code className="flex-1 rounded bg-muted px-3 py-2 text-center text-2xl font-extrabold tracking-[0.3em] text-primary">
                                 {exam.tokens[0]?.token ||
                                     'Tidak ada token tersedia'}
                             </code>
@@ -180,10 +300,28 @@ export default function ShowExam({ exam }: Props) {
                                     variant="outline"
                                     onClick={handleCopyToken}
                                 >
-                                    {copiedToken ? 'Copied!' : 'Copy'}
+                                    {copiedToken ? 'Disalin!' : 'Copy'}
                                 </Button>
                             )}
                         </div>
+
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            className="mt-2 inline-flex items-center gap-2 md:mt-0"
+                            onClick={handleRegenerateToken}
+                            disabled={regenerating}
+                        >
+                            <RefreshCw
+                                className={
+                                    'h-4 w-4 ' +
+                                    (regenerating ? 'animate-spin' : '')
+                                }
+                            />
+                            {regenerating
+                                ? 'Mengganti token...'
+                                : 'Regenerate Token'}
+                        </Button>
                     </CardContent>
                 </Card>
 
@@ -192,12 +330,8 @@ export default function ShowExam({ exam }: Props) {
                     <CardHeader>
                         <CardTitle>Pertanyaan ({questions.length})</CardTitle>
                     </CardHeader>
-
                     <CardContent>
-                        <QuestionList
-                            questions={questions}
-                            readOnly={true} // Disable edit/delete for exam show page
-                        />
+                        <QuestionList questions={questions} readOnly />
                     </CardContent>
                 </Card>
             </div>
