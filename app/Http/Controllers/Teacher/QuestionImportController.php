@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers\Teacher;
 
-use App\Models\Question;
 use App\Models\QuestionBank;
 use App\Models\QuestionOption;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Maatwebsite\Excel\Facades\Excel;
 
 class QuestionImportController extends Controller
 {
@@ -19,50 +17,66 @@ class QuestionImportController extends Controller
         }
 
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            // CSV / text only
+            'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
 
         try {
             $file = $request->file('file');
-            $rows = Excel::toArray(null, $file);
+            $handle = fopen($file->getRealPath(), 'r');
 
-            if (empty($rows) || empty($rows[0])) {
+            if (!$handle) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'File is empty',
+                    'message' => 'Could not open the file.',
                 ], 400);
             }
 
-            // Parse rows (skip header)
-            $data = array_slice($rows[0], 1);
+            // Header row
+            $header = fgetcsv($handle);
+            if ($header === false) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'File is empty.',
+                ], 400);
+            }
+
             $preview = [];
-            $errors = [];
+            $errors  = [];
+            $rowNum  = 1; // header row
 
-            foreach ($data as $index => $row) {
-                if (empty(array_filter($row))) continue;
+            // Read each row
+            while (($row = fgetcsv($handle)) !== false) {
+                $rowNum++;
 
-                $rowNum = $index + 2;
+                // Skip completely empty lines
+                if (empty(array_filter($row))) {
+                    continue;
+                }
 
                 try {
                     $item = [
                         'question_text' => $row[0] ?? null,
                         'question_type' => $row[1] ?? null,
-                        'points' => $row[2] ?? null,
-                        'image_url' => $row[3] ?? null,
-                        'options' => $this->parseOptions($row, 4),
+                        'points'        => $row[2] ?? null,
+                        'image_url'     => $row[3] ?? null,
+                        'options'       => $this->parseOptions($row, 4),
                     ];
 
                     $this->validateQuestion($item, $rowNum, $errors);
+
                     $preview[] = array_merge(['row' => $rowNum], $item);
                 } catch (\Exception $e) {
-                    $errors[] = "Row $rowNum: {$e->getMessage()}";
+                    $errors[] = "Row {$rowNum}: {$e->getMessage()}";
                 }
             }
 
+            fclose($handle);
+
             return response()->json([
-                'success' => true,
-                'preview' => $preview,
-                'errors' => $errors,
+                'success'    => true,
+                'preview'    => $preview,
+                'errors'     => $errors,
                 'total_rows' => count($preview),
             ]);
         } catch (\Exception $e) {
@@ -81,35 +95,44 @@ class QuestionImportController extends Controller
         }
 
         $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv|max:2048',
+            'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
 
         try {
             $file = $request->file('file');
-            $rows = Excel::toArray(null, $file);
+            $handle = fopen($file->getRealPath(), 'r');
 
-            if (empty($rows) || empty($rows[0])) {
-                return back()->withErrors(['file' => 'File is empty']);
+            if (!$handle) {
+                return back()->withErrors(['file' => 'Could not open the file.']);
             }
 
-            $data = array_slice($rows[0], 1);
+            // Header row
+            $header = fgetcsv($handle);
+            if ($header === false) {
+                return back()->withErrors(['file' => 'File is empty.']);
+            }
 
             $created = 0;
-            $failed = 0;
-            $errors = [];
+            $failed  = 0;
+            $errors  = [];
+            $rowNum  = 1;
 
-            foreach ($data as $index => $row) {
-                if (empty(array_filter($row))) continue;
+            // Read each row
+            while (($row = fgetcsv($handle)) !== false) {
+                $rowNum++;
 
-                $rowNum = $index + 2;
+                // Skip completely empty lines
+                if (empty(array_filter($row))) {
+                    continue;
+                }
 
                 try {
                     $question_text = $row[0] ?? null;
                     $question_type = $row[1] ?? null;
-                    $points = (int)($row[2] ?? 0);
-                    $image_url = $row[3] ?? null;
+                    $points        = (int)($row[2] ?? 0);
+                    $image_url     = $row[3] ?? null;
 
-                    // Validate question
+                    // Validate question fields
                     if (empty($question_text)) {
                         throw new \Exception('Question text is required');
                     }
@@ -122,26 +145,32 @@ class QuestionImportController extends Controller
                         throw new \Exception('Points must be between 1-45');
                     }
 
+                    // Parse options
+                    $options = $this->parseOptions($row, 4);
+
+                    if (empty($options) || count($options) < 2) {
+                        throw new \Exception('At least 2 options are required');
+                    }
+
+                    $hasCorrect = collect($options)->contains(fn($o) => $o['is_correct']);
+                    if (!$hasCorrect) {
+                        throw new \Exception('At least one correct answer required');
+                    }
+
                     // Create question
                     $question = $questionBank->questions()->create([
                         'question_text' => $question_text,
                         'question_type' => $question_type,
-                        'points' => $points,
-                        'image_url' => $image_url,
+                        'points'        => $points,
+                        'image_url'     => $image_url,
                     ]);
 
-                    // Parse and create options
-                    $options = $this->parseOptions($row, 4);
-
-                    if (empty($options)) {
-                        throw new \Exception('At least 2 options are required');
-                    }
-
+                    // Create options
                     foreach ($options as $opt_index => $option) {
                         QuestionOption::create([
-                            'question_id' => $question->id,
-                            'option_text' => $option['text'],
-                            'is_correct' => $option['is_correct'],
+                            'question_id'  => $question->id,
+                            'option_text'  => $option['text'],
+                            'is_correct'   => $option['is_correct'],
                             'option_order' => $opt_index,
                         ]);
                     }
@@ -149,12 +178,15 @@ class QuestionImportController extends Controller
                     $created++;
                 } catch (\Exception $e) {
                     $failed++;
-                    $errors[] = "Row $rowNum: {$e->getMessage()}";
+                    $errors[] = "Row {$rowNum}: {$e->getMessage()}";
                 }
             }
 
-            return redirect()->route('teacher.question-banks.show', $questionBank->id)
-                ->with('success', "Import completed! Created: $created, Failed: $failed")
+            fclose($handle);
+
+            return redirect()
+                ->route('teacher.question-banks.show', $questionBank->id)
+                ->with('success', "Import completed! Created: {$created}, Failed: {$failed}")
                 ->with('import_errors', $errors);
         } catch (\Exception $e) {
             return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
@@ -165,8 +197,7 @@ class QuestionImportController extends Controller
     {
         $options = [];
 
-        // Format: option1|option2|option3|option4
-        // Correct answer marked with * e.g., *option1
+        // Format in CSV: "*Correct 1|Wrong 1|*Correct 2|Wrong 2"
         $optionsString = $row[$startIndex] ?? '';
 
         if (empty($optionsString)) {
@@ -182,11 +213,11 @@ class QuestionImportController extends Controller
             $is_correct = false;
             if (strpos($part, '*') === 0) {
                 $is_correct = true;
-                $part = substr($part, 1); // Remove *
+                $part = substr($part, 1); // remove *
             }
 
             $options[] = [
-                'text' => $part,
+                'text'       => $part,
                 'is_correct' => $is_correct,
             ];
         }
@@ -212,7 +243,6 @@ class QuestionImportController extends Controller
             throw new \Exception('Need at least 2 options');
         }
 
-        // Check at least one correct answer
         $hasCorrect = false;
         foreach ($question['options'] as $opt) {
             if ($opt['is_correct']) {
@@ -229,6 +259,7 @@ class QuestionImportController extends Controller
     public function downloadTemplate()
     {
         $headers = ['Question Text', 'Type', 'Points', 'Image URL', 'Options (use | to separate, * for correct)'];
+
         $rows = [
             ['What is 2+2?', 'multiple_choice', '5', '', '*4|3|5|6'],
             ['Is the sky blue?', 'true_false', '3', '', '*Yes|No'],
@@ -236,7 +267,7 @@ class QuestionImportController extends Controller
         ];
 
         $filename = 'questions_import_template.csv';
-        $handle = fopen('php://memory', 'w');
+        $handle   = fopen('php://memory', 'w');
 
         fputcsv($handle, $headers);
         foreach ($rows as $row) {
@@ -249,6 +280,6 @@ class QuestionImportController extends Controller
 
         return response($csv)
             ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', "attachment; filename=\"$filename\"");
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
     }
 }
