@@ -69,7 +69,7 @@ export default function SchoolCreate() {
                     </p>
                 </div>
 
-                <Card className="max-w-2xl">
+                <Card className="max-w-auto w-full">
                     <CardHeader>
                         <CardTitle>Data Sekolah</CardTitle>
                         <CardDescription>
