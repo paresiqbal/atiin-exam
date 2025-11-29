@@ -1,6 +1,7 @@
 // resources/js/pages/admin/universities/UnivShow.tsx
 
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 
 import AppLayout from '@/layouts/app-layout';
 
@@ -14,14 +15,17 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 import type { BreadcrumbItem } from '@/types';
 import type { Paginated } from '@/types/pagination';
 import type { PageProps as InertiaPageProps } from '@inertiajs/core';
+import { Edit2, Save, X } from 'lucide-react';
 
 interface Major {
     id: number;
     name: string;
+    minimum_passing_grade?: number | null;
     // extend later if you add more fields
 }
 
@@ -52,6 +56,56 @@ export default function UnivShow() {
     ];
 
     const majorsData = majors.data ?? [];
+
+    // 🔧 Inline edit state
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editGrade, setEditGrade] = useState('');
+    const [savingId, setSavingId] = useState<number | null>(null);
+
+    const startEdit = (major: Major) => {
+        setEditingId(major.id);
+        setEditName(major.name);
+        setEditGrade(
+            major.minimum_passing_grade !== null &&
+                major.minimum_passing_grade !== undefined
+                ? String(major.minimum_passing_grade)
+                : '',
+        );
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setEditName('');
+        setEditGrade('');
+    };
+
+    const saveEdit = (majorId: number) => {
+        if (!editName.trim()) return;
+
+        const gradeNumber = Number(editGrade);
+        if (Number.isNaN(gradeNumber)) return;
+
+        setSavingId(majorId);
+
+        router.put(
+            `/admin/majors/${majorId}`,
+            {
+                university_id: university.id,
+                name: editName.trim(),
+                minimum_passing_grade: gradeNumber,
+            },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setSavingId(null);
+                    setEditingId(null);
+                    setEditName('');
+                    setEditGrade('');
+                },
+            },
+        );
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -212,45 +266,133 @@ export default function UnivShow() {
                                             <th className="px-4 py-2">
                                                 Nama Program Studi
                                             </th>
+                                            <th className="px-4 py-2 text-center">
+                                                Nilai Minimal Lulus
+                                            </th>
                                             <th className="px-4 py-2 text-right">
                                                 Aksi
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {majorsData.map((major) => (
-                                            <tr
-                                                key={major.id}
-                                                className="border-b last:border-0"
-                                            >
-                                                <td className="px-4 py-2">
-                                                    {major.name}
-                                                </td>
-                                                <td className="px-4 py-2 text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button
-                                                            asChild
-                                                            size="sm"
-                                                            variant="ghost"
-                                                        >
-                                                            <Link
-                                                                href={`/admin/majors/${major.id}/edit`}
-                                                            >
-                                                                Edit
-                                                            </Link>
-                                                        </Button>
+                                        {majorsData.map((major) => {
+                                            const isEditing =
+                                                editingId === major.id;
 
-                                                        <ConfirmDeleteButton
-                                                            deleteUrl={`/admin/majors/${major.id}`}
-                                                            resourceLabel="program studi"
-                                                            itemName={
-                                                                major.name
-                                                            }
-                                                        />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                            return (
+                                                <tr
+                                                    key={major.id}
+                                                    className="border-b last:border-0"
+                                                >
+                                                    {/* Name cell */}
+                                                    <td className="px-4 py-2">
+                                                        {isEditing ? (
+                                                            <Input
+                                                                value={editName}
+                                                                onChange={(e) =>
+                                                                    setEditName(
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                className="h-8 max-w-xs"
+                                                            />
+                                                        ) : (
+                                                            major.name
+                                                        )}
+                                                    </td>
+
+                                                    {/* Min grade cell */}
+                                                    <td className="px-4 py-2 text-center">
+                                                        {isEditing ? (
+                                                            <Input
+                                                                type="number"
+                                                                min={0}
+                                                                max={100}
+                                                                value={
+                                                                    editGrade
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setEditGrade(
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                className="h-8 w-24 text-center"
+                                                            />
+                                                        ) : (
+                                                            <>
+                                                                {major.minimum_passing_grade ??
+                                                                    '-'}
+                                                            </>
+                                                        )}
+                                                    </td>
+
+                                                    {/* Actions */}
+                                                    <td className="px-4 py-2 text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            {isEditing ? (
+                                                                <>
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="hover:bg-foreground/10"
+                                                                        onClick={() =>
+                                                                            saveEdit(
+                                                                                major.id,
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            savingId ===
+                                                                            major.id
+                                                                        }
+                                                                        aria-label="Simpan perubahan"
+                                                                    >
+                                                                        <Save className="h-4 w-4" />
+                                                                    </Button>
+
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="hover:bg-foreground/10"
+                                                                        onClick={
+                                                                            cancelEdit
+                                                                        }
+                                                                        aria-label="Batal edit"
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="hover:bg-foreground/10"
+                                                                        onClick={() =>
+                                                                            startEdit(
+                                                                                major,
+                                                                            )
+                                                                        }
+                                                                        aria-label={`Edit program studi ${major.name}`}
+                                                                    >
+                                                                        <Edit2 className="h-4 w-4" />
+                                                                    </Button>
+
+                                                                    <ConfirmDeleteButton
+                                                                        deleteUrl={`/admin/majors/${major.id}`}
+                                                                        resourceLabel="program studi"
+                                                                        itemName={
+                                                                            major.name
+                                                                        }
+                                                                    />
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
