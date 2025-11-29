@@ -18,6 +18,7 @@ import {
     BookOpen,
     Folder,
     LayoutGrid,
+    PersonStanding,
     University,
     UsersRound,
 } from 'lucide-react';
@@ -77,6 +78,18 @@ export function AppSidebar() {
                 items: [
                     { title: 'Semua Sekolah', href: '/admin/schools' },
                     { title: 'Buat Sekolah', href: '/admin/schools/create' },
+                ],
+            },
+            {
+                title: 'Siswa',
+                href: '#',
+                icon: PersonStanding,
+                items: [
+                    { title: 'Semua Siswa', href: '/admin/students' },
+                    {
+                        title: 'Buat Siswa',
+                        href: '/admin/students/create',
+                    },
                 ],
             },
             {

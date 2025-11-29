@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController as AdminExamController;
 use App\Http\Controllers\Admin\MajorController;
 use App\Http\Controllers\Admin\SchoolController;
+use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UniversityController;
 use App\Http\Controllers\Admin\UniversityImportController;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +48,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('users/import/schools', [UserImportController::class, 'downloadSchoolList'])
             ->name('users.import.schools');
         Route::resource('schools', SchoolController::class);
+
+        Route::resource('students', StudentController::class);
 
         // Exam management routes
         Route::resource('exams', AdminExamController::class);
