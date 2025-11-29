@@ -1,5 +1,8 @@
+// resources/js/pages/admin/universities/UnivIndex.tsx
+
 import { Head, Link, usePage } from '@inertiajs/react';
-import { Edit2, Eye } from 'lucide-react';
+import { Edit2, Eye, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +14,13 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+
+import {
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+} from '@/components/ui/input-group';
+
 import {
     Table,
     TableBody,
@@ -19,6 +29,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+
 import AppLayout from '@/layouts/app-layout';
 
 import type { BreadcrumbItem } from '@/types';
@@ -52,12 +63,31 @@ const baseUrl = '/admin/universities';
 
 export default function UnivIndex() {
     const { universities } = usePage<UnivPageProps>().props;
+    const data = useMemo(() => universities.data ?? [], [universities.data]);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    const data = universities.data ?? [];
+    const filteredUniversities = useMemo(() => {
+        const q = searchQuery.toLowerCase();
 
-    const totalMajors = data.reduce((sum, u) => sum + u.majors.length, 0);
+        return data.filter((u) => {
+            return (
+                u.name.toLowerCase().includes(q) ||
+                (u.code ?? '').toLowerCase().includes(q) ||
+                (u.city ?? '').toLowerCase().includes(q) ||
+                u.majors.some((m) => m.name.toLowerCase().includes(q))
+            );
+        });
+    }, [data, searchQuery]);
+
+    const totalMajors = filteredUniversities.reduce(
+        (sum, u) => sum + u.majors.length,
+        0,
+    );
+
     const avgMajors =
-        data.length > 0 ? (totalMajors / data.length).toFixed(1) : '0';
+        filteredUniversities.length > 0
+            ? (totalMajors / filteredUniversities.length).toFixed(1)
+            : '0';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -74,13 +104,37 @@ export default function UnivIndex() {
                         </p>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div>
                         <Link href={`${baseUrl}/create`}>
                             <Button>Tambah Universitas</Button>
                         </Link>
                     </div>
                 </div>
 
+                {/* 🔍 Search bar */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
+                        <InputGroup className="flex-1">
+                            <InputGroupAddon>
+                                <Search className="h-4 w-4 text-slate-500" />
+                            </InputGroupAddon>
+
+                            <InputGroupInput
+                                placeholder="Cari nama universitas, kode, kota, atau prodi..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+
+                            {searchQuery !== '' && (
+                                <InputGroupAddon align="inline-end">
+                                    {filteredUniversities.length} hasil
+                                </InputGroupAddon>
+                            )}
+                        </InputGroup>
+                    </div>
+                </div>
+
+                {/* Stats */}
                 <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader>
@@ -89,7 +143,7 @@ export default function UnivIndex() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="text-3xl font-bold">
-                            {data.length}
+                            {filteredUniversities.length}
                         </CardContent>
                     </Card>
 
@@ -116,6 +170,7 @@ export default function UnivIndex() {
                     </Card>
                 </div>
 
+                {/* Table */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Universitas</CardTitle>
@@ -125,16 +180,9 @@ export default function UnivIndex() {
                     </CardHeader>
 
                     <CardContent>
-                        {data.length === 0 ? (
+                        {filteredUniversities.length === 0 ? (
                             <div className="py-10 text-center text-muted-foreground">
-                                Belum ada universitas
-                                <div className="mt-4">
-                                    <Link href={`${baseUrl}/create`}>
-                                        <Button>
-                                            Tambah Universitas Pertama
-                                        </Button>
-                                    </Link>
-                                </div>
+                                Tidak ada universitas ditemukan
                             </div>
                         ) : (
                             <div className="overflow-x-auto rounded-lg border">
@@ -154,7 +202,7 @@ export default function UnivIndex() {
                                     </TableHeader>
 
                                     <TableBody>
-                                        {data.map((u) => (
+                                        {filteredUniversities.map((u) => (
                                             <TableRow key={u.id}>
                                                 <TableCell className="font-medium">
                                                     {u.name}
