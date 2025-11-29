@@ -10,6 +10,7 @@ use App\Models\ExamToken;
 use App\Models\QuestionBank;
 use App\Models\School;
 use App\Models\User;
+use App\Services\ExamResultsPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
@@ -396,5 +397,14 @@ class ExamController extends Controller
         return response($csv)
             ->header('Content-Type', 'text/csv')
             ->header('Content-Disposition', "attachment; filename=\"$filename\"");
+    }
+
+    public function downloadAttemptPdf(ExamAttempt $attempt)
+    {
+
+        $pdfService = new ExamResultsPdfService();
+        $pdf = $pdfService->generate($attempt);
+
+        return $pdf->download('exam-attempt-' . $attempt->id . '.pdf');
     }
 }
