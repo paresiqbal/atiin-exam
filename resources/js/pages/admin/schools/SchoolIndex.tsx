@@ -117,7 +117,7 @@ export default function SchoolIndex() {
                     <div className="flex flex-1">
                         <InputGroup className="w-full">
                             <InputGroupAddon>
-                                <Search className="h-4 w-4 text-slate-500" />
+                                <Search className="h-4 w-4" />
                             </InputGroupAddon>
                             <InputGroupInput
                                 placeholder="Cari nama atau deskripsi sekolah..."
@@ -136,21 +136,21 @@ export default function SchoolIndex() {
                 {/* Table */}
                 <div className="overflow-x-auto rounded-lg border shadow-sm">
                     <table className="w-full text-sm">
-                        <thead className="border-b bg-slate-50/60">
+                        <thead className="border-b">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
+                                <th className="tracking-wideuppercase px-6 py-3 text-left text-xs font-semibold">
                                     Nama Sekolah
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                     Deskripsi
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                     Jumlah Pengguna
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                     Jumlah Ujian
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide text-slate-600 uppercase">
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                     Aksi
                                 </th>
                             </tr>
@@ -161,13 +161,13 @@ export default function SchoolIndex() {
                                 filteredSchools.map((school) => (
                                     <tr
                                         key={school.id}
-                                        className="transition-colors hover:bg-slate-50/60"
+                                        className="transition-colors"
                                     >
                                         <td className="px-6 py-3 font-medium">
                                             {school.name}
                                         </td>
 
-                                        <td className="max-w-md px-6 py-3 text-slate-700">
+                                        <td className="max-w-md px-6 py-3">
                                             {school.description
                                                 ? school.description
                                                 : '-'}
@@ -185,7 +185,7 @@ export default function SchoolIndex() {
                                             <div className="flex gap-2">
                                                 <Link
                                                     href={`${baseUrl}/${school.id}/edit`}
-                                                    className="rounded-md p-2 text-slate-700 hover:bg-slate-100"
+                                                    className="rounded-md p-2"
                                                 >
                                                     <Edit2 className="h-4 w-4" />
                                                 </Link>
@@ -207,7 +207,7 @@ export default function SchoolIndex() {
                                 <tr>
                                     <td
                                         colSpan={5}
-                                        className="px-6 py-8 text-center text-sm text-slate-500"
+                                        className="px-6 py-8 text-center text-sm"
                                     >
                                         Tidak ada sekolah ditemukan.
                                     </td>
