@@ -20,10 +20,13 @@ class DashboardController extends Controller
 
         // Calculate statistics
         $totalExams = $attempts->count();
-        $passedExams = $attempts->filter(function ($attempt) {
-            $passingScore = $attempt->student->major->minimum_passing_grade ?? 0;
+        $passingScore = $student->major->minimum_passing_grade ?? 0;
+
+        $passedExams = $attempts->filter(function ($attempt) use ($passingScore) {
             return $attempt->score >= $passingScore;
         })->count();
+
+        $failedExams = $totalExams - $passedExams;
 
         $averageScore = $totalExams > 0
             ? round($attempts->avg('score'), 2)
@@ -33,11 +36,8 @@ class DashboardController extends Controller
             ? round(($passedExams / $totalExams) * 100, 2)
             : 0;
 
-        // Get latest 5 attempts
-        $recentAttempts = $attempts->take(5)->map(function ($attempt) {
-            $passingScore = $attempt->student->major->minimum_passing_grade ?? 0;
-            $isPassed = $attempt->score >= $passingScore;
-
+        // Get latest 5 attempts for recent activity
+        $recentAttempts = $attempts->take(5)->map(function ($attempt) use ($passingScore) {
             return [
                 'id' => $attempt->id,
                 'exam_name' => $attempt->exam->name,
@@ -46,12 +46,15 @@ class DashboardController extends Controller
                 'percentage' => $attempt->total_score > 0
                     ? round(($attempt->score / $attempt->total_score) * 100, 2)
                     : 0,
-                'status' => $isPassed ? 'passed' : 'failed',
-                'completed_at' => $attempt->completed_at?->format('Y-m-d H:i'),
+                'status' => $attempt->score >= $passingScore ? 'passed' : 'failed',
+                'completed_at' => $attempt->completed_at?->format('M d, Y'),
+                'time_taken' => $attempt->completed_at
+                    ? $attempt->completed_at->diffInMinutes($attempt->started_at) . ' min'
+                    : 'N/A',
             ];
         });
 
-        // Score trend
+        // Score trend (last 10 exams)
         $scoreTrend = $attempts->take(10)->reverse()->map(function ($attempt, $index) {
             return [
                 'exam_number' => $index + 1,
@@ -63,16 +66,55 @@ class DashboardController extends Controller
             ];
         })->values();
 
+        // Performance by exam
+        $performanceByExam = $attempts->groupBy('exam_id')
+            ->map(function ($attempts) use ($passingScore) {
+                $correct = 0;
+                $total = 0;
+
+                foreach ($attempts as $attempt) {
+                    $responses = $attempt->responses;
+                    foreach ($responses as $response) {
+                        $total++;
+                        if ($response->selectedOption && $response->selectedOption->is_correct) {
+                            $correct++;
+                        }
+                    }
+                }
+
+                $firstAttempt = $attempts->first();
+                return [
+                    'exam_name' => $firstAttempt->exam->name,
+                    'correct_answers' => $correct,
+                    'total_questions' => $total,
+                    'accuracy' => $total > 0 ? round(($correct / $total) * 100, 2) : 0,
+                    'status' => $firstAttempt->score >= $passingScore ? 'passed' : 'failed',
+                ];
+            })->values();
+
+        // Student info
+        $studentInfo = [
+            'name' => $student->name,
+            'email' => $student->email,
+            'university' => $student->university?->name ?? 'Not selected',
+            'major' => $student->major?->name ?? 'Not selected',
+            'school' => $student->school?->name ?? 'Not assigned',
+            'class' => $student->class ?? 'N/A',
+        ];
+
         return Inertia::render('student/dashboard/Index', [
-            'student' => $student,
+            'student_info' => $studentInfo,
             'statistics' => [
                 'total_exams' => $totalExams,
                 'passed_exams' => $passedExams,
+                'failed_exams' => $failedExams,
                 'average_score' => $averageScore,
                 'pass_rate' => $passRate,
+                'passing_grade' => $passingScore,
             ],
             'recent_attempts' => $recentAttempts,
             'score_trend' => $scoreTrend,
+            'performance_by_exam' => $performanceByExam,
         ]);
     }
 }
