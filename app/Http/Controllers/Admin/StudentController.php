@@ -6,8 +6,10 @@ use App\Models\User;
 use App\Models\School;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use App\Services\Pdf\StudentCardsPdfService;
 
 class StudentController extends Controller
 {
@@ -107,5 +109,19 @@ class StudentController extends Controller
 
         return redirect()->route('admin.students.index')
             ->with('success', 'Student deleted successfully');
+    }
+
+    public function cards()
+    {
+        $schools = School::with(['students' => function ($query) {
+            $query->where('role', 'student')
+                ->select('id', 'name', 'email', 'class', 'school_id');
+        }])
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return Inertia::render('admin/students/StudentCards', [
+            'schools' => $schools,
+        ]);
     }
 }

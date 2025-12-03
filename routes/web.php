@@ -49,6 +49,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])
             ->name('users.import.schools');
         Route::resource('schools', SchoolController::class);
 
+        Route::get('students/cards', [StudentController::class, 'cards'])
+            ->name('students.cards');
+        Route::get('students/cards/download', [StudentController::class, 'downloadCards'])
+            ->name('students.cards.download');
         Route::resource('students', StudentController::class);
 
         // Exam management routes

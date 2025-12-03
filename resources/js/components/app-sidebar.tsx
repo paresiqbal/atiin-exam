@@ -90,6 +90,10 @@ export function AppSidebar() {
                         title: 'Buat Siswa',
                         href: '/admin/students/create',
                     },
+                    {
+                        title: 'Buat Kartu',
+                        href: '/admin/students/cards',
+                    },
                 ],
             },
             {

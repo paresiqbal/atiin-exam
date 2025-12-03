@@ -17,4 +17,10 @@ class School extends Model
     {
         return $this->hasMany(Exam::class);
     }
+
+    public function students()
+    {
+        return $this->hasMany(User::class, 'school_id')
+            ->where('role', 'student');
+    }
 }
