@@ -9,7 +9,8 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
-use App\Services\Pdf\StudentCardsPdfService;
+use App\Services\StudentCardsPdfService;
+
 
 class StudentController extends Controller
 {
@@ -123,5 +124,21 @@ class StudentController extends Controller
         return Inertia::render('admin/students/StudentCards', [
             'schools' => $schools,
         ]);
+    }
+
+    public function downloadCards(Request $request)
+    {
+        $schoolId = $request->query('school_id');
+
+        if (!$schoolId) {
+            return back()->withErrors(['error' => 'Pilih sekolah terlebih dahulu']);
+        }
+
+        $school = School::findOrFail($schoolId);
+
+        $pdfService = new StudentCardsPdfService();
+        $pdf = $pdfService->generate($school);
+
+        return $pdf->download('student-cards-' . $school->id . '.pdf');
     }
 }

@@ -1,7 +1,5 @@
-// resources/js/pages/admin/students/StudentCards.tsx
-
 import { Head } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { Download, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import AppLayout from '@/layouts/app-layout';
@@ -144,6 +142,18 @@ export default function StudentCards({ schools }: StudentCardsProps) {
                             ? `Tidak ada sekolah yang cocok dengan "${searchQuery}".`
                             : `${filteredSchools.length} sekolah ditemukan. Klik salah satu untuk dipilih.`)}
                 </div>
+                <Button
+                    onClick={() => {
+                        if (selectedSchool) {
+                            window.location.href = `/admin/students/cards/download?school_id=${selectedSchool.id}`;
+                        }
+                    }}
+                    variant="outline"
+                    disabled={!cardsCreated}
+                >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                </Button>
 
                 {/* Search results (only visible when there is a query) */}
                 {searchQuery.trim() !== '' && (
