@@ -24,7 +24,7 @@ class StudentController extends Controller
 
     public function create()
     {
-        return Inertia::render('admin/students/Create', [
+        return Inertia::render('admin/students/StudentCreate', [
             'schools' => School::all(),
         ]);
     }
@@ -68,7 +68,7 @@ class StudentController extends Controller
             abort(404);
         }
 
-        return Inertia::render('admin/students/Edit', [
+        return Inertia::render('admin/students/StudentEdit', [
             'student' => $student,
             'schools' => School::all(),
         ]);
