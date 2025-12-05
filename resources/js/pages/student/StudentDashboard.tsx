@@ -117,12 +117,12 @@ export default function StudentDashboard({
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Student Dashboard" />
 
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6 dark:from-slate-950 dark:to-slate-900">
+            <div className="min-h-screen bg-gradient-to-br p-6">
                 <div className="mx-auto max-w-7xl space-y-8">
                     {/* Header */}
                     <div className="space-y-2">
                         <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-                            Welcome back, {info.name}!
+                            Selamat Data, {info.name}!
                         </h1>
                         <p className="text-gray-600 dark:text-gray-400">
                             {info.university} • {info.major} • {info.class}
