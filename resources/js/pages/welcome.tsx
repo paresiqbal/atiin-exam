@@ -33,13 +33,12 @@ export default function Welcome({
                 />
             </Head>
 
-            {/* 🔥 Main Content (now in front of background) */}
             <div className="relative z-10 flex min-h-screen flex-col items-center bg-[#FDFDFC] p-6 text-[#1b1b18] lg:justify-center lg:p-8 dark:bg-[#0a0a0a]">
                 <header className="mb-6 w-full max-w-[335px] text-sm not-has-[nav]:hidden lg:max-w-4xl">
                     <div className="pointer-events-none fixed inset-0 -z-10 select-none">
                         <Dithering
                             colorBack="#00000000"
-                            colorFront="#614B00"
+                            colorFront="#6a994e"
                             speed={0.43}
                             shape="wave"
                             type="4x4"
@@ -64,14 +63,14 @@ export default function Welcome({
                             <>
                                 <Link
                                     href={login()}
-                                    className="inline-block rounded-sm border border-transparent px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#19140035] dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
+                                    className="inline-block rounded-sm border border-white px-5 py-1.5 text-sm leading-normal text-white hover:border-primary hover:text-primary dark:text-[#EDEDEC] dark:hover:border-[#3E3E3A]"
                                 >
                                     Log in
                                 </Link>
                                 {canRegister && (
                                     <Link
                                         href={register()}
-                                        className="inline-block rounded-sm border border-[#19140035] px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
+                                        className="inline-block rounded-sm border border-[#19140035] bg-primary px-5 py-1.5 text-sm leading-normal text-[#1b1b18] hover:border-[#1915014a] dark:border-[#3E3E3A] dark:text-[#EDEDEC] dark:hover:border-[#62605b]"
                                     >
                                         Register
                                     </Link>
@@ -84,14 +83,13 @@ export default function Welcome({
                 <div className="flex w-full items-center justify-center opacity-100 transition-opacity duration-750 lg:grow starting:opacity-0">
                     <main className="flex w-full max-w-[335px] flex-col-reverse lg:max-w-4xl lg:flex-row">
                         <div className="flex-1 rounded-br-lg rounded-bl-lg bg-white p-6 pb-12 text-[13px] leading-[20px] shadow-[inset_0px_0px_0px_1px_rgba(26,26,0,0.16)] lg:rounded-tl-lg lg:rounded-br-none lg:p-20 dark:bg-[#161615] dark:text-[#EDEDEC] dark:shadow-[inset_0px_0px_0px_1px_#fffaed2d]">
-                            <h1 className="mb-1 font-medium">
-                                Let's get started
-                            </h1>
+                            <h1 className="mb-1 font-medium">Bimbel ATTIN</h1>
 
                             <p className="mb-2 text-[#706f6c] dark:text-[#A1A09A]">
-                                Laravel has an incredibly rich ecosystem.
+                                Lorem, ipsum dolor sit amet consectetur
+                                adipisicing elit. Autem, necessitatibus.
                                 <br />
-                                We suggest starting with the following.
+                                Lorem ipsum dolor sit amet.
                             </p>
 
                             <ul className="mb-4 flex flex-col lg:mb-6">
@@ -102,13 +100,13 @@ export default function Welcome({
                                         </span>
                                     </span>
                                     <span>
-                                        Read the
+                                        Kunjungi Instagram
                                         <a
-                                            href="https://laravel.com/docs"
+                                            href="https://www.instagram.com"
                                             target="_blank"
                                             className="ml-1 inline-flex items-center space-x-1 font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
                                         >
-                                            <span>Documentation</span>
+                                            <span>Instagram</span>
                                             <svg
                                                 width={10}
                                                 height={11}
@@ -135,13 +133,13 @@ export default function Welcome({
                                     </span>
 
                                     <span>
-                                        Watch video tutorials at
+                                        Lihat video tutorial
                                         <a
-                                            href="https://laracasts.com"
+                                            href="https://www.youtube.com/"
                                             target="_blank"
                                             className="ml-1 inline-flex items-center space-x-1 font-medium text-[#f53003] underline underline-offset-4 dark:text-[#FF4433]"
                                         >
-                                            <span>Laracasts</span>
+                                            <span>Youtube</span>
                                             <svg
                                                 width={10}
                                                 height={11}
@@ -168,7 +166,7 @@ export default function Welcome({
                                         target="_blank"
                                         className="inline-block rounded-sm border border-black bg-[#1b1b18] px-5 py-1.5 text-sm leading-normal text-white hover:border-black hover:bg-black dark:border-[#eeeeec] dark:bg-[#eeeeec] dark:text-[#1C1C1A] dark:hover:border-white dark:hover:bg-white"
                                     >
-                                        Deploy now
+                                        Kunjungi Website Kami
                                     </a>
                                 </li>
                             </ul>
