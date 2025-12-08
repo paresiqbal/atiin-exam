@@ -11,13 +11,11 @@ class QuestionImportController extends Controller
 {
     public function preview(Request $request, QuestionBank $questionBank)
     {
-        // Check if teacher owns this question bank
         if ($questionBank->teacher_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
         $request->validate([
-            // CSV / text only
             'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
 
@@ -32,7 +30,6 @@ class QuestionImportController extends Controller
                 ], 400);
             }
 
-            // Header row
             $header = fgetcsv($handle);
             if ($header === false) {
                 return response()->json([
@@ -43,13 +40,11 @@ class QuestionImportController extends Controller
 
             $preview = [];
             $errors  = [];
-            $rowNum  = 1; // header row
+            $rowNum  = 1;
 
-            // Read each row
             while (($row = fgetcsv($handle)) !== false) {
                 $rowNum++;
 
-                // Skip completely empty lines
                 if (empty(array_filter($row))) {
                     continue;
                 }
@@ -89,7 +84,6 @@ class QuestionImportController extends Controller
 
     public function import(Request $request, QuestionBank $questionBank)
     {
-        // Check if teacher owns this question bank
         if ($questionBank->teacher_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
@@ -106,7 +100,6 @@ class QuestionImportController extends Controller
                 return back()->withErrors(['file' => 'Could not open the file.']);
             }
 
-            // Header row
             $header = fgetcsv($handle);
             if ($header === false) {
                 return back()->withErrors(['file' => 'File is empty.']);
@@ -117,11 +110,9 @@ class QuestionImportController extends Controller
             $errors  = [];
             $rowNum  = 1;
 
-            // Read each row
             while (($row = fgetcsv($handle)) !== false) {
                 $rowNum++;
 
-                // Skip completely empty lines
                 if (empty(array_filter($row))) {
                     continue;
                 }
@@ -132,7 +123,6 @@ class QuestionImportController extends Controller
                     $points        = (int)($row[2] ?? 0);
                     $image_url     = $row[3] ?? null;
 
-                    // Validate question fields
                     if (empty($question_text)) {
                         throw new \Exception('Question text is required');
                     }
@@ -145,7 +135,6 @@ class QuestionImportController extends Controller
                         throw new \Exception('Points must be between 1-45');
                     }
 
-                    // Parse options
                     $options = $this->parseOptions($row, 4);
 
                     if (empty($options) || count($options) < 2) {
@@ -157,7 +146,6 @@ class QuestionImportController extends Controller
                         throw new \Exception('At least one correct answer required');
                     }
 
-                    // Create question
                     $question = $questionBank->questions()->create([
                         'question_text' => $question_text,
                         'question_type' => $question_type,
@@ -165,7 +153,6 @@ class QuestionImportController extends Controller
                         'image_url'     => $image_url,
                     ]);
 
-                    // Create options
                     foreach ($options as $opt_index => $option) {
                         QuestionOption::create([
                             'question_id'  => $question->id,
@@ -197,7 +184,6 @@ class QuestionImportController extends Controller
     {
         $options = [];
 
-        // Format in CSV: "*Correct 1|Wrong 1|*Correct 2|Wrong 2"
         $optionsString = $row[$startIndex] ?? '';
 
         if (empty($optionsString)) {
@@ -213,7 +199,7 @@ class QuestionImportController extends Controller
             $is_correct = false;
             if (strpos($part, '*') === 0) {
                 $is_correct = true;
-                $part = substr($part, 1); // remove *
+                $part = substr($part, 1);
             }
 
             $options[] = [

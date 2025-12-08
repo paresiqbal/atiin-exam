@@ -46,7 +46,6 @@ class QuestionBankController extends Controller
 
     public function edit(QuestionBank $questionBank)
     {
-        // Check if current user owns this question bank
         if ($questionBank->teacher_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
@@ -63,7 +62,7 @@ class QuestionBankController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',  // Change from 'title'
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);
 
@@ -75,7 +74,6 @@ class QuestionBankController extends Controller
 
     public function destroy(QuestionBank $questionBank)
     {
-        // Check if current user owns this question bank
         if ($questionBank->teacher_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
@@ -88,7 +86,6 @@ class QuestionBankController extends Controller
 
     public function show(QuestionBank $questionBank)
     {
-        // Check if teacher owns this question bank
         if ($questionBank->teacher_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
