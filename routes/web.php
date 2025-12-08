@@ -3,6 +3,9 @@
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController as AdminExamController;
 use App\Http\Controllers\Admin\MajorController;
+use App\Http\Controllers\Admin\QuestionBankController as AdminQuestionBankController;
+use App\Http\Controllers\Admin\QuestionController as AdminQuestionController;
+use App\Http\Controllers\Admin\QuestionImportController as AdminQuestionImportController;
 use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UniversityController;
@@ -14,7 +17,6 @@ use Laravel\Fortify\Features;
 // controllers
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
-use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
 use App\Http\Controllers\Student\ExamController;
 use App\Http\Controllers\Student\ExamHistoryController;
 use App\Http\Controllers\Student\UniversityController as StudentUniversityController;
@@ -76,6 +78,13 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('universities/import/preview', [UniversityImportController::class, 'preview'])->name('universities.import.preview');
         Route::post('universities/import', [UniversityImportController::class, 'import'])->name('universities.import');
         Route::get('universities/import/template', [UniversityImportController::class, 'downloadTemplate'])->name('universities.import.template');
+
+        Route::resource('question-banks', AdminQuestionBankController::class);
+        Route::resource('questions', AdminQuestionController::class, ['only' => ['create', 'store', 'edit', 'update', 'destroy']]);
+        Route::post('question-banks/{questionBank}/questions/import/preview', [AdminQuestionImportController::class, 'preview'])->name('questions.import.preview');
+        Route::post('question-banks/{questionBank}/questions/import', [AdminQuestionImportController::class, 'import'])->name('questions.import');
+        Route::get('questions/import/template', [AdminQuestionImportController::class, 'downloadTemplate'])->name('questions.import.template');
+        Route::post('questions/upload-image', [AdminQuestionController::class, 'uploadImage'])->name('questions.uploadImage');
     });
 
 

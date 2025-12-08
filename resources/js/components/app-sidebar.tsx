@@ -60,6 +60,21 @@ export function AppSidebar() {
                 ],
             },
             {
+                title: 'Bank Soal',
+                href: '#',
+                icon: Folder,
+                items: [
+                    {
+                        title: 'Semua Bank Soal',
+                        href: '/admin/question-banks',
+                    },
+                    {
+                        title: 'Buat Bank Soal',
+                        href: '/admin/question-banks/create',
+                    },
+                ],
+            },
+            {
                 title: 'Universitas',
                 href: '#',
                 icon: University,
