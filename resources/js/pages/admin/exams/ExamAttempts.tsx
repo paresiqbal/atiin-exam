@@ -177,12 +177,12 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
     return (
         <AppLayout
             breadcrumbs={[
-                { title: 'Exams', href: '/admin/exams' },
+                { title: 'Ujian', href: '/admin/exams' },
                 { title: exam.name, href: `/admin/exams/${exam.id}` },
-                { title: 'Attempts', href: '#' },
+                { title: 'Percobaan', href: '#' },
             ]}
         >
-            <Head title={`${exam.name} - Attempts`} />
+            <Head title={`${exam.name} - Percobaan`} />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 {/* Header + Export */}

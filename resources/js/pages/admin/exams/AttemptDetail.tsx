@@ -72,8 +72,8 @@ export default function AttemptDetail({
         { title: 'Admin Dashboard', href: '/admin/dashboard' },
         { title: 'Ujian', href: '/admin/exams' },
         { title: exam.name, href: `/admin/exams/${exam.id}` },
-        { title: 'Attempts', href: `/admin/exams/${exam.id}/attempts` },
-        { title: 'Details', href: '#' },
+        { title: 'Percobaan', href: `/admin/exams/${exam.id}/attempts` },
+        { title: 'Detail', href: '#' },
     ];
 
     const percentage = useMemo(() => {
