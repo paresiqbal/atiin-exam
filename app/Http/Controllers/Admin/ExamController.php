@@ -204,21 +204,23 @@ class ExamController extends Controller
     {
         $attemptsQuery = $exam->attempts()
             ->with(['student.university', 'student.major'])
-            ->orderByDesc('completed_at');
+            ->orderByDesc('started_at'); // 👈 better: show latest started first
 
         $attempts = $attemptsQuery->paginate(15);
 
-        // Transform attempts for frontend
-        $attemptsTransformed = $attempts->through(function ($attempt) {
-            $score      = (float) $attempt->score;
+        $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) {
+            $score      = (float) ($attempt->score ?? 0);
             $totalScore = (float) ($attempt->total_score ?? 0);
 
-            $percentage = $totalScore > 0
+            // Only calculate percentage for submitted attempts
+            $percentage = ($totalScore > 0 && $attempt->status === 'submitted')
                 ? round(($score / $totalScore) * 100, 2)
                 : 0;
 
             $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
-            $isPassed   = $score >= $minPassing;
+            $isPassed   = $attempt->status === 'submitted'
+                ? $score >= $minPassing
+                : false;
 
             return [
                 'id'           => $attempt->id,
@@ -226,6 +228,8 @@ class ExamController extends Controller
                 'total_score'  => $totalScore,
                 'percentage'   => $percentage,
                 'is_passed'    => $isPassed,
+                'status'       => $attempt->status,             // 👈 add this
+                'is_frozen'    => (bool) $attempt->is_frozen,   // 👈 add this
                 'started_at'   => optional($attempt->started_at)->toIso8601String(),
                 'completed_at' => optional($attempt->completed_at)->toIso8601String(),
                 'student'      => [
@@ -243,20 +247,24 @@ class ExamController extends Controller
             ];
         });
 
-        $totalAttempts = $attemptsQuery->count();
+        // Analytics on submitted attempts only
+        $submittedAttempts = $exam->attempts()
+            ->where('status', 'submitted')
+            ->get();
 
-        $passed = $exam->attempts()
-            ->whereHas('student.major', function ($q) {
-                $q->whereColumn('exam_attempts.score', '>=', 'majors.minimum_passing_grade');
+        $totalAttempts = $submittedAttempts->count();
+
+        $passed = $submittedAttempts
+            ->filter(function ($attempt) {
+                $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
+                return $attempt->score >= $minPassing;
             })
             ->count();
 
-        $averagePercentage = $exam->attempts()
-            ->whereNotNull('score')
-            ->whereNotNull('total_score')
-            ->where('total_score', '>', 0)
-            ->selectRaw('AVG(score / total_score * 100) as avg_pct')
-            ->value('avg_pct') ?? 0;
+        $averagePercentage = $submittedAttempts
+            ->filter(fn($a) => $a->total_score > 0)
+            ->map(fn($a) => ($a->score / $a->total_score) * 100)
+            ->avg() ?? 0;
 
         return Inertia::render('admin/exams/ExamAttempts', [
             'exam' => [
@@ -271,7 +279,6 @@ class ExamController extends Controller
             ],
         ]);
     }
-
 
     public function attemptDetail(ExamAttempt $attempt)
     {
@@ -400,5 +407,20 @@ class ExamController extends Controller
         $pdf = $pdfService->generate($attempt);
 
         return $pdf->download('exam-attempt-' . $attempt->id . '.pdf');
+    }
+
+    public function unfreezeAttempt(ExamAttempt $attempt)
+    {
+        // Reset freeze state
+        $attempt->update([
+            'is_frozen' => false,
+            'frozen_at' => null,
+            'frozen_reason' => null,
+        ]);
+
+        // Optionally reset violations
+        $attempt->violations()->delete();
+
+        return back()->with('success', 'Ujian berhasil dibuka kembali untuk siswa.');
     }
 }

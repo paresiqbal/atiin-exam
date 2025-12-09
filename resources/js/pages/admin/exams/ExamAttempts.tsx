@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowUpDown, Download, Filter, Search } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { ArrowUpDown, Download, Eye, Search, Unlock } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +26,9 @@ interface Attempt {
     percentage: number;
     is_passed: boolean;
     started_at: string;
-    completed_at: string;
+    completed_at: string | null;
+    status: 'in_progress' | 'submitted' | 'frozen' | string;
+    is_frozen?: boolean;
     student: {
         id: number;
         name: string;
@@ -72,8 +74,6 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-    const [startDate, setStartDate] = useState(''); // yyyy-mm-dd
-    const [endDate, setEndDate] = useState(''); // yyyy-mm-dd
     const [sortBy, setSortBy] = useState<SortBy>('date');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -91,9 +91,8 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
             });
         }
 
-        // Status filter
+        // Status (Passed/Failed) filter – only for submitted attempts
         list = list.filter((attempt) => {
-            // Derive percentage
             const rawScore = Number(attempt.score ?? 0);
             const percent =
                 attempt.total_score && attempt.total_score > 0
@@ -105,25 +104,12 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                     ? attempt.is_passed
                     : percent >= 60;
 
-            if (statusFilter === 'passed') return isPassed;
-            if (statusFilter === 'failed') return !isPassed;
-            return true;
-        });
-
-        // Date range filter (based on completed_at date only)
-        list = list.filter((attempt) => {
-            if (!attempt.completed_at) return false;
-
-            const completed = new Date(attempt.completed_at);
-
-            if (startDate) {
-                const from = new Date(startDate + 'T00:00:00');
-                if (completed < from) return false;
+            if (statusFilter === 'passed') {
+                return attempt.completed_at && isPassed;
             }
 
-            if (endDate) {
-                const to = new Date(endDate + 'T23:59:59');
-                if (completed > to) return false;
+            if (statusFilter === 'failed') {
+                return attempt.completed_at && !isPassed;
             }
 
             return true;
@@ -142,12 +128,9 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                 const bs = Number(b.score ?? 0);
                 cmp = as - bs;
             } else if (sortBy === 'date') {
-                const ad = a.completed_at
-                    ? new Date(a.completed_at).getTime()
-                    : 0;
-                const bd = b.completed_at
-                    ? new Date(b.completed_at).getTime()
-                    : 0;
+                // sort by started_at so in-progress attempts also have order
+                const ad = a.started_at ? new Date(a.started_at).getTime() : 0;
+                const bd = b.started_at ? new Date(b.started_at).getTime() : 0;
                 cmp = ad - bd;
             }
 
@@ -155,15 +138,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
         });
 
         return list;
-    }, [
-        attempts.data,
-        searchQuery,
-        statusFilter,
-        startDate,
-        endDate,
-        sortBy,
-        sortDirection,
-    ]);
+    }, [attempts.data, searchQuery, statusFilter, sortBy, sortDirection]);
 
     const passRate =
         analytics.total_attempts > 0
@@ -172,6 +147,24 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
 
     const toggleSortDirection = () => {
         setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    };
+
+    const handleUnfreeze = (attemptId: number) => {
+        if (
+            !window.confirm(
+                'Buka kembali ujian untuk siswa ini? Mereka akan bisa melanjutkan percobaan yang sama.',
+            )
+        ) {
+            return;
+        }
+
+        router.post(
+            `/admin/exams/attempts/${attemptId}/unfreeze`,
+            {},
+            {
+                preserveScroll: true,
+            },
+        );
     };
 
     return (
@@ -213,7 +206,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Total Percobaan
+                                Total Percobaan (Selesai)
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -288,7 +281,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
 
                     {/* Filters & sort */}
                     <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                        {/* Status filter */}
+                        {/* Status filter (result) */}
                         <Select
                             value={statusFilter}
                             onValueChange={(val: StatusFilter) =>
@@ -296,39 +289,14 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                             }
                         >
                             <SelectTrigger className="w-[150px]">
-                                <SelectValue placeholder="Status" />
+                                <SelectValue placeholder="Status hasil" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">
-                                    Semua Status
-                                </SelectItem>
+                                <SelectItem value="all">Semua Hasil</SelectItem>
                                 <SelectItem value="passed">Lulus</SelectItem>
                                 <SelectItem value="failed">Gagal</SelectItem>
                             </SelectContent>
                         </Select>
-
-                        {/* Date range */}
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Filter className="h-3 w-3" />
-                                Tanggal:
-                            </div>
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
-                                className="h-9 rounded-md border px-2 text-xs"
-                            />
-                            <span className="text-xs text-muted-foreground">
-                                sampai
-                            </span>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
-                                className="h-9 rounded-md border px-2 text-xs"
-                            />
-                        </div>
 
                         {/* Sort */}
                         <div className="flex items-center gap-2">
@@ -341,7 +309,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="date">
-                                        Tanggal Selesai
+                                        Waktu Mulai
                                     </SelectItem>
                                     <SelectItem value="name">
                                         Nama Siswa
@@ -385,7 +353,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                         Jurusan
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Status
+                                        Status Ujian
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                         Skor
@@ -437,6 +405,54 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                         );
                                     }
 
+                                    const showScore =
+                                        attempt.completed_at &&
+                                        attempt.total_score > 0;
+
+                                    // Status Ujian badge
+                                    let statusBadge = (
+                                        <Badge
+                                            variant="outline"
+                                            className="text-xs"
+                                        >
+                                            {attempt.status}
+                                        </Badge>
+                                    );
+
+                                    if (
+                                        attempt.is_frozen ||
+                                        attempt.status === 'frozen'
+                                    ) {
+                                        statusBadge = (
+                                            <Badge
+                                                variant="destructive"
+                                                className="text-xs"
+                                            >
+                                                Dibekukan
+                                            </Badge>
+                                        );
+                                    } else if (
+                                        attempt.status === 'in_progress'
+                                    ) {
+                                        statusBadge = (
+                                            <Badge
+                                                variant="outline"
+                                                className="text-xs"
+                                            >
+                                                Sedang dikerjakan
+                                            </Badge>
+                                        );
+                                    } else if (attempt.status === 'submitted') {
+                                        statusBadge = (
+                                            <Badge
+                                                variant="default"
+                                                className="text-xs"
+                                            >
+                                                Selesai
+                                            </Badge>
+                                        );
+                                    }
+
                                     return (
                                         <tr
                                             key={attempt.id}
@@ -465,35 +481,28 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                                     '-'}
                                             </td>
 
-                                            {/* Pass/Fail Badge */}
+                                            {/* Status Ujian */}
                                             <td className="px-6 py-3 text-sm">
-                                                <Badge
-                                                    variant={
-                                                        isPassed
-                                                            ? 'default'
-                                                            : 'destructive'
-                                                    }
-                                                    className="text-xs"
-                                                >
-                                                    {isPassed
-                                                        ? 'Passed'
-                                                        : 'Failed'}
-                                                </Badge>
+                                                {statusBadge}
                                             </td>
 
                                             {/* Score pill */}
                                             <td className="px-6 py-3 text-sm">
-                                                <span
-                                                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                                                        isPassed
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}
-                                                >
-                                                    {attempt.total_score
-                                                        ? `${rawScore}/${attempt.total_score} (${percent.toFixed(2)}%)`
-                                                        : `${percent.toFixed(2)}%`}
-                                                </span>
+                                                {showScore ? (
+                                                    <span
+                                                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                                                            isPassed
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : 'bg-red-100 text-red-800'
+                                                        }`}
+                                                    >
+                                                        {`${rawScore}/${attempt.total_score} (${percent.toFixed(2)}%)`}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Belum selesai
+                                                    </span>
+                                                )}
                                             </td>
 
                                             {/* Time taken */}
@@ -522,17 +531,38 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                                 )}
                                             </td>
 
+                                            {/* Actions */}
                                             <td className="px-6 py-3 text-sm">
-                                                <Link
-                                                    href={`/admin/attempts/${attempt.id}`}
-                                                >
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
+                                                <div className="flex items-center gap-2">
+                                                    <Link
+                                                        href={`/admin/attempts/${attempt.id}`}
                                                     >
-                                                        Lihat Detail
-                                                    </Button>
-                                                </Link>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
+                                                        >
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
+
+                                                    {(attempt.is_frozen ||
+                                                        attempt.status ===
+                                                            'frozen') && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                handleUnfreeze(
+                                                                    attempt.id,
+                                                                )
+                                                            }
+                                                            className="inline-flex items-center"
+                                                        >
+                                                            <Unlock className="mr-1 h-4 w-4" />
+                                                            Buka
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
