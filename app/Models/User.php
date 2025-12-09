@@ -21,6 +21,7 @@ class User extends Authenticatable
         'major_id',
         'school_id',
         'class',
+        'university_selections',
     ];
 
     protected $hidden = [
@@ -36,6 +37,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'university_selections' => 'array',
         ];
     }
 

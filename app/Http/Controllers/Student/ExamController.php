@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Student;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamToken;
+use App\Models\Major;
 use App\Models\University;
 use App\Services\ExamResultsPdfService;
 use Illuminate\Http\Request;
@@ -90,9 +91,9 @@ class ExamController extends Controller
 
         $student = auth()->user();
 
-        // Store selections as JSON
+        // ✅ Store selections as ARRAY (cast → JSON di DB)
         $student->update([
-            'university_selections' => json_encode($validated['selections']),
+            'university_selections' => $validated['selections'],
         ]);
 
         $attempt = ExamAttempt::create([
@@ -104,6 +105,7 @@ class ExamController extends Controller
 
         return redirect()->route('student.exams.take', $attempt->id);
     }
+
 
     public function take(ExamAttempt $attempt)
     {
@@ -223,24 +225,21 @@ class ExamController extends Controller
 
     public function results(ExamAttempt $attempt): Response
     {
-        // Pastikan attempt milik siswa yang login
         if ($attempt->student_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
         $student = $attempt->student;
 
-        // Ambil selections dari kolom JSON (diset di startExam)
-        $rawSelections = $student->university_selections
-            ? json_decode($student->university_selections, true)
-            : [];
+        // ✅ Now this is already an array because of cast
+        $rawSelections = $student->university_selections ?? [];
 
         if (!is_array($rawSelections)) {
             $rawSelections = [];
         }
 
-        $studentSelections = [];      // Untuk kartu "Pilihan 1, 2, ..."
-        $universitySelections = [];   // Untuk list semua univ & jurusan di Pilihan 1
+        $studentSelections = [];
+        $universitySelections = [];
 
         foreach ($rawSelections as $selection) {
             if (
@@ -260,50 +259,50 @@ class ExamController extends Controller
             // Semua pilihan untuk satu universitas
             $universitySelections[] = [
                 'university' => [
-                    'id' => $university->id,
+                    'id'   => $university->id,
                     'name' => $university->name,
                     'city' => $university->city,
                 ],
                 'majors' => $majors->map(function (Major $major) {
                     return [
-                        'id' => $major->id,
-                        'name' => $major->name,
+                        'id'                    => $major->id,
+                        'name'                  => $major->name,
                         'minimum_passing_grade' => $major->minimum_passing_grade,
                     ];
                 })->values()->all(),
             ];
 
-            // Setiap jurusan jadi satu "placement" (Pilihan 1, Pilihan 2, ...)
+            // Setiap jurusan jadi 1 placement (Pilihan 1, 2, 3, ...)
             foreach ($majors as $major) {
                 $studentSelections[] = [
                     'university' => [
-                        'id' => $university->id,
+                        'id'   => $university->id,
                         'name' => $university->name,
                         'city' => $university->city,
                     ],
                     'major' => [
-                        'id' => $major->id,
-                        'name' => $major->name,
+                        'id'                    => $major->id,
+                        'name'                  => $major->name,
                         'minimum_passing_grade' => $major->minimum_passing_grade,
                     ],
                 ];
             }
         }
 
-        // Fallback lama: kalau belum ada selections di JSON, pakai relasi student->major/university
+        // Fallback lama
         $fallbackMajor = $student->major;
         $fallbackUniversity = $student->university;
 
         if (empty($studentSelections) && ($fallbackMajor || $fallbackUniversity)) {
             $studentSelections[] = [
                 'university' => $fallbackUniversity ? [
-                    'id' => $fallbackUniversity->id,
+                    'id'   => $fallbackUniversity->id,
                     'name' => $fallbackUniversity->name,
                     'city' => $fallbackUniversity->city,
                 ] : null,
                 'major' => $fallbackMajor ? [
-                    'id' => $fallbackMajor->id,
-                    'name' => $fallbackMajor->name,
+                    'id'                    => $fallbackMajor->id,
+                    'name'                  => $fallbackMajor->name,
                     'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
                 ] : null,
             ];
@@ -311,20 +310,19 @@ class ExamController extends Controller
             if ($fallbackUniversity && $fallbackMajor) {
                 $universitySelections[] = [
                     'university' => [
-                        'id' => $fallbackUniversity->id,
+                        'id'   => $fallbackUniversity->id,
                         'name' => $fallbackUniversity->name,
                         'city' => $fallbackUniversity->city,
                     ],
                     'majors' => [[
-                        'id' => $fallbackMajor->id,
-                        'name' => $fallbackMajor->name,
+                        'id'                    => $fallbackMajor->id,
+                        'name'                  => $fallbackMajor->name,
                         'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
                     ]],
                 ];
             }
         }
 
-        // Passing score: ambil dari jurusan pertama yang dipilih, fallback ke major relasi
         $firstSelectionMajorGrade =
             $studentSelections[0]['major']['minimum_passing_grade'] ?? null;
 
@@ -333,7 +331,6 @@ class ExamController extends Controller
 
         $isPassed = $attempt->score >= $passingScore;
 
-        // Detail soal (sama seperti sebelumnya)
         $questionDetails = $attempt->exam->questionBank->questions
             ->map(function ($question) use ($attempt) {
                 $response = $attempt->responses()
@@ -358,16 +355,15 @@ class ExamController extends Controller
                 ];
             });
 
-        // Untuk kompatibilitas: studentPlacement = pilihan pertama (kalau ada)
         $primaryPlacement = $studentSelections[0] ?? [
             'university' => $fallbackUniversity ? [
-                'id' => $fallbackUniversity->id,
+                'id'   => $fallbackUniversity->id,
                 'name' => $fallbackUniversity->name,
                 'city' => $fallbackUniversity->city,
             ] : null,
             'major' => $fallbackMajor ? [
-                'id' => $fallbackMajor->id,
-                'name' => $fallbackMajor->name,
+                'id'                    => $fallbackMajor->id,
+                'name'                  => $fallbackMajor->name,
                 'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
             ] : null,
         ];
@@ -393,6 +389,7 @@ class ExamController extends Controller
             'universitySelections' => $universitySelections,
         ]);
     }
+
 
 
 
