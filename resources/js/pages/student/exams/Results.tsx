@@ -97,6 +97,7 @@ export default function Results({
     const mainMessage = isPassed
         ? 'Selamat! Kamu mencapai nilai minimal untuk jurusan yang dipilih.'
         : 'Kamu belum mencapai nilai minimal untuk jurusan yang dipilih.';
+    console.log('universitySelections', universitySelections);
 
     return (
         <div className="min-h-screen bg-background px-4 py-8 text-foreground">
