@@ -56,7 +56,7 @@ class QuestionBankController extends Controller
 
     public function edit(QuestionBank $questionBank)
     {
-        return Inertia::render('admin/question-banks/Edit', [
+        return Inertia::render('admin/question-banks/QuestionBankEdit', [
             'questionBank' => $questionBank,
             'teachers' => User::where('role', 'teacher')->get(['id', 'name']),
         ]);
