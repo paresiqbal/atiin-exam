@@ -42,8 +42,11 @@ class ExamController extends Controller
 
     public function joinForm(): Response
     {
+        $exam = request()->query('exam_id') ? Exam::find(request()->query('exam_id')) : null;
+
         return Inertia::render('student/exams/JoinExam', [
             'universities' => University::with('majors')->get(),
+            'exam' => $exam,
         ]);
     }
 
@@ -51,11 +54,26 @@ class ExamController extends Controller
     {
         $validated = $request->validate([
             'token' => 'required|string|exists:exam_tokens,token',
-            'university_id' => 'required|exists:universities,id',
-            'major_id' => 'required|exists:majors,id',
+            'selections' => 'required|array|max:2',
+            'selections.*.university_id' => 'required|exists:universities,id',
+            'selections.*.majors' => 'required|array|max:4',
+            'selections.*.majors.*' => 'required|exists:majors,id',
         ]);
 
+        // Count total majors selected
+        $totalMajors = collect($validated['selections'])
+            ->sum(fn($selection) => count($selection['majors']));
+
+        if ($totalMajors > 4) {
+            return back()->withErrors(['selections' => 'Maximum 4 majors can be selected']);
+        }
+
         $token = ExamToken::where('token', $validated['token'])->first();
+
+        if (!$token) {
+            return back()->withErrors(['token' => 'Invalid token']);
+        }
+
         $exam = $token->exam;
 
         if (!$exam->is_published) {
@@ -70,20 +88,11 @@ class ExamController extends Controller
             return back()->withErrors(['token' => 'This exam has ended']);
         }
 
-        if (!$token) {
-            return back()->withErrors(['token' => 'Invalid token']);
-        }
-
-        $exam = $token->exam;
-
-        if (!$exam->is_published) {
-            return back()->withErrors(['token' => 'This exam is not available yet']);
-        }
-
         $student = auth()->user();
+
+        // Store selections as JSON
         $student->update([
-            'university_id' => $validated['university_id'],
-            'major_id' => $validated['major_id'],
+            'university_selections' => json_encode($validated['selections']),
         ]);
 
         $attempt = ExamAttempt::create([
