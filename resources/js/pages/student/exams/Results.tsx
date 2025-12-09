@@ -29,17 +29,26 @@ interface QuestionDetail {
     points_earned: number;
 }
 
+interface Major {
+    id: number;
+    name: string;
+    minimum_passing_grade: number;
+}
+
+interface University {
+    id: number;
+    name: string;
+    city?: string | null;
+}
+
+interface UniversitySelection {
+    university: University;
+    majors: Major[];
+}
+
 interface StudentPlacement {
-    university: {
-        id: number;
-        name: string;
-        city?: string | null;
-    } | null;
-    major: {
-        id: number;
-        name: string;
-        minimum_passing_grade: number;
-    } | null;
+    university: University | null;
+    major: Major | null;
 }
 
 interface Props {
@@ -57,6 +66,8 @@ interface Props {
     isPassed: boolean;
     questionDetails: QuestionDetail[];
     studentPlacement?: StudentPlacement;
+    studentSelections?: StudentPlacement[];
+    universitySelections?: UniversitySelection[];
 }
 
 export default function Results({
@@ -66,19 +77,30 @@ export default function Results({
     isPassed,
     questionDetails,
     studentPlacement,
+    studentSelections,
+    universitySelections = [],
 }: Props) {
     const percentage = Math.round((attempt.score / attempt.total_score) * 100);
 
-    const mainMessage = isPassed
-        ? 'Congratulations! You reached the minimum grade for your chosen major.'
-        : "You haven't reached the minimum grade for your chosen major yet.";
+    // Fallback untuk kompatibilitas
+    const placements: StudentPlacement[] = (
+        studentSelections && studentSelections.length > 0
+            ? studentSelections
+            : studentPlacement
+              ? [studentPlacement]
+              : []
+    ).filter((p) => p && p.university && p.major) as StudentPlacement[];
 
     const hasPlacementInfo =
-        studentPlacement?.university && studentPlacement?.major;
+        placements.length > 0 || universitySelections.length > 0;
+
+    const mainMessage = isPassed
+        ? 'Selamat! Kamu mencapai nilai minimal untuk jurusan yang dipilih.'
+        : 'Kamu belum mencapai nilai minimal untuk jurusan yang dipilih.';
 
     return (
         <div className="min-h-screen bg-background px-4 py-8 text-foreground">
-            <Head title={`Results: ${exam.title}`} />
+            <Head title={`Hasil: ${exam.title}`} />
 
             <div className="container mx-auto max-w-4xl space-y-8">
                 {/* Header / Back + Actions */}
@@ -89,7 +111,7 @@ export default function Results({
                             className="pl-0 transition-all hover:pl-2"
                         >
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Dashboard
+                            Kembali ke Dashboard
                         </Button>
                     </Link>
 
@@ -101,14 +123,13 @@ export default function Results({
                         >
                             <Button variant="outline">
                                 <Download className="mr-2 h-4 w-4" />
-                                Download Results
+                                Unduh Hasil Ujian
                             </Button>
                         </a>
 
-                        {/* New: go to universities */}
                         <Link href="/student/universities">
                             <Button variant="default">
-                                Check other universities
+                                Lihat universitas lainnya
                             </Button>
                         </Link>
                     </div>
@@ -147,17 +168,16 @@ export default function Results({
                                     }
                                     className="px-4 py-1 text-lg"
                                 >
-                                    {isPassed ? 'PASSED' : 'FAILED'}
+                                    {isPassed ? 'LULUS' : 'TIDAK LULUS'}
                                 </Badge>
                                 <span className="text-muted-foreground">
-                                    Completed on{' '}
+                                    Selesai pada{' '}
                                     {new Date(
                                         attempt.completed_at,
                                     ).toLocaleDateString()}
                                 </span>
                             </div>
 
-                            {/* Main message about pass/fail relative to major */}
                             <p
                                 className={cn(
                                     'text-sm font-medium',
@@ -173,7 +193,7 @@ export default function Results({
                         <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-3">
                             <div className="rounded-lg border bg-background p-4 shadow-sm">
                                 <div className="mb-1 text-sm text-muted-foreground">
-                                    Your Score
+                                    Nilai Kamu
                                 </div>
                                 <div className="text-3xl font-bold">
                                     {attempt.score}{' '}
@@ -184,7 +204,7 @@ export default function Results({
                             </div>
                             <div className="rounded-lg border bg-background p-4 shadow-sm">
                                 <div className="mb-1 text-sm text-muted-foreground">
-                                    Percentage
+                                    Persentase
                                 </div>
                                 <div
                                     className={cn(
@@ -199,7 +219,7 @@ export default function Results({
                             </div>
                             <div className="rounded-lg border bg-background p-4 shadow-sm">
                                 <div className="mb-1 text-sm text-muted-foreground">
-                                    Passing Score
+                                    Nilai Kelulusan Minimal
                                 </div>
                                 <div className="text-3xl font-bold">
                                     {passingScore}
@@ -209,72 +229,219 @@ export default function Results({
                     </CardContent>
                 </Card>
 
-                {/* Selected University & Major Card */}
-                {hasPlacementInfo && (
-                    <Card className="border border-muted">
-                        <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-                            <div>
-                                <div className="text-xs font-semibold text-muted-foreground uppercase">
-                                    Your chosen path
-                                </div>
-                                <div className="mt-1 text-lg font-semibold">
-                                    {studentPlacement!.major!.name}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                    at{' '}
-                                    <span className="font-medium">
-                                        {studentPlacement!.university!.name}
-                                    </span>
-                                    {studentPlacement!.university!.city && (
-                                        <>
-                                            {' '}
-                                            ·{' '}
-                                            {studentPlacement!.university!.city}
-                                        </>
-                                    )}
-                                </div>
-                            </div>
+                {/* University Selections - New Format */}
+                {universitySelections.length > 0 && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold">
+                            Hasil Pilihan Universitas & Jurusan Kamu
+                        </h2>
 
-                            <div className="text-right">
-                                <div className="text-xs text-muted-foreground">
-                                    Minimum passing grade
-                                </div>
-                                <div className="text-2xl font-bold">
-                                    {
-                                        studentPlacement!.major!
-                                            .minimum_passing_grade
-                                    }
-                                </div>
-                                <div
-                                    className={cn(
-                                        'mt-1 text-xs font-medium',
-                                        isPassed
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : 'text-destructive',
-                                    )}
+                        {universitySelections.map((selection, uniIndex) => {
+                            const uni = selection.university;
+
+                            return (
+                                <Card
+                                    key={`uni-${uni.id}-${uniIndex}`}
+                                    className="border-2"
                                 >
-                                    {isPassed
-                                        ? 'You can enter this program based on this exam.'
-                                        : 'You cannot enter this program yet based on this exam.'}
-                                </div>
-                                <div className="mt-3">
-                                    <Link href="/student/universities">
-                                        <Button variant="outline" size="sm">
-                                            Check other universities you may
-                                            qualify for
-                                        </Button>
-                                    </Link>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                    <CardContent className="p-6">
+                                        {/* University Header */}
+                                        <div className="mb-4 border-b pb-4">
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="mb-2"
+                                                    >
+                                                        Pilihan Universitas{' '}
+                                                        {uniIndex + 1}
+                                                    </Badge>
+                                                    <h3 className="text-xl font-bold">
+                                                        {uni.name}
+                                                    </h3>
+                                                    {uni.city && (
+                                                        <p className="mt-1 text-sm text-muted-foreground">
+                                                            📍 {uni.city}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Majors List */}
+                                        <div className="space-y-3">
+                                            <div className="text-sm font-medium text-muted-foreground">
+                                                Jurusan yang dipilih (
+                                                {selection.majors.length}):
+                                            </div>
+
+                                            {selection.majors.map(
+                                                (major, majorIndex) => {
+                                                    const passedForThisMajor =
+                                                        attempt.score >=
+                                                        major.minimum_passing_grade;
+                                                    const globalIndex =
+                                                        universitySelections
+                                                            .slice(0, uniIndex)
+                                                            .reduce(
+                                                                (sum, sel) =>
+                                                                    sum +
+                                                                    sel.majors
+                                                                        .length,
+                                                                0,
+                                                            ) +
+                                                        majorIndex +
+                                                        1;
+
+                                                    return (
+                                                        <div
+                                                            key={`major-${major.id}-${majorIndex}`}
+                                                            className={cn(
+                                                                'rounded-lg border-2 p-4 transition-colors',
+                                                                passedForThisMajor
+                                                                    ? 'border-green-500/30 bg-green-500/5'
+                                                                    : 'border-muted bg-muted/30',
+                                                            )}
+                                                        >
+                                                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                                                <div className="flex-1">
+                                                                    <div className="mb-1 flex items-center gap-2">
+                                                                        <Badge
+                                                                            variant={
+                                                                                passedForThisMajor
+                                                                                    ? 'default'
+                                                                                    : 'secondary'
+                                                                            }
+                                                                            className="text-xs"
+                                                                        >
+                                                                            Pilihan{' '}
+                                                                            {
+                                                                                globalIndex
+                                                                            }
+                                                                        </Badge>
+                                                                        {passedForThisMajor ? (
+                                                                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                                                        ) : (
+                                                                            <XCircle className="h-4 w-4 text-muted-foreground" />
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-base font-semibold">
+                                                                        {
+                                                                            major.name
+                                                                        }
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="text-right">
+                                                                    <div className="mb-1 text-xs text-muted-foreground">
+                                                                        Nilai
+                                                                        minimal
+                                                                    </div>
+                                                                    <div className="text-2xl font-bold">
+                                                                        {
+                                                                            major.minimum_passing_grade
+                                                                        }
+                                                                    </div>
+                                                                    <div
+                                                                        className={cn(
+                                                                            'mt-1 text-xs font-medium',
+                                                                            passedForThisMajor
+                                                                                ? 'text-green-600 dark:text-green-400'
+                                                                                : 'text-destructive',
+                                                                        )}
+                                                                    >
+                                                                        {passedForThisMajor
+                                                                            ? '✓ Memenuhi syarat'
+                                                                            : '✗ Belum memenuhi syarat'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                },
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+
+                        <div className="flex justify-center pt-2">
+                            <Link href="/student/universities">
+                                <Button variant="outline" size="lg">
+                                    Cari universitas & jurusan lain yang mungkin
+                                    kamu lolos
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
                 )}
 
-                {/* Question Breakdown */}
+                {/* Fallback - Old Format (if no universitySelections) */}
+                {universitySelections.length === 0 && hasPlacementInfo && (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-semibold">
+                            Hasil pilihan universitas & jurusan
+                        </h2>
+
+                        {placements.map((placement, index) => {
+                            const uni = placement.university!;
+                            const major = placement.major!;
+                            const passedForThisMajor =
+                                attempt.score >= major.minimum_passing_grade;
+
+                            return (
+                                <Card
+                                    key={`${uni.id}-${major.id}-${index}`}
+                                    className="border border-muted"
+                                >
+                                    <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+                                        <div>
+                                            <div className="text-xs font-semibold text-muted-foreground uppercase">
+                                                Pilihan {index + 1}
+                                            </div>
+                                            <div className="mt-1 text-lg font-semibold">
+                                                {major.name}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground">
+                                                di{' '}
+                                                <span className="font-medium">
+                                                    {uni.name}
+                                                </span>
+                                                {uni.city && <> · {uni.city}</>}
+                                            </div>
+                                        </div>
+
+                                        <div className="text-right">
+                                            <div className="text-xs text-muted-foreground">
+                                                Nilai minimal jurusan ini
+                                            </div>
+                                            <div className="text-2xl font-bold">
+                                                {major.minimum_passing_grade}
+                                            </div>
+                                            <div
+                                                className={cn(
+                                                    'mt-1 text-xs font-medium',
+                                                    passedForThisMajor
+                                                        ? 'text-green-600 dark:text-green-400'
+                                                        : 'text-destructive',
+                                                )}
+                                            >
+                                                {passedForThisMajor
+                                                    ? 'Kamu memenuhi syarat untuk masuk jurusan ini berdasarkan nilai ujian.'
+                                                    : 'Kamu belum memenuhi syarat untuk masuk jurusan ini berdasarkan nilai ujian.'}
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Rincian Soal */}
                 <div className="space-y-4">
-                    <h2 className="text-xl font-semibold">
-                        Question Breakdown
-                    </h2>
+                    <h2 className="text-xl font-semibold">Rincian Soal</h2>
                     <Accordion
                         type="single"
                         collapsible
@@ -300,11 +467,10 @@ export default function Results({
                                         <div className="flex-1">
                                             <div className="pr-4 font-medium">
                                                 <span className="mr-2 text-muted-foreground">
-                                                    Q{index + 1}.
+                                                    Soal {index + 1}.
                                                 </span>
-
                                                 <div
-                                                    className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
+                                                    className="prose prose-sm max-w-none [&_img]:hidden"
                                                     dangerouslySetInnerHTML={{
                                                         __html: question.question_text,
                                                     }}
@@ -312,18 +478,31 @@ export default function Results({
                                             </div>
                                         </div>
 
-                                        {/* Points */}
+                                        {/* Poin */}
                                         <div className="font-mono text-sm whitespace-nowrap text-muted-foreground">
                                             {question.points_earned} /{' '}
-                                            {question.points} pts
+                                            {question.points} poin
                                         </div>
                                     </div>
                                 </AccordionTrigger>
 
                                 {/* Content */}
-                                <AccordionContent className="pt-2 pb-4 pl-9">
+                                <AccordionContent className="space-y-4 pt-2 pb-4 pl-9">
+                                    {/* Soal lengkap (termasuk gambar) */}
+                                    <div className="rounded-md bg-muted/40 p-3">
+                                        <div className="mb-1 text-xs font-medium text-muted-foreground">
+                                            Soal Lengkap
+                                        </div>
+                                        <div
+                                            className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
+                                            dangerouslySetInnerHTML={{
+                                                __html: question.question_text,
+                                            }}
+                                        />
+                                    </div>
+
                                     <div className="grid gap-4 md:grid-cols-2">
-                                        {/* Student Answer */}
+                                        {/* Jawaban siswa */}
                                         <div
                                             className={cn(
                                                 'rounded-md border p-3',
@@ -333,7 +512,7 @@ export default function Results({
                                             )}
                                         >
                                             <div className="mb-1 text-xs font-medium text-muted-foreground">
-                                                Your Answer
+                                                Jawaban Kamu
                                             </div>
 
                                             <div className="font-medium">
@@ -346,17 +525,17 @@ export default function Results({
                                                     />
                                                 ) : (
                                                     <span className="text-muted-foreground italic">
-                                                        No answer provided
+                                                        Belum menjawab
                                                     </span>
                                                 )}
                                             </div>
                                         </div>
 
-                                        {/* Correct Answer */}
+                                        {/* Jawaban benar hanya jika salah */}
                                         {!question.is_correct && (
                                             <div className="rounded-md border bg-secondary/50 p-3">
                                                 <div className="mb-1 text-xs font-medium text-muted-foreground">
-                                                    Correct Answer
+                                                    Jawaban Benar
                                                 </div>
 
                                                 <div className="font-medium text-green-600 dark:text-green-400">

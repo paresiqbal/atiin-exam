@@ -223,18 +223,117 @@ class ExamController extends Controller
 
     public function results(ExamAttempt $attempt): Response
     {
-        // Check if student owns this attempt
+        // Pastikan attempt milik siswa yang login
         if ($attempt->student_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
         $student = $attempt->student;
-        $major = $student->major;
-        $university = $student->university;
 
-        $passingScore = $major->minimum_passing_grade ?? 0;
+        // Ambil selections dari kolom JSON (diset di startExam)
+        $rawSelections = $student->university_selections
+            ? json_decode($student->university_selections, true)
+            : [];
+
+        if (!is_array($rawSelections)) {
+            $rawSelections = [];
+        }
+
+        $studentSelections = [];      // Untuk kartu "Pilihan 1, 2, ..."
+        $universitySelections = [];   // Untuk list semua univ & jurusan di Pilihan 1
+
+        foreach ($rawSelections as $selection) {
+            if (
+                !isset($selection['university_id'], $selection['majors']) ||
+                !is_array($selection['majors'])
+            ) {
+                continue;
+            }
+
+            $university = University::find($selection['university_id']);
+            if (!$university) {
+                continue;
+            }
+
+            $majors = Major::whereIn('id', $selection['majors'])->get();
+
+            // Semua pilihan untuk satu universitas
+            $universitySelections[] = [
+                'university' => [
+                    'id' => $university->id,
+                    'name' => $university->name,
+                    'city' => $university->city,
+                ],
+                'majors' => $majors->map(function (Major $major) {
+                    return [
+                        'id' => $major->id,
+                        'name' => $major->name,
+                        'minimum_passing_grade' => $major->minimum_passing_grade,
+                    ];
+                })->values()->all(),
+            ];
+
+            // Setiap jurusan jadi satu "placement" (Pilihan 1, Pilihan 2, ...)
+            foreach ($majors as $major) {
+                $studentSelections[] = [
+                    'university' => [
+                        'id' => $university->id,
+                        'name' => $university->name,
+                        'city' => $university->city,
+                    ],
+                    'major' => [
+                        'id' => $major->id,
+                        'name' => $major->name,
+                        'minimum_passing_grade' => $major->minimum_passing_grade,
+                    ],
+                ];
+            }
+        }
+
+        // Fallback lama: kalau belum ada selections di JSON, pakai relasi student->major/university
+        $fallbackMajor = $student->major;
+        $fallbackUniversity = $student->university;
+
+        if (empty($studentSelections) && ($fallbackMajor || $fallbackUniversity)) {
+            $studentSelections[] = [
+                'university' => $fallbackUniversity ? [
+                    'id' => $fallbackUniversity->id,
+                    'name' => $fallbackUniversity->name,
+                    'city' => $fallbackUniversity->city,
+                ] : null,
+                'major' => $fallbackMajor ? [
+                    'id' => $fallbackMajor->id,
+                    'name' => $fallbackMajor->name,
+                    'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
+                ] : null,
+            ];
+
+            if ($fallbackUniversity && $fallbackMajor) {
+                $universitySelections[] = [
+                    'university' => [
+                        'id' => $fallbackUniversity->id,
+                        'name' => $fallbackUniversity->name,
+                        'city' => $fallbackUniversity->city,
+                    ],
+                    'majors' => [[
+                        'id' => $fallbackMajor->id,
+                        'name' => $fallbackMajor->name,
+                        'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
+                    ]],
+                ];
+            }
+        }
+
+        // Passing score: ambil dari jurusan pertama yang dipilih, fallback ke major relasi
+        $firstSelectionMajorGrade =
+            $studentSelections[0]['major']['minimum_passing_grade'] ?? null;
+
+        $passingScore = $firstSelectionMajorGrade
+            ?? ($fallbackMajor->minimum_passing_grade ?? 0);
+
         $isPassed = $attempt->score >= $passingScore;
 
+        // Detail soal (sama seperti sebelumnya)
         $questionDetails = $attempt->exam->questionBank->questions
             ->map(function ($question) use ($attempt) {
                 $response = $attempt->responses()
@@ -259,6 +358,20 @@ class ExamController extends Controller
                 ];
             });
 
+        // Untuk kompatibilitas: studentPlacement = pilihan pertama (kalau ada)
+        $primaryPlacement = $studentSelections[0] ?? [
+            'university' => $fallbackUniversity ? [
+                'id' => $fallbackUniversity->id,
+                'name' => $fallbackUniversity->name,
+                'city' => $fallbackUniversity->city,
+            ] : null,
+            'major' => $fallbackMajor ? [
+                'id' => $fallbackMajor->id,
+                'name' => $fallbackMajor->name,
+                'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
+            ] : null,
+        ];
+
         return Inertia::render('student/exams/Results', [
             'attempt' => [
                 'id' => $attempt->id,
@@ -275,20 +388,12 @@ class ExamController extends Controller
             'passingScore' => $passingScore,
             'isPassed' => $isPassed,
             'questionDetails' => $questionDetails,
-            'studentPlacement' => [
-                'university' => $university ? [
-                    'id' => $university->id,
-                    'name' => $university->name,
-                    'city' => $university->city,
-                ] : null,
-                'major' => $major ? [
-                    'id' => $major->id,
-                    'name' => $major->name,
-                    'minimum_passing_grade' => $major->minimum_passing_grade,
-                ] : null,
-            ],
+            'studentPlacement' => $primaryPlacement,
+            'studentSelections' => $studentSelections,
+            'universitySelections' => $universitySelections,
         ]);
     }
+
 
 
     public function downloadResults(ExamAttempt $attempt)
