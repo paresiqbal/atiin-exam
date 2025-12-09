@@ -67,7 +67,7 @@ const extensions = [
             const formData = new FormData();
             formData.append('image', file);
 
-            const response = await fetch('/admin/questions/images', {
+            const response = await fetch('/admin/questions/upload-image', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': getCsrfToken(),

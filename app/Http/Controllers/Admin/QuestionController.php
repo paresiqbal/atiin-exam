@@ -14,7 +14,7 @@ class QuestionController extends Controller
 {
     public function create(QuestionBank $questionBank)
     {
-        return Inertia::render('admin/questions/QuestionCreate', [
+        return Inertia::render('admin/question-banks/QuestionFormPage', [
             'questionBank' => $questionBank,
             'question' => null,
         ]);
@@ -24,7 +24,7 @@ class QuestionController extends Controller
     {
         $question->load('options');
 
-        return Inertia::render('admin/questions/QuestionEdit', [
+        return Inertia::render('admin/question-banks/QuestionFormPage', [
             'questionBank' => $question->questionBank,
             'question' => $question,
         ]);

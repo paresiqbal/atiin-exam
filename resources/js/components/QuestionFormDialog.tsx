@@ -341,7 +341,9 @@ export function QuestionFormDialog({
 
                     {/* Optional image URL outside editor */}
                     <div>
-                        <label className="text-sm font-medium">Image URL</label>
+                        <label className="text-sm font-medium">
+                            URL Gambar
+                        </label>
                         <Input
                             placeholder="https://..."
                             value={data.image_url}
