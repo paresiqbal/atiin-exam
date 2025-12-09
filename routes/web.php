@@ -36,25 +36,20 @@ Route::middleware(['auth', 'verified', 'role:admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('/dashboard', [DashboardController::class, 'index'])
-            ->name('dashboard');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         // User management routes
         Route::resource('users', UserController::class);
         Route::post('users/import/preview', [UserImportController::class, 'preview'])->name('users.import.preview');
         Route::post('users/import', [UserImportController::class, 'import'])->name('users.import');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
-        Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])
-            ->name('users.import.template');
+        Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
 
-        Route::get('users/import/schools', [UserImportController::class, 'downloadSchoolList'])
-            ->name('users.import.schools');
+        Route::get('users/import/schools', [UserImportController::class, 'downloadSchoolList'])->name('users.import.schools');
         Route::resource('schools', SchoolController::class);
 
-        Route::get('students/cards', [StudentController::class, 'cards'])
-            ->name('students.cards');
-        Route::get('students/cards/download', [StudentController::class, 'downloadCards'])
-            ->name('students.cards.download');
+        Route::get('students/cards', [StudentController::class, 'cards'])->name('students.cards');
+        Route::get('students/cards/download', [StudentController::class, 'downloadCards'])->name('students.cards.download');
         Route::resource('students', StudentController::class);
 
         // Exam management routes
@@ -63,12 +58,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');
         Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
         Route::get('exams/{exam}/export-results', [AdminExamController::class, 'exportResults'])->name('exams.exportResults');
-        Route::post('/exams/{exam}/regenerate-token', [AdminExamController::class, 'regenerateToken'])
-            ->name('admin.exams.regenerate-token');
-        Route::get(
-            '/attempts/{attempt}/download-pdf',
-            [AdminExamController::class, 'downloadAttemptPdf']
-        )->name('attempts.download-pdf');
+        Route::post('/exams/{exam}/regenerate-token', [AdminExamController::class, 'regenerateToken'])->name('admin.exams.regenerate-token');
+        Route::get('/attempts/{attempt}/download-pdf', [AdminExamController::class, 'downloadAttemptPdf'])->name('attempts.download-pdf');
 
         Route::resource('majors', MajorController::class, ['only' => ['store', 'edit', 'update', 'destroy']]);
         Route::post('majors', [MajorController::class, 'store'])->name('majors.store');
@@ -80,7 +71,15 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('universities/import/template', [UniversityImportController::class, 'downloadTemplate'])->name('universities.import.template');
 
         Route::resource('question-banks', AdminQuestionBankController::class);
-        Route::resource('questions', AdminQuestionController::class, ['only' => ['create', 'store', 'edit', 'update', 'destroy']]);
+
+        // Question routes - nested under question-banks
+        Route::get('question-banks/{questionBank}/questions/create', [AdminQuestionController::class, 'create'])->name('questions.create');
+        Route::post('question-banks/{questionBank}/questions', [AdminQuestionController::class, 'store'])->name('questions.store');
+        Route::get('questions/{question}/edit', [AdminQuestionController::class, 'edit'])->name('questions.edit');
+        Route::put('questions/{question}', [AdminQuestionController::class, 'update'])->name('questions.update');
+        Route::delete('questions/{question}', [AdminQuestionController::class, 'destroy'])->name('questions.destroy');
+
+        // Import routes
         Route::post('question-banks/{questionBank}/questions/import/preview', [AdminQuestionImportController::class, 'preview'])->name('questions.import.preview');
         Route::post('question-banks/{questionBank}/questions/import', [AdminQuestionImportController::class, 'import'])->name('questions.import');
         Route::get('questions/import/template', [AdminQuestionImportController::class, 'downloadTemplate'])->name('questions.import.template');

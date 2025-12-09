@@ -83,15 +83,13 @@ export default function CreateQuestion({ questionBank }: Props) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Create Question" />
+            <Head title="Buat Soal" />
 
             <div className="flex max-w-4xl flex-1 flex-col gap-6 p-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Create Question
-                    </h1>
+                    <h1 className="text-3xl font-bold">Buat Soal</h1>
                     <p className="mt-1 text-gray-600">
-                        Add a new question to {questionBank.name}
+                        Tambahkan soal baru ke {questionBank.name}
                     </p>
                 </div>
 
@@ -100,17 +98,15 @@ export default function CreateQuestion({ questionBank }: Props) {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">
-                                Question Details
+                                Detail Soal
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <Label htmlFor="question_text">
-                                    Question *
-                                </Label>
+                                <Label htmlFor="question_text">Soal *</Label>
                                 <Textarea
                                     id="question_text"
-                                    placeholder="Enter your question here..."
+                                    placeholder="Masukkan soal Anda di sini..."
                                     value={data.question_text}
                                     onChange={(e) =>
                                         setData('question_text', e.target.value)
@@ -127,7 +123,7 @@ export default function CreateQuestion({ questionBank }: Props) {
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 <div>
                                     <Label htmlFor="question_type">
-                                        Question Type *
+                                        Tipe Soal *
                                     </Label>
                                     <Select
                                         value={data.question_type}
@@ -143,13 +139,13 @@ export default function CreateQuestion({ questionBank }: Props) {
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="multiple_choice">
-                                                Multiple Choice
+                                                Pilihan Ganda
                                             </SelectItem>
                                             <SelectItem value="multiple_select">
-                                                Multiple Select
+                                                Pilihan Ganda (Multiple Select)
                                             </SelectItem>
                                             <SelectItem value="true_false">
-                                                True/False
+                                                Benar/Salah
                                             </SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -161,7 +157,7 @@ export default function CreateQuestion({ questionBank }: Props) {
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="points">Points *</Label>
+                                    <Label htmlFor="points">Point *</Label>
                                     <Input
                                         id="points"
                                         type="number"
@@ -185,7 +181,7 @@ export default function CreateQuestion({ questionBank }: Props) {
 
                                 <div>
                                     <Label htmlFor="image_url">
-                                        Image URL (Optional)
+                                        URL Gambar (Opsional)
                                     </Label>
                                     <Input
                                         id="image_url"
@@ -211,7 +207,7 @@ export default function CreateQuestion({ questionBank }: Props) {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">
-                                Answer Options
+                                Opsi Jawaban
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -225,7 +221,7 @@ export default function CreateQuestion({ questionBank }: Props) {
                                             htmlFor={`option-${index}`}
                                             className="text-sm"
                                         >
-                                            Option {index + 1}
+                                            Opsi {index + 1}
                                         </Label>
                                         <Input
                                             id={`option-${index}`}
@@ -256,7 +252,7 @@ export default function CreateQuestion({ questionBank }: Props) {
                                             htmlFor={`correct-${index}`}
                                             className="cursor-pointer text-sm"
                                         >
-                                            Correct
+                                            Benar
                                         </Label>
                                     </div>
                                     {data.options.length > 2 && (
@@ -289,7 +285,7 @@ export default function CreateQuestion({ questionBank }: Props) {
                                 className="mt-4 gap-2"
                             >
                                 <Plus className="h-4 w-4" />
-                                Add Option
+                                Tambah Opsi
                             </Button>
                         </CardContent>
                     </Card>
@@ -299,10 +295,10 @@ export default function CreateQuestion({ questionBank }: Props) {
                         <Link
                             href={`/admin/question-banks/${questionBank.id}/questions`}
                         >
-                            <Button variant="outline">Cancel</Button>
+                            <Button variant="outline">Batal</Button>
                         </Link>
                         <Button type="submit" disabled={processing}>
-                            Create Question
+                            Buat Soal
                         </Button>
                     </div>
                 </form>
