@@ -19,6 +19,7 @@ return new class extends Migration
             $table->unsignedBigInteger('major_id')->nullable();
             $table->foreignId('school_id')->nullable()->onDelete('set null');
             $table->string('class')->nullable();
+            $table->json('university_selections')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
