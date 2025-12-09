@@ -41,7 +41,7 @@ export default function CreateQuestion({ questionBank }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(`/teacher/question-banks/${questionBank.id}/questions`);
+        post(`/admin/question-banks/${questionBank.id}/questions`);
     };
 
     const addOption = () => {
@@ -69,14 +69,14 @@ export default function CreateQuestion({ questionBank }: Props) {
     };
 
     const breadcrumbs = [
-        { title: 'Question Banks', href: '/teacher/question-banks' },
+        { title: 'Question Banks', href: '/admin/question-banks' },
         {
             title: questionBank.name,
-            href: `/teacher/question-banks/${questionBank.id}`,
+            href: `/admin/question-banks/${questionBank.id}`,
         },
         {
             title: 'Questions',
-            href: `/teacher/question-banks/${questionBank.id}/questions`,
+            href: `/admin/question-banks/${questionBank.id}/questions`,
         },
         { title: 'Create', href: '#' },
     ];
@@ -297,7 +297,7 @@ export default function CreateQuestion({ questionBank }: Props) {
                     {/* Form Actions */}
                     <div className="flex justify-end gap-3">
                         <Link
-                            href={`/teacher/question-banks/${questionBank.id}/questions`}
+                            href={`/admin/question-banks/${questionBank.id}/questions`}
                         >
                             <Button variant="outline">Cancel</Button>
                         </Link>

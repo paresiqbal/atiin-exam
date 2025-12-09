@@ -67,7 +67,7 @@ const extensions = [
             const formData = new FormData();
             formData.append('image', file);
 
-            const response = await fetch('/teacher/questions/images', {
+            const response = await fetch('/admin/questions/images', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': getCsrfToken(),
@@ -178,14 +178,14 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
         setData('question_text', editorContent || '');
 
         if (isEditing && question) {
-            put(`/teacher/questions/${question.id}`, {
+            put(`/admin/questions/${question.id}`, {
                 onSuccess: () => {
                     reset();
                     window.history.back();
                 },
             });
         } else {
-            post(`/teacher/question-banks/${questionBank.id}/questions`, {
+            post(`/admin/question-banks/${questionBank.id}/questions`, {
                 onSuccess: () => {
                     reset();
                     window.history.back();
@@ -195,10 +195,10 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Bank Soal', href: '/teacher/question-banks' },
+        { title: 'Bank Soal', href: '/admin/question-banks' },
         {
             title: questionBank.name,
-            href: `/teacher/question-banks/${questionBank.id}`,
+            href: `/admin/question-banks/${questionBank.id}`,
         },
         {
             title: isEditing ? 'Edit Soal' : 'Buat Soal',

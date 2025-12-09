@@ -70,13 +70,13 @@ export default function EditQuestion({ question, questionBank }: Props) {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         put(
-            `/teacher/question-banks/${questionBank.id}/questions/${question.id}`,
+            `/admin/question-banks/${questionBank.id}/questions/${question.id}`,
         );
     };
 
     const handleDelete = () => {
         destroy(
-            `/teacher/question-banks/${questionBank.id}/questions/${question.id}`,
+            `/admin/question-banks/${questionBank.id}/questions/${question.id}`,
         );
     };
 
@@ -103,14 +103,14 @@ export default function EditQuestion({ question, questionBank }: Props) {
     };
 
     const breadcrumbs = [
-        { title: 'Question Banks', href: '/teacher/question-banks' },
+        { title: 'Question Banks', href: '/admin/question-banks' },
         {
             title: questionBank.name,
-            href: `/teacher/question-banks/${questionBank.id}`,
+            href: `/admin/question-banks/${questionBank.id}`,
         },
         {
             title: 'Questions',
-            href: `/teacher/question-banks/${questionBank.id}/questions`,
+            href: `/admin/question-banks/${questionBank.id}/questions`,
         },
         { title: 'Edit', href: '#' },
     ];
@@ -331,7 +331,7 @@ export default function EditQuestion({ question, questionBank }: Props) {
                     {/* Form Actions */}
                     <div className="flex justify-end gap-3">
                         <Link
-                            href={`/teacher/question-banks/${questionBank.id}/questions`}
+                            href={`/admin/question-banks/${questionBank.id}/questions`}
                         >
                             <Button variant="outline">Cancel</Button>
                         </Link>

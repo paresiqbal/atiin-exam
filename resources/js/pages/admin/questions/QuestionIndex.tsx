@@ -59,16 +59,16 @@ export default function QuestionIndex({ questionBank }: Props) {
     );
 
     const handleDelete = (id: number) => {
-        destroy(`/teacher/question-banks/${questionBank.id}/questions/${id}`, {
+        destroy(`/admin/question-banks/${questionBank.id}/questions/${id}`, {
             onSuccess: () => setDeleteId(null),
         });
     };
 
     const breadcrumbs = [
-        { title: 'Bank Soal', href: '/teacher/question-banks' },
+        { title: 'Bank Soal', href: '/admin/question-banks' },
         {
             title: '',
-            href: `/teacher/question-banks/${questionBank.id}`,
+            href: `/admin/question-banks/${questionBank.id}`,
         },
         { title: 'Questions', href: '#' },
     ];
@@ -89,7 +89,7 @@ export default function QuestionIndex({ questionBank }: Props) {
                         </p>
                     </div>
                     <Link
-                        href={`/teacher/question-banks/${questionBank.id}/questions/create`}
+                        href={`/admin/question-banks/${questionBank.id}/questions/create`}
                     >
                         <Button className="gap-2">
                             <Plus className="h-4 w-4" />
@@ -115,7 +115,7 @@ export default function QuestionIndex({ questionBank }: Props) {
                         <CardContent className="flex h-32 flex-col items-center justify-center gap-2">
                             <p className="text-gray-500">No questions found</p>
                             <Link
-                                href={`/teacher/question-banks/${questionBank.id}/questions/create`}
+                                href={`/admin/question-banks/${questionBank.id}/questions/create`}
                             >
                                 <Button variant="outline" size="sm">
                                     Create First Question
@@ -169,7 +169,7 @@ export default function QuestionIndex({ questionBank }: Props) {
                                         </div>
                                         <div className="flex gap-2">
                                             <Link
-                                                href={`/teacher/question-banks/${questionBank.id}/questions/${question.id}/edit`}
+                                                href={`/admin/question-banks/${questionBank.id}/questions/${question.id}/edit`}
                                             >
                                                 <Button
                                                     variant="outline"
