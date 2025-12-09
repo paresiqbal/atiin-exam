@@ -92,10 +92,40 @@ class ExamController extends Controller
 
         $student = auth()->user();
 
+        // 🔹 Save / update university selections
         $student->update([
             'university_selections' => $validated['selections'],
         ]);
 
+        // 🔹 Check if this student already has an attempt for this exam
+        $existingAttempt = ExamAttempt::where('student_id', $student->id)
+            ->where('exam_id', $exam->id)
+            ->latest()
+            ->first();
+
+        if ($existingAttempt) {
+            // If attempt is frozen, send them to the same attempt (FrozenExam will show)
+            if ($existingAttempt->is_frozen) {
+                return redirect()
+                    ->route('student.exams.take', $existingAttempt->id);
+            }
+
+            // If still in progress, just continue that attempt
+            if ($existingAttempt->status === 'in_progress') {
+                return redirect()
+                    ->route('student.exams.take', $existingAttempt->id)
+                    ->with('info', 'Kamu sudah memulai ujian ini, lanjutkan ujian yang sama.');
+            }
+
+            // If already submitted, block new attempt (1 attempt per exam)
+            if ($existingAttempt->status === 'submitted') {
+                return back()->withErrors([
+                    'token' => 'Kamu sudah menyelesaikan ujian ini dan tidak dapat mengulang.',
+                ]);
+            }
+        }
+
+        // 🔹 No existing attempt that can be reused → create a new one
         $attempt = ExamAttempt::create([
             'student_id' => $student->id,
             'exam_id' => $exam->id,
@@ -105,6 +135,7 @@ class ExamController extends Controller
 
         return redirect()->route('student.exams.take', $attempt->id);
     }
+
 
 
     public function take(ExamAttempt $attempt)
