@@ -133,7 +133,7 @@ export default function QuestionBankIndex({ questionBanks }: Props) {
                                             variant="secondary"
                                             onClick={() =>
                                                 router.get(
-                                                    `/teacher/question-banks/${bank.id}`,
+                                                    `/admin/question-banks/${bank.id}`,
                                                 )
                                             }
                                             className="flex-1"

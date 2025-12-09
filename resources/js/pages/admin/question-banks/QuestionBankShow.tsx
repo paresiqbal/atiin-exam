@@ -1,5 +1,3 @@
-// resources/js/pages/teacher/question-banks/QuestionBankShow.tsx
-
 import { Head, router } from '@inertiajs/react';
 
 import { Button } from '@/components/ui/button';
@@ -16,27 +14,25 @@ export default function QuestionBankShow({
     questionBank: QuestionBank;
 }) {
     const breadcrumbs = [
-        { title: 'Bank Soal', href: '/teacher/question-banks' },
+        { title: 'Bank Soal', href: '/admin/question-banks' },
         {
             title: 'Soal Ujian',
-            href: `/teacher/question-banks/${questionBank.id}`,
+            href: `/admin/question-banks/${questionBank.id}`,
         },
     ];
 
     const handleCreateClick = () => {
-        // go to QuestionFormPage (create mode)
         router.visit(
-            `/teacher/question-banks/${questionBank.id}/questions/create`,
+            `/admin/question-banks/${questionBank.id}/questions/create`,
         );
     };
 
     const handleEditQuestion = (question: Question) => {
-        // go to QuestionFormPage (edit mode)
-        router.visit(`/teacher/questions/${question.id}/edit`);
+        router.visit(`/admin/questions/${question.id}/edit`);
     };
 
     const handleDeleteQuestion = (id: number) => {
-        router.delete(`/teacher/questions/${id}`);
+        router.delete(`/admin/questions/${id}`);
     };
 
     return (

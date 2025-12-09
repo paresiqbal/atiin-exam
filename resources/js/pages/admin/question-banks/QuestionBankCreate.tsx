@@ -28,16 +28,16 @@ export default function QuestionBankCreate() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post('/teacher/question-banks');
+        post('/admin/question-banks');
     };
 
     const handleCancel = () => {
-        window.location.href = '/teacher/question-banks';
+        window.location.href = '/admin/question-banks';
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Bank Soal', href: '/teacher/question-banks' },
-        { title: 'Buat Bank Soal', href: '/teacher/question-banks/create' },
+        { title: 'Bank Soal', href: '/admin/question-banks' },
+        { title: 'Buat Bank Soal', href: '/admin/question-banks/create' },
     ];
 
     return (
