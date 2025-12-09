@@ -127,6 +127,8 @@ Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')
     Route::get('/exams/{attempt}/results', [ExamController::class, 'results'])->name('exams.results');
     Route::get('/exams/{attempt}/download-pdf', [ExamController::class, 'downloadResults'])->name('exams.downloadPdf');
     Route::get('/exams/history', [ExamHistoryController::class, 'index'])->name('exams.history');
+    Route::post('/exams/{attempt}/log-violation', [ExamController::class, 'logViolation'])
+        ->name('exams.logViolation');
 });
 
 

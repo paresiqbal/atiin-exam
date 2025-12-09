@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Student;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamToken;
+use App\Models\ExamViolation;
 use App\Models\Major;
 use App\Models\University;
 use App\Services\ExamResultsPdfService;
@@ -91,7 +92,6 @@ class ExamController extends Controller
 
         $student = auth()->user();
 
-        // ✅ Store selections as ARRAY (cast → JSON di DB)
         $student->update([
             'university_selections' => $validated['selections'],
         ]);
@@ -109,27 +109,37 @@ class ExamController extends Controller
 
     public function take(ExamAttempt $attempt)
     {
-        // Check if student owns this attempt
         if ($attempt->student_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
-        // Check if already submitted
+        if ($attempt->is_frozen) {
+            return Inertia::render('student/exams/FrozenExam', [
+                'attempt' => $attempt->load('violations'),
+                'frozen_reason' => $attempt->frozen_reason,
+            ]);
+        }
+
         if ($attempt->status === 'submitted') {
             return redirect()->route('student.exams.results', $attempt->id);
         }
 
-        // Load questions with options
+        if ($attempt->student_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        if ($attempt->status === 'submitted') {
+            return redirect()->route('student.exams.results', $attempt->id);
+        }
+
         $questions = $attempt->exam->questionBank->questions()
             ->with('options')
             ->get();
 
-        // Shuffle if enabled
         if ($attempt->exam->settings->shuffle_questions) {
             $questions = $questions->shuffle();
         }
 
-        // Get student's previous answers
         $responses = $attempt->responses()
             ->pluck('selected_option_id', 'question_id')
             ->toArray();
@@ -137,7 +147,6 @@ class ExamController extends Controller
         $timeLimit = $attempt->exam->settings->time_limit_minutes;
         $elapsedMinutes = now()->diffInMinutes($attempt->started_at);
 
-        // Auto-submit if time expired
         if ($elapsedMinutes > $timeLimit) {
             return $this->submitExam($attempt);
         }
@@ -154,12 +163,20 @@ class ExamController extends Controller
 
     public function saveAnswer(Request $request, ExamAttempt $attempt)
     {
-        // Check if student owns this attempt
         if ($attempt->student_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
-        // Check if time expired
+        if ($attempt->is_frozen) {
+            return response()->json([
+                'error' => 'Ujian dibekukan. Hubungi admin.'
+            ], 403);
+        }
+
+        if ($attempt->student_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
         $timeLimit = $attempt->exam->settings->time_limit_minutes;
         if (now()->diffInMinutes($attempt->started_at) > $timeLimit) {
             return response()->json(['error' => 'Time expired'], 403);
@@ -170,7 +187,6 @@ class ExamController extends Controller
             'selected_option_id' => 'nullable|exists:question_options,id',
         ]);
 
-        // Save or update response
         $attempt->responses()->updateOrCreate(
             [
                 'question_id' => $validated['question_id'],
@@ -186,17 +202,14 @@ class ExamController extends Controller
 
     public function submitExam(ExamAttempt $attempt)
     {
-        // Check if student owns this attempt
         if ($attempt->student_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
-        // Check if already submitted
         if ($attempt->status === 'submitted') {
             return redirect()->route('student.exams.results', $attempt->id);
         }
 
-        // Calculate score
         $totalScore = 0;
         $maxScore = 0;
 
@@ -212,7 +225,6 @@ class ExamController extends Controller
             }
         }
 
-        // Update attempt with final score
         $attempt->update([
             'status' => 'submitted',
             'completed_at' => now(),
@@ -231,7 +243,6 @@ class ExamController extends Controller
 
         $student = $attempt->student;
 
-        // ✅ Now this is already an array because of cast
         $rawSelections = $student->university_selections ?? [];
 
         if (!is_array($rawSelections)) {
@@ -256,7 +267,6 @@ class ExamController extends Controller
 
             $majors = Major::whereIn('id', $selection['majors'])->get();
 
-            // Semua pilihan untuk satu universitas
             $universitySelections[] = [
                 'university' => [
                     'id'   => $university->id,
@@ -272,7 +282,6 @@ class ExamController extends Controller
                 })->values()->all(),
             ];
 
-            // Setiap jurusan jadi 1 placement (Pilihan 1, 2, 3, ...)
             foreach ($majors as $major) {
                 $studentSelections[] = [
                     'university' => [
@@ -289,7 +298,6 @@ class ExamController extends Controller
             }
         }
 
-        // Fallback lama
         $fallbackMajor = $student->major;
         $fallbackUniversity = $student->university;
 
@@ -390,9 +398,6 @@ class ExamController extends Controller
         ]);
     }
 
-
-
-
     public function downloadResults(ExamAttempt $attempt)
     {
         if ($attempt->student_id !== auth()->id()) {
@@ -403,5 +408,64 @@ class ExamController extends Controller
         $pdf = $pdfService->generate($attempt);
 
         return $pdf->download('exam-results-' . $attempt->id . '.pdf');
+    }
+
+    public function logViolation(Request $request, ExamAttempt $attempt)
+    {
+        if ($attempt->student_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        if ($attempt->is_frozen) {
+            return response()->json([
+                'success' => false,
+                'is_frozen' => true,
+                'message' => 'Ujian Anda dibekukan. Hubungi admin untuk membuka kembali.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'violation_type' => 'required|string|in:tab_switch,copy_attempt,paste_attempt',
+        ]);
+
+        $violation = ExamViolation::firstOrCreate(
+            [
+                'attempt_id' => $attempt->id,
+                'violation_type' => $validated['violation_type'],
+            ],
+            [
+                'count' => 0,
+                'last_occurred_at' => now(),
+            ]
+        );
+
+        $violation->increment('count');
+        $violation->update(['last_occurred_at' => now()]);
+
+        $MAX_VIOLATIONS = 3;
+
+        if ($violation->count >= $MAX_VIOLATIONS) {
+            $attempt->update([
+                'is_frozen' => true,
+                'frozen_at' => now(),
+                'frozen_reason' => "Terlalu banyak {$validated['violation_type']} ({$violation->count}x)",
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'is_frozen' => true,
+                'violation_count' => $violation->count,
+                'max_violations' => $MAX_VIOLATIONS,
+                'message' => 'Ujian dibekukan karena terlalu banyak pelanggaran. Hubungi admin.'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'is_frozen' => false,
+            'violation_count' => $violation->count,
+            'max_violations' => $MAX_VIOLATIONS,
+            'remaining' => $MAX_VIOLATIONS - $violation->count,
+        ]);
     }
 }

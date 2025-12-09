@@ -18,11 +18,16 @@ class ExamAttempt extends Model
         'score',
         'total_score',
         'status',
+        'is_frozen',
+        'frozen_at',
+        'frozen_reason',
     ];
 
     protected $casts = [
         'started_at'   => 'datetime',
         'completed_at' => 'datetime',
+        'is_frozen' => 'boolean',
+        'frozen_at' => 'datetime',
     ];
 
 
@@ -39,5 +44,10 @@ class ExamAttempt extends Model
     public function responses()
     {
         return $this->hasMany(ExamResponse::class);
+    }
+
+    public function violations()
+    {
+        return $this->hasMany(ExamViolation::class, 'attempt_id');
     }
 }

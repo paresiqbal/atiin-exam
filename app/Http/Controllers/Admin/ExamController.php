@@ -114,12 +114,10 @@ class ExamController extends Controller
 
     public function regenerateToken(Exam $exam)
     {
-        // Optional: only the owner admin can do this
         if ($exam->admin_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
-        // Remove old tokens (or keep them if you want history)
         $exam->tokens()->delete();
 
         $newToken = ExamToken::create([
@@ -158,9 +156,6 @@ class ExamController extends Controller
             'shuffle_questions'  => 'boolean',
             'allow_review'       => 'boolean',
             'school_id'       => 'required|exists:schools,id',
-
-
-
         ]);
 
         $exam->update([
@@ -248,7 +243,6 @@ class ExamController extends Controller
             ];
         });
 
-        // Analytics using the SAME rule
         $totalAttempts = $attemptsQuery->count();
 
         $passed = $exam->attempts()

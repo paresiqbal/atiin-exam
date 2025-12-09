@@ -19,6 +19,9 @@ return new class extends Migration
             $table->enum('status', ['in_progress', 'submitted'])->default('in_progress');
             $table->timestamps();
             $table->index(['student_id', 'exam_id']);
+            $table->boolean('is_frozen')->default(false);
+            $table->timestamp('frozen_at')->nullable();
+            $table->text('frozen_reason')->nullable();
         });
     }
 
