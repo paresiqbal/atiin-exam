@@ -304,7 +304,6 @@ class UniversityImportController extends Controller
 
         $handle = fopen('php://memory', 'w');
 
-        // Header row - must match import order
         fputcsv($handle, [
             'type',
             'name',
@@ -315,7 +314,6 @@ class UniversityImportController extends Controller
             'minimum_passing_grade',
         ]);
 
-        // Helper row (for humans)
         fputcsv($handle, [
             '# university|major',
             '# required name (university or major)',
@@ -326,12 +324,11 @@ class UniversityImportController extends Controller
             '# for majors: minimum passing grade 0-100',
         ]);
 
-        // Example rows (realistic for ID context)
         $rows = [
-            ['university', 'Universitas Indonesia', 'UI', 'Depok', 'Universitas negeri di Depok, Jawa Barat', '', ''],
-            ['university', 'Institut Teknologi Bandung', 'ITB', 'Bandung', 'Institut teknologi di Bandung, Jawa Barat', '', ''],
-            ['major', 'Teknik Informatika', '', '', 'Program studi Teknik Informatika', 'Universitas Indonesia', '80'],
-            ['major', 'Teknik Elektro', '', '', 'Program studi Teknik Elektro', 'Institut Teknologi Bandung', '78'],
+            ['university', 'Universitas Bengkulu', 'UNIB', 'Bengkulu', 'Universitas negeri di Bengkulu, Bengkulu', '', ''],
+            ['university', 'Amikom Yogyakarta', 'AMIKOM', 'Yogyakarta', 'Universitas swasta di Yogyakarta', '', ''],
+            ['major', 'Teknik Informatika', '', '', 'Program studi Teknik Informatika', 'Universitas Bengkulu', '80'],
+            ['major', 'Teknik Elektro', '', '', 'Program studi Teknik Elektro', 'Amikom Yogyakarta', '78'],
         ];
 
         foreach ($rows as $row) {
