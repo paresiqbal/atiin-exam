@@ -13,6 +13,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
 
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+
 interface BreadcrumbItem {
     title: string;
     href: string;
@@ -77,7 +81,7 @@ export default function SchoolEdit({ school }: EditProps) {
                     </p>
                 </div>
 
-                <Card className="max-w-2xl">
+                <Card className="w-full">
                     <CardHeader>
                         <CardTitle>Data Sekolah</CardTitle>
                         <CardDescription>
@@ -87,7 +91,6 @@ export default function SchoolEdit({ school }: EditProps) {
 
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Name */}
                             <div className="space-y-2">
                                 <Label htmlFor="name">
                                     Nama Sekolah{' '}
@@ -110,7 +113,6 @@ export default function SchoolEdit({ school }: EditProps) {
                                 )}
                             </div>
 
-                            {/* Description */}
                             <div className="space-y-2">
                                 <Label htmlFor="description">
                                     Deskripsi (opsional)
@@ -157,6 +159,24 @@ export default function SchoolEdit({ school }: EditProps) {
                         </form>
                     </CardContent>
                 </Card>
+
+                <Alert className="max-full flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 h-4 w-4" />
+                        <AlertDescription>
+                            Menghapus sekolah akan menghilangkan data sekolah
+                            ini dari sistem. Pastikan Anda telah meninjau
+                            dampaknya terhadap pengguna dan ujian yang terkait
+                            sebelum melanjutkan.
+                        </AlertDescription>
+                    </div>
+
+                    <ConfirmDeleteButton
+                        deleteUrl={`${baseUrl}/${school.id}`}
+                        resourceLabel="sekolah"
+                        itemName={school.name}
+                    />
+                </Alert>
             </div>
         </AppLayout>
     );
