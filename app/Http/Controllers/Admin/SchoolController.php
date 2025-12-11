@@ -9,11 +9,19 @@ use Inertia\Inertia;
 
 class SchoolController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $schools = School::withCount('users', 'exams')->paginate(15);
-        return Inertia::render('admin/schools/SchoolIndex', ['schools' => $schools]);
+        $perPage = (int) $request->input('per_page', 10);
+
+        $schools = School::withCount(['users', 'exams'])
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return Inertia::render('admin/schools/SchoolIndex', [
+            'schools' => $schools,
+        ]);
     }
+
 
     public function create()
     {
@@ -57,5 +65,22 @@ class SchoolController extends Controller
 
         return redirect()->route('admin.schools.index')
             ->with('success', 'School deleted successfully');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return redirect()
+                ->route('admin.schools.index')
+                ->with('info', 'Tidak ada sekolah yang dipilih untuk dihapus.');
+        }
+
+        School::whereIn('id', $ids)->delete();
+
+        return redirect()
+            ->route('admin.schools.index')
+            ->with('success', 'Sekolah terpilih berhasil dihapus.');
     }
 }

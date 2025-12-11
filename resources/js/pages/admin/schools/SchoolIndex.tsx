@@ -1,11 +1,11 @@
-// resources/js/pages/admin/schools/SchoolIndex.tsx
-
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Edit2, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     InputGroup,
     InputGroupAddon,
@@ -19,6 +19,13 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 
 interface BreadcrumbItem {
@@ -56,6 +63,10 @@ export default function SchoolIndex() {
     const { schools } = usePage<PageProps>().props;
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [rowsPerPage, setRowsPerPage] = useState<number>(
+        schools.per_page ?? 10,
+    );
 
     const filteredSchools = useMemo(
         () =>
@@ -81,12 +92,74 @@ export default function SchoolIndex() {
         },
     ];
 
+    // Selection logic (same pattern as UserIndex / StudentIndex)
+    const allSelected =
+        filteredSchools.length > 0 &&
+        filteredSchools.every((s) => selectedIds.includes(s.id));
+
+    const someSelected =
+        selectedIds.length > 0 && selectedIds.length < filteredSchools.length;
+
+    const checkboxValue: boolean | 'indeterminate' = allSelected
+        ? true
+        : someSelected
+          ? 'indeterminate'
+          : false;
+
+    const handleToggleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedIds(filteredSchools.map((s) => s.id));
+        } else {
+            setSelectedIds((prev) =>
+                prev.filter((id) => !filteredSchools.some((s) => s.id === id)),
+            );
+        }
+    };
+
+    const handleToggleSelectOne = (id: number, checked: boolean) => {
+        if (checked) {
+            setSelectedIds((prev) =>
+                prev.includes(id) ? prev : [...prev, id],
+            );
+        } else {
+            setSelectedIds((prev) =>
+                prev.filter((selectedId) => selectedId !== id),
+            );
+        }
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) return;
+
+        return router.delete(`${baseUrl}/bulk-delete`, {
+            data: {
+                ids: selectedIds,
+            },
+            onSuccess: () => {
+                setSelectedIds([]);
+            },
+        });
+    };
+
+    const handleChangeRowsPerPage = (value: string) => {
+        const perPage = Number(value) || 10;
+        setRowsPerPage(perPage);
+
+        router.get(
+            `${baseUrl}`,
+            { page: 1, per_page: perPage },
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Manajemen Sekolah" />
 
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                {/* Header */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">
@@ -105,7 +178,7 @@ export default function SchoolIndex() {
                     </Link>
                 </div>
 
-                {/* Search (same style as UserIndex) */}
+                {/* Search + bulk delete */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
                         <InputGroup className="flex-1">
@@ -127,15 +200,31 @@ export default function SchoolIndex() {
                         </InputGroup>
                     </div>
 
-                    {/* Right side reserve (for future filter / stats if needed) */}
-                    <div className="flex items-center gap-2"></div>
+                    <div className="flex items-center gap-2">
+                        <ConfirmBulkDeleteButton
+                            count={selectedIds.length}
+                            resourceLabelPlural="sekolah"
+                            disabled={selectedIds.length === 0}
+                            onConfirm={handleBulkDelete}
+                        />
+                    </div>
                 </div>
 
                 {/* Table */}
                 <div className="overflow-x-auto rounded-lg border shadow-sm">
                     <table className="w-full text-sm">
-                        <thead className="border-b">
+                        <thead className="border-b bg-accent">
                             <tr>
+                                <th className="w-10 px-4 py-2">
+                                    <Checkbox
+                                        checked={checkboxValue}
+                                        onCheckedChange={(value) =>
+                                            handleToggleSelectAll(
+                                                value === true,
+                                            )
+                                        }
+                                    />
+                                </th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                     Nama Sekolah
                                 </th>
@@ -156,54 +245,80 @@ export default function SchoolIndex() {
 
                         <tbody className="divide-y">
                             {filteredSchools.length > 0 ? (
-                                filteredSchools.map((school) => (
-                                    <tr
-                                        key={school.id}
-                                        className="transition-colors hover:bg-foreground/10"
-                                    >
-                                        <td className="px-6 py-3 font-medium">
-                                            {school.name}
-                                        </td>
+                                filteredSchools.map((school) => {
+                                    const isSelected = selectedIds.includes(
+                                        school.id,
+                                    );
 
-                                        <td className="max-w-md px-6 py-3">
-                                            {school.description
-                                                ? school.description
-                                                : '-'}
-                                        </td>
-
-                                        <td className="px-6 py-3">
-                                            {school.users_count}
-                                        </td>
-
-                                        <td className="px-6 py-3">
-                                            {school.exams_count}
-                                        </td>
-
-                                        <td className="px-6 py-3">
-                                            <div className="flex gap-2">
-                                                <Link
-                                                    href={`${baseUrl}/${school.id}/edit`}
-                                                    className="rounded-md p-2 hover:bg-foreground/20"
-                                                >
-                                                    <Edit2 className="h-4 w-4" />
-                                                </Link>
-
-                                                <ConfirmDeleteButton
-                                                    deleteUrl={`${baseUrl}/${school.id}`}
-                                                    resourceLabel="sekolah"
-                                                    itemName={school.name}
+                                    return (
+                                        <tr
+                                            key={school.id}
+                                            className={`transition-colors hover:bg-accent ${
+                                                isSelected ? 'bg-accent' : ''
+                                            }`}
+                                        >
+                                            <td className="w-10 px-4 py-2">
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    onCheckedChange={(value) =>
+                                                        handleToggleSelectOne(
+                                                            school.id,
+                                                            value === true,
+                                                        )
+                                                    }
                                                 />
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+
+                                            <td className="px-6 py-3 font-medium">
+                                                {school.name || '-'}
+                                            </td>
+
+                                            <td className="max-w-md px-6 py-3">
+                                                {school.description
+                                                    ? school.description
+                                                    : '-'}
+                                            </td>
+
+                                            <td className="px-6 py-3">
+                                                {typeof school.users_count ===
+                                                'number'
+                                                    ? school.users_count
+                                                    : '-'}
+                                            </td>
+
+                                            <td className="px-6 py-3">
+                                                {typeof school.exams_count ===
+                                                'number'
+                                                    ? school.exams_count
+                                                    : '-'}
+                                            </td>
+
+                                            <td className="px-6 py-3">
+                                                <div className="flex gap-2">
+                                                    <Link
+                                                        href={`${baseUrl}/${school.id}/edit`}
+                                                        className="rounded-md p-2 hover:bg-foreground/20"
+                                                    >
+                                                        <Edit2 className="h-4 w-4" />
+                                                    </Link>
+
+                                                    <ConfirmDeleteButton
+                                                        deleteUrl={`${baseUrl}/${school.id}`}
+                                                        resourceLabel="sekolah"
+                                                        itemName={school.name}
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan={5}
+                                        colSpan={6}
                                         className="px-6 py-8 text-center text-sm text-slate-500"
                                     >
-                                        Tidak ada sekolah ditemukan.
+                                        -
                                     </td>
                                 </tr>
                             )}
@@ -211,59 +326,86 @@ export default function SchoolIndex() {
                     </table>
                 </div>
 
-                {/* Pagination */}
-                <div className="flex justify-center py-4">
-                    <Pagination>
-                        <PaginationContent>
-                            {/* Previous */}
-                            <PaginationItem>
-                                {schools.current_page > 1 ? (
-                                    <Link
-                                        href={`${baseUrl}?page=${
-                                            schools.current_page - 1
-                                        }`}
-                                    >
-                                        <PaginationPrevious />
-                                    </Link>
-                                ) : (
-                                    <PaginationPrevious className="pointer-events-none opacity-50" />
-                                )}
-                            </PaginationItem>
+                {/* Footer: selection info + rows-per-page + pagination */}
+                <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+                    <div className="text-sm text-muted-foreground">
+                        {selectedIds.length} dari {schools.total} baris dipilih.
+                    </div>
 
-                            {/* Page numbers */}
-                            {Array.from(
-                                { length: schools.last_page },
-                                (_, i) => i + 1,
-                            ).map((page) => (
-                                <PaginationItem key={page}>
-                                    <Link href={`${baseUrl}?page=${page}`}>
-                                        <PaginationLink
-                                            isActive={
-                                                page === schools.current_page
-                                            }
+                    <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                                Baris per halaman:
+                            </span>
+                            <Select
+                                value={String(rowsPerPage)}
+                                onValueChange={handleChangeRowsPerPage}
+                            >
+                                <SelectTrigger className="w-[80px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="20">20</SelectItem>
+                                    <SelectItem value="30">30</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    {schools.current_page > 1 ? (
+                                        <Link
+                                            href={`${baseUrl}?page=${
+                                                schools.current_page - 1
+                                            }&per_page=${rowsPerPage}`}
                                         >
-                                            {page}
-                                        </PaginationLink>
-                                    </Link>
+                                            <PaginationPrevious />
+                                        </Link>
+                                    ) : (
+                                        <PaginationPrevious className="pointer-events-none opacity-50" />
+                                    )}
                                 </PaginationItem>
-                            ))}
 
-                            {/* Next */}
-                            <PaginationItem>
-                                {schools.current_page < schools.last_page ? (
-                                    <Link
-                                        href={`${baseUrl}?page=${
-                                            schools.current_page + 1
-                                        }`}
-                                    >
-                                        <PaginationNext />
-                                    </Link>
-                                ) : (
-                                    <PaginationNext className="pointer-events-none opacity-50" />
-                                )}
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
+                                {Array.from(
+                                    { length: schools.last_page },
+                                    (_, i) => i + 1,
+                                ).map((page) => (
+                                    <PaginationItem key={page}>
+                                        <Link
+                                            href={`${baseUrl}?page=${page}&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationLink
+                                                isActive={
+                                                    page ===
+                                                    schools.current_page
+                                                }
+                                            >
+                                                {page}
+                                            </PaginationLink>
+                                        </Link>
+                                    </PaginationItem>
+                                ))}
+
+                                <PaginationItem>
+                                    {schools.current_page <
+                                    schools.last_page ? (
+                                        <Link
+                                            href={`${baseUrl}?page=${
+                                                schools.current_page + 1
+                                            }&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationNext />
+                                        </Link>
+                                    ) : (
+                                        <PaginationNext className="pointer-events-none opacity-50" />
+                                    )}
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </div>
                 </div>
             </div>
         </AppLayout>

@@ -47,6 +47,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
 
+        Route::delete('schools/bulk-delete', [SchoolController::class, 'bulkDelete'])->name('schools.bulk-delete');
         Route::get('users/import/schools', [UserImportController::class, 'downloadSchoolList'])->name('users.import.schools');
         Route::resource('schools', SchoolController::class);
 
