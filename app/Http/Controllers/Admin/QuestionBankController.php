@@ -10,11 +10,13 @@ use Inertia\Inertia;
 
 class QuestionBankController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $questionBanks = QuestionBank::with('teacher', 'questions')
-            ->withCount('questions')
-            ->paginate(15);
+        $perPage = (int) $request->input('per_page', 10);
+
+        $questionBanks = QuestionBank::withCount('questions')
+            ->paginate($perPage)
+            ->withQueryString();
 
         return Inertia::render('admin/question-banks/QuestionBankIndex', [
             'questionBanks' => $questionBanks,
@@ -82,5 +84,22 @@ class QuestionBankController extends Controller
 
         return redirect()->route('admin.question-banks.index')
             ->with('success', 'Question bank deleted successfully');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return redirect()
+                ->route('admin.question-banks.index')
+                ->with('info', 'Tidak ada bank soal yang dipilih untuk dihapus.');
+        }
+
+        QuestionBank::whereIn('id', $ids)->delete();
+
+        return redirect()
+            ->route('admin.question-banks.index')
+            ->with('success', 'Bank soal terpilih berhasil dihapus.');
     }
 }

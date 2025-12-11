@@ -76,6 +76,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('universities/import', [UniversityImportController::class, 'import'])->name('universities.import');
         Route::get('universities/import/template', [UniversityImportController::class, 'downloadTemplate'])->name('universities.import.template');
 
+
+        Route::delete('question-banks/bulk-delete', [AdminQuestionBankController::class, 'bulkDelete'])
+            ->name('question-banks.bulk-delete');
         Route::resource('question-banks', AdminQuestionBankController::class);
 
         // Question routes - nested under question-banks
