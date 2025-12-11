@@ -4,7 +4,6 @@ import { useState } from 'react';
 
 import {
     AlertDialog,
-    AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
     AlertDialogDescription,
@@ -58,8 +57,10 @@ export function ConfirmDeleteButton({
                     <AlertDialogTitle>Hapus {resourceLabel}?</AlertDialogTitle>
                     <AlertDialogDescription>
                         Anda akan menghapus{' '}
-                        <span className="font-semibold">{displayName}</span>.
-                        Tindakan ini tidak dapat dibatalkan dan dapat
+                        <span className="font-semibold text-green-500">
+                            {displayName}
+                        </span>
+                        . Tindakan ini tidak dapat dibatalkan dan dapat
                         mempengaruhi data terkait.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -68,13 +69,13 @@ export function ConfirmDeleteButton({
                     <AlertDialogCancel disabled={loading}>
                         Batal
                     </AlertDialogCancel>
-                    <AlertDialogAction
+                    <Button
                         onClick={handleDelete}
                         disabled={loading}
-                        className="bg-primary/90 text-white hover:bg-primary/80 focus:ring-primary/80"
+                        variant="destructive"
                     >
                         {loading ? 'Menghapus...' : 'Hapus'}
-                    </AlertDialogAction>
+                    </Button>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
