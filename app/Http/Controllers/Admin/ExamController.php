@@ -18,12 +18,14 @@ use Inertia\Response;
 
 class ExamController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $perPage = (int) $request->input('per_page', 10);
+
         $exams = Exam::with('questionBank', 'settings')
             ->withCount('attempts')
             ->orderByDesc('created_at')
-            ->paginate(15);
+            ->paginate($perPage);
 
         return Inertia::render('admin/exams/IndexExam', [
             'exams' => $exams,
