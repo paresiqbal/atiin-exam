@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import type React from 'react';
+import React, { useState } from 'react';
 
 import AppLayout from '@/layouts/app-layout';
 
@@ -21,7 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Eye, EyeClosed } from 'lucide-react';
 
 import type { BreadcrumbItem } from '@/types';
 import type { UserCreateFormData, UserRole } from '@/types/user-import';
@@ -36,6 +36,7 @@ export default function UserCreate() {
             school_id: '',
             class: '',
         });
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,18 +67,14 @@ export default function UserCreate() {
             <Head title="Buat Pengguna" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {/* Header */}
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-bold">
-                        Manajemen Pengguna – Buat
-                    </h1>
+                    <h1 className="text-3xl font-bold">Buat Pengguna</h1>
                     <p className="text-sm text-muted-foreground">
-                        Buat satu pengguna (admin/guru/siswa).
+                        Untuk membuat akun siswa silahkan buat di halaman siswa.
                     </p>
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                    {/* Main form */}
                     <Card className="order-2 lg:order-1">
                         <CardHeader>
                             <CardTitle>Buat Pengguna</CardTitle>
@@ -89,7 +86,6 @@ export default function UserCreate() {
 
                         <CardContent>
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Name */}
                                 <div className="space-y-2">
                                     <Label htmlFor="name">
                                         Nama Lengkap{' '}
@@ -153,20 +149,50 @@ export default function UserCreate() {
                                             *
                                         </span>
                                     </Label>
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        value={data.password}
-                                        onChange={(e) =>
-                                            setData('password', e.target.value)
-                                        }
-                                        placeholder="••••••••"
-                                        className={
-                                            errors.password
-                                                ? 'border-destructive'
-                                                : ''
-                                        }
-                                    />
+
+                                    <div className="relative">
+                                        <Input
+                                            id="password"
+                                            type={
+                                                showPassword
+                                                    ? 'text'
+                                                    : 'password'
+                                            }
+                                            value={data.password}
+                                            onChange={(e) =>
+                                                setData(
+                                                    'password',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder="••••••••"
+                                            className={`pr-10 ${
+                                                errors.password
+                                                    ? 'border-destructive'
+                                                    : ''
+                                            }`}
+                                        />
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setShowPassword((prev) => !prev)
+                                            }
+                                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+                                            aria-label={
+                                                showPassword
+                                                    ? 'Sembunyikan password'
+                                                    : 'Tampilkan password'
+                                            }
+                                        >
+                                            {showPassword ? (
+                                                <EyeClosed className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    </div>
+
                                     {errors.password && (
                                         <p className="text-sm text-destructive">
                                             {errors.password}
@@ -210,9 +236,6 @@ export default function UserCreate() {
                                             <SelectItem value="admin">
                                                 Admin
                                             </SelectItem>
-                                            <SelectItem value="student">
-                                                Siswa
-                                            </SelectItem>
                                         </SelectContent>
                                     </Select>
 
@@ -223,7 +246,6 @@ export default function UserCreate() {
                                     )}
                                 </div>
 
-                                {/* Actions */}
                                 <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                     <Button
                                         type="submit"
@@ -247,7 +269,6 @@ export default function UserCreate() {
                         </CardContent>
                     </Card>
 
-                    {/* Side info / hint */}
                     <Card className="order-1 lg:order-2">
                         <CardHeader>
                             <CardTitle>Petunjuk</CardTitle>
@@ -257,7 +278,7 @@ export default function UserCreate() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm">
-                            <Alert>
+                            <Alert className="flex items-center justify-center">
                                 <AlertCircle className="h-4 w-4" />
                                 <p className="mt-2">
                                     Pastikan email unik dan belum digunakan oleh
@@ -275,16 +296,6 @@ export default function UserCreate() {
                                     Peran{' '}
                                     <span className="font-medium">Guru</span>{' '}
                                     digunakan untuk mengelola ujian dan siswa.
-                                </li>
-                                <li>
-                                    Peran{' '}
-                                    <span className="font-medium">Siswa</span>{' '}
-                                    digunakan untuk mengikuti ujian.
-                                </li>
-                                <li>
-                                    Anda dapat mengelola detail tambahan siswa
-                                    (sekolah, kelas, dsb.) di halaman lain yang
-                                    khusus untuk siswa.
                                 </li>
                             </ul>
                         </CardContent>
