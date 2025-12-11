@@ -17,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { UnfreezeAttemptDialog } from '@/components/UnfreezeAttemptDialog';
 import AppLayout from '@/layouts/app-layout';
 
 interface Attempt {
@@ -76,6 +77,12 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [sortBy, setSortBy] = useState<SortBy>('date');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+    // State for unfreeze dialog
+    const [unfreezeDialogOpen, setUnfreezeDialogOpen] = useState(false);
+    const [selectedAttempt, setSelectedAttempt] = useState<Attempt | null>(
+        null,
+    );
 
     const processedAttempts = useMemo(() => {
         let list = [...attempts.data];
@@ -149,22 +156,35 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
         setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     };
 
-    const handleUnfreeze = (attemptId: number) => {
-        if (
-            !window.confirm(
-                'Buka kembali ujian untuk siswa ini? Mereka akan bisa melanjutkan percobaan yang sama.',
-            )
-        ) {
-            return;
-        }
+    // Open dialog with selected attempt
+    const handleUnfreezeClick = (attempt: Attempt) => {
+        setSelectedAttempt(attempt);
+        setUnfreezeDialogOpen(true);
+    };
+
+    // Confirm unfreeze
+    const handleConfirmUnfreeze = () => {
+        if (!selectedAttempt) return;
 
         router.post(
-            `/admin/exams/attempts/${attemptId}/unfreeze`,
+            `/admin/exams/attempts/${selectedAttempt.id}/unfreeze`,
             {},
             {
                 preserveScroll: true,
+                onFinish: () => {
+                    setUnfreezeDialogOpen(false);
+                    setSelectedAttempt(null);
+                },
             },
         );
+    };
+
+    // Handle dialog open/close (clear selected when closed)
+    const handleUnfreezeDialogOpenChange = (open: boolean) => {
+        setUnfreezeDialogOpen(open);
+        if (!open) {
+            setSelectedAttempt(null);
+        }
     };
 
     return (
@@ -552,8 +572,8 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                                             variant="ghost"
                                                             size="sm"
                                                             onClick={() =>
-                                                                handleUnfreeze(
-                                                                    attempt.id,
+                                                                handleUnfreezeClick(
+                                                                    attempt,
                                                                 )
                                                             }
                                                             className="inline-flex items-center"
@@ -593,6 +613,14 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                         ))}
                     </div>
                 )}
+
+                {/* Unfreeze Dialog */}
+                <UnfreezeAttemptDialog
+                    open={unfreezeDialogOpen}
+                    onOpenChange={handleUnfreezeDialogOpenChange}
+                    studentName={selectedAttempt?.student.name}
+                    onConfirm={handleConfirmUnfreeze}
+                />
             </div>
         </AppLayout>
     );
