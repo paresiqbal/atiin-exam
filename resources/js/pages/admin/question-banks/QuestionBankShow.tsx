@@ -51,9 +51,14 @@ import {
 } from 'lucide-react';
 
 import type { BreadcrumbItem } from '@/types';
-import type { QuestionBank } from '@/types/question';
+import type { Question, QuestionBank } from '@/types/question';
 
 type FilterType = 'all' | 'multiple_choice' | 'multiple_select' | 'true_false';
+
+// 👇 Local enhanced type: we add primaryImageUrl
+type EnhancedQuestion = Question & {
+    primaryImageUrl?: string | null;
+};
 
 export default function QuestionBankShow({
     questionBank,
@@ -68,7 +73,8 @@ export default function QuestionBankShow({
         },
     ];
 
-    const rawQuestions = useMemo(
+    // make rawQuestions stable for useMemo deps
+    const rawQuestions = useMemo<Question[]>(
         () => questionBank.questions ?? [],
         [questionBank.questions],
     );
@@ -86,14 +92,18 @@ export default function QuestionBankShow({
 
     const stripHtmlAndType = (text: string) =>
         text
-            // strip HTML tags
-            .replace(/<[^>]*>/g, '')
-            // remove "(tipe: ...)" at the end if present
-            .replace(/\(tipe:.*?\)\s*$/i, '')
+            .replace(/<[^>]*>/g, '') // strip HTML tags
+            .replace(/\(tipe:.*?\)\s*$/i, '') // strip "(tipe: ...)" at end
             .trim();
 
-    // Filter + sanitize
-    const filtered = useMemo(() => {
+    const extractFirstImageSrc = (html?: string | null): string | null => {
+        if (!html) return null;
+        const match = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+        return match ? match[1] : null;
+    };
+
+    // 🔍 Filter + sanitize + derive primaryImageUrl
+    const filtered = useMemo<EnhancedQuestion[]>(() => {
         const q = searchQuery.toLowerCase();
 
         return rawQuestions
@@ -101,9 +111,22 @@ export default function QuestionBankShow({
                 const cleanText = stripHtmlAndType(
                     question.question_text || '',
                 );
+
+                // 1) Prefer explicit image_url (for URL field)
+                // 2) Otherwise, fallback to first <img src="..."> inside HTML question_text
+                const fallbackFromHtml = extractFirstImageSrc(
+                    question.question_text,
+                );
+
+                const primaryImageUrl =
+                    question.image_url && question.image_url !== ''
+                        ? question.image_url
+                        : fallbackFromHtml;
+
                 return {
                     ...question,
                     question_text: cleanText,
+                    primaryImageUrl,
                 };
             })
             .filter((x) => {
@@ -113,7 +136,7 @@ export default function QuestionBankShow({
             .filter((x) => x.question_text.toLowerCase().includes(q));
     }, [rawQuestions, searchQuery, filterType]);
 
-    // Pagination (client-side, like UnivIndex style)
+    // Pagination (client side)
     const totalFiltered = filtered.length;
     const lastPage = Math.max(1, Math.ceil(totalFiltered / rowsPerPage));
     const safeCurrentPage = Math.min(currentPage, lastPage);
@@ -265,7 +288,9 @@ export default function QuestionBankShow({
                             {paginated.length > 0 ? (
                                 paginated.map((q, index) => {
                                     const isOpen = openIds.includes(q.id);
-                                    const overallIndex = startIndex + index;
+                                    const overallIndex =
+                                        (safeCurrentPage - 1) * rowsPerPage +
+                                        index;
 
                                     const rowBgClass = isOpen
                                         ? 'bg-accent/40'
@@ -376,20 +401,18 @@ export default function QuestionBankShow({
                                                 </td>
                                             </tr>
 
-                                            {/* Collapsible Content */}
+                                            {/* Collapsible Content (same bg when open, no repeated question text) */}
                                             <tr>
                                                 <td colSpan={6} className="p-0">
                                                     <Collapsible open={isOpen}>
                                                         <CollapsibleContent>
                                                             <div className="border-t bg-accent/40 p-6 text-sm">
-                                                                {/* NOTE: don't repeat question text here */}
-
-                                                                {/* Image */}
-                                                                {q.image_url && (
+                                                                {/* Image (from URL or embedded HTML) */}
+                                                                {q.primaryImageUrl && (
                                                                     <div className="mb-4">
                                                                         <img
                                                                             src={
-                                                                                q.image_url
+                                                                                q.primaryImageUrl
                                                                             }
                                                                             className="max-h-56 rounded border object-contain"
                                                                             alt="Gambar soal"
