@@ -3,7 +3,7 @@ import type React from 'react';
 
 import AppLayout from '@/layouts/app-layout';
 
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { AlertCircle } from 'lucide-react';
 
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import type { BreadcrumbItem } from '@/types';
 import type { School } from '@/types/user-import';
 
@@ -65,6 +66,8 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
     const handleCancel = () => {
         window.location.href = '/admin/students';
     };
+
+    const baseUrl = '/admin/students';
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -308,6 +311,22 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
                         </CardContent>
                     </Card>
                 </div>
+                <Alert className="flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 h-4 w-4" />
+                        <AlertDescription>
+                            Hapus siswa dengan hati-hati. Data terkait seperti
+                            hasil ujian mungkin ikut terpengaruh. Pastikan Anda
+                            sudah meninjau konsekuensinya sebelum melanjutkan.
+                        </AlertDescription>
+                    </div>
+
+                    <ConfirmDeleteButton
+                        deleteUrl={`${baseUrl}/${student.id}`}
+                        resourceLabel="siswa"
+                        itemName={student.name}
+                    />
+                </Alert>
             </div>
         </AppLayout>
     );
