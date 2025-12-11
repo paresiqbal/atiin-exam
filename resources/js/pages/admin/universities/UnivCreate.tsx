@@ -1,5 +1,3 @@
-// resources/js/pages/admin/universities/UnivCreate.tsx
-
 import { MajorForm } from '@/components/MajorForm';
 import { UniversityForm } from '@/components/UniversityForm';
 
