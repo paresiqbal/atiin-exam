@@ -1,21 +1,9 @@
-import { Head, router, useForm } from '@inertiajs/react';
-import { AlertCircle, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Head, useForm } from '@inertiajs/react';
+import { AlertCircle } from 'lucide-react';
 
 import AppLayout from '@/layouts/app-layout';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -33,6 +21,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+
+import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 
 import type { BreadcrumbItem } from '@/types';
 import type { User } from '@/types/user';
@@ -76,19 +66,9 @@ export default function UserEdit({ user }: UserEditProps) {
             role: user.role as UserRole,
         });
 
-    const [isDeleting, setIsDeleting] = useState(false);
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         put(`${baseUrl}/${user.id}`);
-    };
-
-    const handleDelete = () => {
-        setIsDeleting(true);
-
-        router.delete(`${baseUrl}/${user.id}`, {
-            onFinish: () => setIsDeleting(false),
-        });
     };
 
     const handleCancel = () => {
@@ -102,7 +82,6 @@ export default function UserEdit({ user }: UserEditProps) {
             <Head title="Edit Pengguna" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {/* Page header */}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold text-foreground">
                         Edit Pengguna
@@ -113,7 +92,6 @@ export default function UserEdit({ user }: UserEditProps) {
                     </p>
                 </div>
 
-                {/* Main card */}
                 <Card className="max-w-auto w-full">
                     <CardHeader>
                         <CardTitle>Informasi Pengguna</CardTitle>
@@ -124,7 +102,6 @@ export default function UserEdit({ user }: UserEditProps) {
 
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Name */}
                             <div className="space-y-2">
                                 <Label htmlFor="name">
                                     Nama Lengkap{' '}
@@ -149,7 +126,6 @@ export default function UserEdit({ user }: UserEditProps) {
                                 )}
                             </div>
 
-                            {/* Email */}
                             <div className="space-y-2">
                                 <Label htmlFor="email">
                                     Alamat Email{' '}
@@ -174,7 +150,6 @@ export default function UserEdit({ user }: UserEditProps) {
                                 )}
                             </div>
 
-                            {/* Password */}
                             <div className="space-y-2">
                                 <Label htmlFor="password">Password</Label>
                                 <Input
@@ -203,7 +178,6 @@ export default function UserEdit({ user }: UserEditProps) {
                                 </p>
                             </div>
 
-                            {/* Role */}
                             <div className="space-y-2">
                                 <Label htmlFor="role">
                                     Peran{' '}
@@ -244,7 +218,6 @@ export default function UserEdit({ user }: UserEditProps) {
                                 )}
                             </div>
 
-                            {/* Actions */}
                             <div className="flex flex-col gap-3 pt-4 md:flex-row">
                                 <Button
                                     type="submit"
@@ -264,69 +237,26 @@ export default function UserEdit({ user }: UserEditProps) {
                                 >
                                     Batal
                                 </Button>
-
-                                {/* Delete with dialog */}
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button
-                                            type="button"
-                                            variant="destructive"
-                                            className="flex-1"
-                                            disabled={isDeleting}
-                                        >
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            {isDeleting
-                                                ? 'Menghapus...'
-                                                : 'Hapus'}
-                                        </Button>
-                                    </AlertDialogTrigger>
-
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>
-                                                Hapus pengguna ini?
-                                            </AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                Anda akan menghapus pengguna{' '}
-                                                <span className="font-semibold">
-                                                    {user.name}
-                                                </span>
-                                                . Tindakan ini tidak dapat
-                                                dibatalkan dan dapat
-                                                mempengaruhi data terkait.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel
-                                                disabled={isDeleting}
-                                            >
-                                                Batal
-                                            </AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={handleDelete}
-                                                disabled={isDeleting}
-                                                className="bg-red-600 hover:bg-red-700"
-                                            >
-                                                {isDeleting
-                                                    ? 'Menghapus...'
-                                                    : 'Ya, hapus'}
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
                             </div>
                         </form>
                     </CardContent>
                 </Card>
 
-                {/* Info alert */}
-                <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                        Hapus pengguna dengan hati-hati. Pastikan untuk meninjau
-                        dampak potensial pada data terkait sebelum melanjutkan.
-                    </AlertDescription>
+                <Alert className="flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 h-4 w-4" />
+                        <AlertDescription>
+                            Hapus pengguna dengan hati-hati. Pastikan untuk
+                            meninjau dampak potensial pada data terkait sebelum
+                            melanjutkan.
+                        </AlertDescription>
+                    </div>
+
+                    <ConfirmDeleteButton
+                        deleteUrl={`${baseUrl}/${user.id}`}
+                        resourceLabel="pengguna"
+                        itemName={user.name}
+                    />
                 </Alert>
             </div>
         </AppLayout>
