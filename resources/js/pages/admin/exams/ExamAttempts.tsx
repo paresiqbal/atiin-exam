@@ -17,8 +17,20 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/components/ui/pagination';
+
 import { UnfreezeAttemptDialog } from '@/components/UnfreezeAttemptDialog';
 import AppLayout from '@/layouts/app-layout';
+
+import type { Paginated } from '@/types/pagination';
 
 interface Attempt {
     id: number;
@@ -48,21 +60,12 @@ interface Analytics {
     average_score: number | string | null;
 }
 
-interface PaginationLink {
-    url: string | null;
-    label: string;
-    active: boolean;
-}
-
 interface Props {
     exam: {
         id: number;
         name: string;
     };
-    attempts: {
-        data: Attempt[];
-        links: PaginationLink[];
-    };
+    attempts: Paginated<Attempt>;
     analytics: Analytics;
 }
 
@@ -77,6 +80,12 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [sortBy, setSortBy] = useState<SortBy>('date');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+    // rows per page + base url (like IndexExam)
+    const [rowsPerPage, setRowsPerPage] = useState<number>(
+        (attempts as Paginated<Attempt>).per_page ?? 10,
+    );
+    const baseUrl = `/admin/exams/${exam.id}/attempts`;
 
     // State for unfreeze dialog
     const [unfreezeDialogOpen, setUnfreezeDialogOpen] = useState(false);
@@ -185,6 +194,20 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
         if (!open) {
             setSelectedAttempt(null);
         }
+    };
+
+    const handleChangeRowsPerPage = (value: string) => {
+        const perPage = Number(value) || 10;
+        setRowsPerPage(perPage);
+
+        router.get(
+            baseUrl,
+            { page: 1, per_page: perPage },
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
     };
 
     return (
@@ -381,9 +404,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                         Waktu Pengambilan
                                     </th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Tanggal Selesai
-                                    </th>
+                                    {/* Tanggal Selesai REMOVED */}
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                         Aksi
                                     </th>
@@ -525,25 +546,12 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                                 )}
                                             </td>
 
-                                            {/* Time taken */}
+                                            {/* Time taken (Waktu Pengambilan) */}
                                             <td className="px-6 py-3 text-sm">
                                                 {timeTakenMinutes !== null ? (
                                                     <span>
                                                         {timeTakenMinutes} min
                                                     </span>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        -
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            {/* Completed date */}
-                                            <td className="px-6 py-3 text-sm">
-                                                {attempt.completed_at ? (
-                                                    new Date(
-                                                        attempt.completed_at,
-                                                    ).toLocaleString()
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground">
                                                         -
@@ -592,25 +600,81 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                     </div>
                 )}
 
-                {/* Simple pagination from Laravel links */}
-                {attempts.links.length > 1 && (
-                    <div className="mt-4 flex justify-center gap-1 text-sm">
-                        {attempts.links.map((link, idx) => (
-                            <Link
-                                key={idx}
-                                href={link.url || '#'}
-                                className={`rounded-md border px-3 py-1 ${
-                                    link.active
-                                        ? 'border-primary bg-primary text-primary-foreground'
-                                        : link.url
-                                          ? 'border-transparent hover:bg-muted'
-                                          : 'pointer-events-none text-muted-foreground'
-                                }`}
-                                dangerouslySetInnerHTML={{
-                                    __html: link.label,
-                                }}
-                            />
-                        ))}
+                {/* Footer: rows per page + pagination (like IndexExam) */}
+                {attempts.last_page > 1 && (
+                    <div className="flex flex-col items-center gap-3 py-4 md:flex-row md:justify-end md:gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                                Baris per halaman:
+                            </span>
+                            <Select
+                                value={String(rowsPerPage)}
+                                onValueChange={handleChangeRowsPerPage}
+                            >
+                                <SelectTrigger className="w-[80px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="20">20</SelectItem>
+                                    <SelectItem value="30">30</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    {attempts.current_page > 1 ? (
+                                        <Link
+                                            href={`${baseUrl}?page=${
+                                                attempts.current_page - 1
+                                            }&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationPrevious />
+                                        </Link>
+                                    ) : (
+                                        <PaginationPrevious className="pointer-events-none opacity-50" />
+                                    )}
+                                </PaginationItem>
+
+                                {Array.from(
+                                    { length: attempts.last_page },
+                                    (_, i) => i + 1,
+                                ).map((page) => (
+                                    <PaginationItem key={page}>
+                                        <Link
+                                            href={`${baseUrl}?page=${page}&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationLink
+                                                isActive={
+                                                    page ===
+                                                    attempts.current_page
+                                                }
+                                            >
+                                                {page}
+                                            </PaginationLink>
+                                        </Link>
+                                    </PaginationItem>
+                                ))}
+
+                                <PaginationItem>
+                                    {attempts.current_page <
+                                    attempts.last_page ? (
+                                        <Link
+                                            href={`${baseUrl}?page=${
+                                                attempts.current_page + 1
+                                            }&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationNext />
+                                        </Link>
+                                    ) : (
+                                        <PaginationNext className="pointer-events-none opacity-50" />
+                                    )}
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
                     </div>
                 )}
 
