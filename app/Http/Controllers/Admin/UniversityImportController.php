@@ -11,7 +11,6 @@ class UniversityImportController extends Controller
 {
     public function preview(Request $request)
     {
-        // Use validator so we can return JSON nicely
         $validator = Validator::make($request->all(), [
             'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
@@ -49,18 +48,14 @@ class UniversityImportController extends Controller
             while (($row = fgetcsv($handle)) !== false) {
                 $rowNum++;
 
-                // Skip completely empty lines
                 if (empty(array_filter($row))) {
                     continue;
                 }
-
-                // Trim all cells
                 $row = array_map(
                     fn($value) => is_string($value) ? trim($value) : $value,
                     $row
                 );
 
-                // ✅ Skip helper/comment rows (first cell starts with "#")
                 if (isset($row[0]) && is_string($row[0]) && str_starts_with($row[0], '#')) {
                     continue;
                 }
@@ -103,7 +98,6 @@ class UniversityImportController extends Controller
 
     public function import(Request $request)
     {
-        // For fetch() we want JSON, but still keep redirect for classic form posts
         $validator = Validator::make($request->all(), [
             'file' => 'required|file|mimes:csv,txt|max:2048',
         ]);
@@ -134,7 +128,6 @@ class UniversityImportController extends Controller
                 return back()->withErrors(['file' => 'Could not open the file.']);
             }
 
-            // Header row
             $header = fgetcsv($handle);
             if ($header === false) {
                 if ($request->wantsJson() || $request->expectsJson()) {
@@ -160,13 +153,11 @@ class UniversityImportController extends Controller
                     continue;
                 }
 
-                // Trim cells
                 $row = array_map(
                     fn($value) => is_string($value) ? trim($value) : $value,
                     $row
                 );
 
-                // ✅ Skip helper/comment rows
                 if (isset($row[0]) && is_string($row[0]) && str_starts_with($row[0], '#')) {
                     continue;
                 }
@@ -190,18 +181,16 @@ class UniversityImportController extends Controller
                 }
 
                 if ($item['type'] === 'university') {
-                    // Create / find university by name
                     $university = University::firstOrCreate(
                         ['name' => $item['name']],
                         [
                             'code'        => $item['code'],
                             'city'        => $item['city'],
                             'description' => $item['description'],
-                            'website'     => null, // not part of CSV now
+                            'website'     => null,
                         ]
                     );
 
-                    // If it already existed, we don't increment created count
                     if ($university->wasRecentlyCreated) {
                         $createdUniversities++;
                     }
@@ -237,7 +226,6 @@ class UniversityImportController extends Controller
 
             fclose($handle);
 
-            // JSON response for SPA
             if ($request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success'              => true,
@@ -249,7 +237,6 @@ class UniversityImportController extends Controller
                 ]);
             }
 
-            // Fallback for non-AJAX
             return redirect()->route('admin.universities.index')
                 ->with('success', "Import completed! Universities: {$createdUniversities}, Majors: {$createdMajors}, Failed: {$failed}")
                 ->with('import_errors', $errors);
@@ -304,7 +291,6 @@ class UniversityImportController extends Controller
 
         $handle = fopen('php://memory', 'w');
 
-        // Header row - must match import order
         fputcsv($handle, [
             'type',
             'name',
@@ -315,7 +301,6 @@ class UniversityImportController extends Controller
             'minimum_passing_grade',
         ]);
 
-        // Helper row (for humans)
         fputcsv($handle, [
             '# university|major',
             '# required name (university or major)',
@@ -326,7 +311,6 @@ class UniversityImportController extends Controller
             '# for majors: minimum passing grade 0-100',
         ]);
 
-        // Example rows (realistic for ID context)
         $rows = [
             ['university', 'Universitas Indonesia', 'UI', 'Depok', 'Universitas negeri di Depok, Jawa Barat', '', ''],
             ['university', 'Institut Teknologi Bandung', 'ITB', 'Bandung', 'Institut teknologi di Bandung, Jawa Barat', '', ''],
