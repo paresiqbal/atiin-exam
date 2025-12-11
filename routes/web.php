@@ -42,7 +42,6 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::delete('users/bulk-delete', [UserController::class, 'bulkDelete'])->name('users.bulk-delete');
         Route::resource('users', UserController::class);
 
-
         Route::post('users/import/preview', [UserImportController::class, 'preview'])->name('users.import.preview');
         Route::post('users/import', [UserImportController::class, 'import'])->name('users.import');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
@@ -53,6 +52,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 
         Route::get('students/cards', [StudentController::class, 'cards'])->name('students.cards');
         Route::get('students/cards/download', [StudentController::class, 'downloadCards'])->name('students.cards.download');
+        Route::delete('students/bulk-delete', [StudentController::class, 'bulkDelete'])->name('students.bulk-delete');
         Route::resource('students', StudentController::class);
 
         // Exam management routes

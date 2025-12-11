@@ -14,11 +14,14 @@ use App\Services\StudentCardsPdfService;
 
 class StudentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = (int) $request->input('per_page', 10);
+
         $students = User::where('role', 'student')
             ->with('university', 'major', 'school')
-            ->paginate(15);
+            ->paginate($perPage)
+            ->withQueryString();
 
         return Inertia::render('admin/students/StudentIndex', [
             'students' => $students,
@@ -111,6 +114,24 @@ class StudentController extends Controller
         return redirect()->route('admin.students.index')
             ->with('success', 'Student deleted successfully');
     }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return redirect()
+                ->route('admin.students.index')
+                ->with('info', 'Tidak ada siswa yang dipilih untuk dihapus.');
+        }
+
+        User::whereIn('id', $ids)->delete();
+
+        return redirect()
+            ->route('admin.students.index')
+            ->with('success', 'Siswa terpilih berhasil dihapus.');
+    }
+
 
     public function cards()
     {
