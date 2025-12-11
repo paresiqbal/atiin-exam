@@ -12,7 +12,10 @@ import {
 } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 
+import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     InputGroup,
     InputGroupAddon,
@@ -32,7 +35,6 @@ import type { User } from '@/types/user';
 
 type RoleFilter = 'all' | 'admin' | 'instructor' | 'student';
 
-// 👇 Simple, explicit page props type
 type UsersPageProps = {
     users: Paginated<User>;
 };
@@ -40,7 +42,6 @@ type UsersPageProps = {
 const baseUrl = '/admin/users';
 
 export default function UserIndex() {
-    // 👇 Tell Inertia what props shape we expect
     const { users } = usePage<UsersPageProps>().props;
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -70,12 +71,19 @@ export default function UserIndex() {
         [filteredUsers, selectedIds],
     );
 
+    const someSelected =
+        selectedIds.length > 0 && selectedIds.length < filteredUsers.length;
+
+    const checkboxValue: boolean | 'indeterminate' = allSelected
+        ? true
+        : someSelected
+          ? 'indeterminate'
+          : false;
+
     const handleToggleSelectAll = (checked: boolean) => {
         if (checked) {
-            // select all currently filtered users
             setSelectedIds(filteredUsers.map((u) => u.id));
         } else {
-            // remove only IDs that are in the current filtered list
             setSelectedIds((prev) =>
                 prev.filter(
                     (id) => !filteredUsers.some((user) => user.id === id),
@@ -99,25 +107,14 @@ export default function UserIndex() {
     const handleBulkDelete = () => {
         if (selectedIds.length === 0) return;
 
-        if (
-            !window.confirm(
-                `Yakin ingin menghapus ${selectedIds.length} pengguna terpilih?`,
-            )
-        ) {
-            return;
-        }
-
-        router.post(
-            `${baseUrl}/bulk-delete`,
-            {
+        return router.delete(`${baseUrl}/bulk-delete`, {
+            data: {
                 ids: selectedIds,
             },
-            {
-                onSuccess: () => {
-                    setSelectedIds([]);
-                },
+            onSuccess: () => {
+                setSelectedIds([]);
             },
-        );
+        });
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
@@ -190,28 +187,26 @@ export default function UserIndex() {
                             </SelectContent>
                         </Select>
 
-                        <Button
-                            variant="destructive"
+                        <ConfirmBulkDeleteButton
+                            count={selectedIds.length}
+                            resourceLabelPlural="pengguna"
                             disabled={selectedIds.length === 0}
-                            onClick={handleBulkDelete}
-                        >
-                            Hapus Terpilih ({selectedIds.length})
-                        </Button>
+                            onConfirm={handleBulkDelete}
+                        />
                     </div>
                 </div>
 
                 {/* Table */}
                 <div className="overflow-x-auto rounded-lg border shadow-sm">
                     <table className="w-full text-sm">
-                        <thead className="border-b">
+                        <thead className="border-b bg-accent">
                             <tr>
-                                <th className="w-10 px-4 py-3">
-                                    <input
-                                        type="checkbox"
-                                        checked={allSelected}
-                                        onChange={(e) =>
+                                <th className="w-10 px-4 py-2">
+                                    <Checkbox
+                                        checked={checkboxValue}
+                                        onCheckedChange={(value) =>
                                             handleToggleSelectAll(
-                                                e.target.checked,
+                                                value === true,
                                             )
                                         }
                                     />
@@ -244,42 +239,41 @@ export default function UserIndex() {
                                     return (
                                         <tr
                                             key={user.id}
-                                            className="transition-colors hover:bg-foreground/10"
+                                            className={`transition-colors hover:bg-accent ${isSelected ? 'bg-accent' : ''} `}
                                         >
-                                            <td className="w-10 px-4 py-3">
-                                                <input
-                                                    type="checkbox"
+                                            <td className="w-10 px-4 py-2">
+                                                <Checkbox
                                                     checked={isSelected}
-                                                    onChange={(e) =>
+                                                    onCheckedChange={(value) =>
                                                         handleToggleSelectOne(
                                                             user.id,
-                                                            e.target.checked,
+                                                            value === true,
                                                         )
                                                     }
                                                 />
                                             </td>
 
-                                            <td className="px-6 py-3">
+                                            <td className="px-6 py-2">
                                                 {user.name}
                                             </td>
 
-                                            <td className="px-6 py-3">
+                                            <td className="px-6 py-2">
                                                 {user.email}
                                             </td>
 
-                                            <td className="px-6 py-3">
-                                                <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
+                                            <td className="px-6 py-2">
+                                                <Badge variant="outline">
                                                     {user.role}
-                                                </span>
+                                                </Badge>
                                             </td>
 
-                                            <td className="px-6 py-3">
+                                            <td className="px-6 py-2">
                                                 {new Date(
                                                     user.created_at,
                                                 ).toLocaleDateString()}
                                             </td>
 
-                                            <td className="px-6 py-3">
+                                            <td className="px-6 py-2">
                                                 <div className="flex gap-2">
                                                     <Link
                                                         href={`${baseUrl}/${user.id}/edit`}

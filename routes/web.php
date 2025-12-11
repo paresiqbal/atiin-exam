@@ -39,16 +39,14 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
         // User management routes
+        Route::delete('users/bulk-delete', [UserController::class, 'bulkDelete'])->name('users.bulk-delete');
         Route::resource('users', UserController::class);
-        Route::post('/admin/users/bulk-delete', [UserController::class, 'bulkDelete'])
-            ->name('admin.users.bulk-delete');
+
 
         Route::post('users/import/preview', [UserImportController::class, 'preview'])->name('users.import.preview');
         Route::post('users/import', [UserImportController::class, 'import'])->name('users.import');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
-
-
 
         Route::get('users/import/schools', [UserImportController::class, 'downloadSchoolList'])->name('users.import.schools');
         Route::resource('schools', SchoolController::class);

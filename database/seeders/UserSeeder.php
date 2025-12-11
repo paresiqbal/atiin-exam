@@ -10,7 +10,7 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Admin user
+        // 1. Admin user
         User::create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
@@ -22,9 +22,9 @@ class UserSeeder extends Seeder
             'class' => null,
         ]);
 
-        // Teacher user
+        // 2. Teacher user
         User::create([
-            'name' => 'Teacher User',
+            'name' => 'Falah Izudin',
             'email' => 'teacher@example.com',
             'password' => Hash::make('password'),
             'role' => 'teacher',
@@ -34,9 +34,9 @@ class UserSeeder extends Seeder
             'class' => null,
         ]);
 
-        // Student user
+        // 3. Student user (Original)
         User::create([
-            'name' => 'Student User',
+            'name' => 'Pahreza Iqbal Prastowo',
             'email' => 'student@example.com',
             'password' => Hash::make('password'),
             'role' => 'student',
@@ -44,6 +44,68 @@ class UserSeeder extends Seeder
             'major_id' => 1,
             'school_id' => 1,
             'class' => '10A',
+        ]);
+
+        // --- NEW STUDENTS BELOW ---
+
+        // 4. Student user
+        User::create([
+            'name' => 'Budi Santoso',
+            'email' => 'budi@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 1,
+            'class' => '10A',
+        ]);
+
+        // 5. Student user
+        User::create([
+            'name' => 'Siti Aminah',
+            'email' => 'siti@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 1,
+            'class' => '10B',
+        ]);
+
+        // 6. Student user
+        User::create([
+            'name' => 'Rudi Hartono',
+            'email' => 'rudi@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 1,
+            'class' => '11A',
+        ]);
+
+        // 7. Student user
+        User::create([
+            'name' => 'Dewi Lestari',
+            'email' => 'dewi@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 1,
+            'class' => '11B',
+        ]);
+
+        // 8. Student user
+        User::create([
+            'name' => 'Agus Setiawan',
+            'email' => 'agus@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 1,
+            'class' => '12A',
         ]);
     }
 }

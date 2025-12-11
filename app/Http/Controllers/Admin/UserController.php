@@ -89,12 +89,18 @@ class UserController extends Controller
     public function bulkDelete(Request $request)
     {
         $ids = $request->input('ids', []);
-
         $ids = array_diff($ids, [auth()->id()]);
+
+        if (empty($ids)) {
+            return redirect()
+                ->route('admin.users.index')
+                ->with('info', 'Tidak ada pengguna yang dipilih untuk dihapus.');
+        }
 
         User::whereIn('id', $ids)->delete();
 
-        return redirect()->route('admin.users.index')
+        return redirect()
+            ->route('admin.users.index')
             ->with('success', 'Pengguna terpilih berhasil dihapus.');
     }
 }
