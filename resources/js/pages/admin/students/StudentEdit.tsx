@@ -86,7 +86,6 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
             <Head title={`Edit Siswa - ${student.name}`} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {/* Header */}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-3xl font-bold">
                         Manajemen Siswa – Edit
@@ -98,7 +97,6 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                    {/* Main form */}
                     <Card className="order-2 lg:order-1">
                         <CardHeader>
                             <CardTitle>Edit Data Siswa</CardTitle>
@@ -109,7 +107,6 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
 
                         <CardContent>
                             <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Name */}
                                 <div className="space-y-2">
                                     <Label htmlFor="name">
                                         Nama Lengkap{' '}
@@ -136,7 +133,6 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
                                     )}
                                 </div>
 
-                                {/* Email */}
                                 <div className="space-y-2">
                                     <Label htmlFor="email">
                                         Alamat Email{' '}
@@ -163,7 +159,6 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
                                     )}
                                 </div>
 
-                                {/* Password (optional) */}
                                 <div className="space-y-2">
                                     <Label htmlFor="password">
                                         Password Baru (opsional)
@@ -193,7 +188,6 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
                                     </p>
                                 </div>
 
-                                {/* School */}
                                 <div className="space-y-2">
                                     <Label htmlFor="school_id">
                                         Sekolah (opsional)
@@ -232,7 +226,6 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
                                     )}
                                 </div>
 
-                                {/* Class */}
                                 <div className="space-y-2">
                                     <Label htmlFor="class">
                                         Kelas (opsional)
@@ -257,7 +250,6 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
                                     )}
                                 </div>
 
-                                {/* Actions */}
                                 <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                     <Button
                                         type="submit"
@@ -281,7 +273,6 @@ export default function StudentEdit({ student, schools }: StudentEditProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Side info */}
                     <Card className="order-1 lg:order-2">
                         <CardHeader>
                             <CardTitle>Catatan</CardTitle>
