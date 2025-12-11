@@ -378,7 +378,6 @@ export default function UnivCreate({
                                 </Alert>
                             )}
 
-                            {/* Validation errors (per row) */}
                             {errors.length > 0 && (
                                 <Alert variant="destructive">
                                     <AlertCircle className="h-4 w-4" />
@@ -408,28 +407,28 @@ export default function UnivCreate({
                                             <thead>
                                                 <tr className="border-b bg-muted/50">
                                                     <th className="p-2 text-left font-semibold">
-                                                        Row
+                                                        Baris
                                                     </th>
                                                     <th className="p-2 text-left font-semibold">
-                                                        Type
+                                                        Tipe
                                                     </th>
                                                     <th className="p-2 text-left font-semibold">
-                                                        Name
+                                                        Nama
                                                     </th>
                                                     <th className="p-2 text-left font-semibold">
-                                                        Code
+                                                        Kode
                                                     </th>
                                                     <th className="p-2 text-left font-semibold">
-                                                        City
+                                                        Kota
                                                     </th>
                                                     <th className="p-2 text-left font-semibold">
-                                                        Description
+                                                        Deskripsi
                                                     </th>
                                                     <th className="p-2 text-left font-semibold">
-                                                        University
+                                                        Universitas
                                                     </th>
                                                     <th className="p-2 text-left font-semibold">
-                                                        Min Grade
+                                                        Passing Grade
                                                     </th>
                                                 </tr>
                                             </thead>
