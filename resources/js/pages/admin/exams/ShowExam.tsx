@@ -3,11 +3,11 @@ import { useMemo, useState } from 'react';
 
 import AppLayout from '@/layouts/app-layout';
 
-import { QuestionList } from '@/components/QuestionList';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+import { ExamQuestionList } from '@/components/ExamQuestionList';
 import type { Question } from '@/types/question';
 import { CalendarRange, Clock, RefreshCw, Users } from 'lucide-react';
 
@@ -331,7 +331,7 @@ export default function ShowExam({ exam }: Props) {
                         <CardTitle>Pertanyaan ({questions.length})</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <QuestionList questions={questions} readOnly />
+                        <ExamQuestionList questions={questions} />
                     </CardContent>
                 </Card>
             </div>
