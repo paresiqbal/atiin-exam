@@ -12,9 +12,13 @@ use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('school')->paginate(15);
+        $perPage = (int) $request->input('per_page', 10);
+
+        $users = User::with('school')
+            ->paginate($perPage)
+            ->withQueryString();
 
         return Inertia::render('admin/users/UserIndex', [
             'users' => $users,

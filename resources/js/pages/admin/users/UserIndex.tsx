@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Edit2, Search } from 'lucide-react';
+import { Edit2, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,9 @@ export default function UserIndex() {
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [rowsPerPage, setRowsPerPage] = useState<number>(
+        (users as Paginated<User>).per_page ?? 10,
+    );
 
     const filteredUsers = useMemo(
         () =>
@@ -117,6 +120,20 @@ export default function UserIndex() {
         });
     };
 
+    const handleChangeRowsPerPage = (value: string) => {
+        const perPage = Number(value) || 10;
+        setRowsPerPage(perPage);
+
+        router.get(
+            `${baseUrl}`,
+            { page: 1, per_page: perPage },
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
+    };
+
     const breadcrumbs: BreadcrumbItem[] = [
         {
             title: 'Admin Dashboard',
@@ -144,7 +161,10 @@ export default function UserIndex() {
                     </div>
 
                     <Link href={`${baseUrl}/create`}>
-                        <Button>Tambah User Baru</Button>
+                        <Button>
+                            Tambah User Baru
+                            <Plus />
+                        </Button>
                     </Link>
                 </div>
 
@@ -306,55 +326,84 @@ export default function UserIndex() {
                     </table>
                 </div>
 
-                <div className="flex justify-center py-4">
-                    <Pagination>
-                        <PaginationContent>
-                            <PaginationItem>
-                                {users.current_page > 1 ? (
-                                    <Link
-                                        href={`${baseUrl}?page=${
-                                            users.current_page - 1
-                                        }`}
-                                    >
-                                        <PaginationPrevious />
-                                    </Link>
-                                ) : (
-                                    <PaginationPrevious className="pointer-events-none opacity-50" />
-                                )}
-                            </PaginationItem>
+                <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+                    <div className="text-sm text-muted-foreground">
+                        {selectedIds.length} dari {users.total} baris dipilih.
+                    </div>
 
-                            {Array.from(
-                                { length: users.last_page },
-                                (_, i) => i + 1,
-                            ).map((page) => (
-                                <PaginationItem key={page}>
-                                    <Link href={`${baseUrl}?page=${page}`}>
-                                        <PaginationLink
-                                            isActive={
-                                                page === users.current_page
-                                            }
+                    <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                                Baris per halaman:
+                            </span>
+                            <Select
+                                value={String(rowsPerPage)}
+                                onValueChange={handleChangeRowsPerPage}
+                            >
+                                <SelectTrigger className="w-[80px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="20">20</SelectItem>
+                                    <SelectItem value="30">30</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Pagination */}
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    {users.current_page > 1 ? (
+                                        <Link
+                                            href={`${baseUrl}?page=${
+                                                users.current_page - 1
+                                            }&per_page=${rowsPerPage}`}
                                         >
-                                            {page}
-                                        </PaginationLink>
-                                    </Link>
+                                            <PaginationPrevious />
+                                        </Link>
+                                    ) : (
+                                        <PaginationPrevious className="pointer-events-none opacity-50" />
+                                    )}
                                 </PaginationItem>
-                            ))}
 
-                            <PaginationItem>
-                                {users.current_page < users.last_page ? (
-                                    <Link
-                                        href={`${baseUrl}?page=${
-                                            users.current_page + 1
-                                        }`}
-                                    >
-                                        <PaginationNext />
-                                    </Link>
-                                ) : (
-                                    <PaginationNext className="pointer-events-none opacity-50" />
-                                )}
-                            </PaginationItem>
-                        </PaginationContent>
-                    </Pagination>
+                                {Array.from(
+                                    { length: users.last_page },
+                                    (_, i) => i + 1,
+                                ).map((page) => (
+                                    <PaginationItem key={page}>
+                                        <Link
+                                            href={`${baseUrl}?page=${page}&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationLink
+                                                isActive={
+                                                    page === users.current_page
+                                                }
+                                            >
+                                                {page}
+                                            </PaginationLink>
+                                        </Link>
+                                    </PaginationItem>
+                                ))}
+
+                                <PaginationItem>
+                                    {users.current_page < users.last_page ? (
+                                        <Link
+                                            href={`${baseUrl}?page=${
+                                                users.current_page + 1
+                                            }&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationNext />
+                                        </Link>
+                                    ) : (
+                                        <PaginationNext className="pointer-events-none opacity-50" />
+                                    )}
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </div>
                 </div>
             </div>
         </AppLayout>
