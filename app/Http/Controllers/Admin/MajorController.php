@@ -33,14 +33,6 @@ class MajorController extends Controller
             ->with('success', 'Program studi berhasil ditambahkan');
     }
 
-    public function edit(Major $major)
-    {
-        return Inertia::render('admin/majors/MajorEdit', [
-            'major' => $major,
-            'universities' => University::orderBy('name')->get(['id', 'name']),
-        ]);
-    }
-
     public function update(Request $request, Major $major)
     {
         $validated = $request->validate([

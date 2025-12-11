@@ -1,5 +1,3 @@
-// resources/js/pages/admin/universities/UnivShow.tsx
-
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
@@ -25,8 +23,8 @@ import { Edit2, Save, X } from 'lucide-react';
 interface Major {
     id: number;
     name: string;
+    description?: string | null;
     minimum_passing_grade?: number | null;
-    // extend later if you add more fields
 }
 
 interface University {
@@ -60,12 +58,14 @@ export default function UnivShow() {
     // 🔧 Inline edit state
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editName, setEditName] = useState('');
+    const [editDescription, setEditDescription] = useState('');
     const [editGrade, setEditGrade] = useState('');
     const [savingId, setSavingId] = useState<number | null>(null);
 
     const startEdit = (major: Major) => {
         setEditingId(major.id);
         setEditName(major.name);
+        setEditDescription(major.description ?? '');
         setEditGrade(
             major.minimum_passing_grade !== null &&
                 major.minimum_passing_grade !== undefined
@@ -77,6 +77,7 @@ export default function UnivShow() {
     const cancelEdit = () => {
         setEditingId(null);
         setEditName('');
+        setEditDescription('');
         setEditGrade('');
     };
 
@@ -93,6 +94,7 @@ export default function UnivShow() {
             {
                 university_id: university.id,
                 name: editName.trim(),
+                description: editDescription.trim(),
                 minimum_passing_grade: gradeNumber,
             },
             {
@@ -101,6 +103,7 @@ export default function UnivShow() {
                     setSavingId(null);
                     setEditingId(null);
                     setEditName('');
+                    setEditDescription('');
                     setEditGrade('');
                 },
             },
@@ -137,7 +140,7 @@ export default function UnivShow() {
                     </div>
                 </div>
 
-                {/* Summary cards */}
+                {/* Stats cards */}
                 <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader>
@@ -188,7 +191,7 @@ export default function UnivShow() {
                     </Card>
                 </div>
 
-                {/* Detail + Website */}
+                {/* Description + Contact */}
                 <div className="grid gap-4 lg:grid-cols-3">
                     <Card className="lg:col-span-2">
                         <CardHeader>
@@ -241,164 +244,187 @@ export default function UnivShow() {
                     </Card>
                 </div>
 
-                {/* Majors list */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                {/* Program Studi (NO Card, plain table container) */}
+                <div className="rounded-lg border shadow-sm">
+                    <div className="flex items-center justify-between border-b px-4 py-3">
                         <div>
-                            <CardTitle>Program Studi</CardTitle>
-                            <CardDescription>
+                            <h2 className="text-lg font-semibold">
+                                Program Studi
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
                                 Daftar program studi yang terdaftar di
                                 universitas ini
-                            </CardDescription>
+                            </p>
                         </div>
-                    </CardHeader>
+                    </div>
 
-                    <CardContent>
-                        {majorsData.length === 0 ? (
-                            <div className="py-10 text-center text-muted-foreground">
-                                Belum ada program studi untuk universitas ini.
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto rounded-lg border">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="border-b bg-muted/50">
-                                        <tr>
-                                            <th className="px-4 py-2">
-                                                Nama Program Studi
-                                            </th>
-                                            <th className="px-4 py-2 text-center">
-                                                Nilai Minimal Lulus
-                                            </th>
-                                            <th className="px-4 py-2 text-right">
-                                                Aksi
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {majorsData.map((major) => {
-                                            const isEditing =
-                                                editingId === major.id;
+                    {majorsData.length === 0 ? (
+                        <div className="py-10 text-center text-muted-foreground">
+                            Belum ada program studi untuk universitas ini.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="border-b bg-muted/50">
+                                    <tr>
+                                        <th className="px-4 py-2 text-left">
+                                            Nama Program Studi
+                                        </th>
+                                        <th className="px-4 py-2 text-left">
+                                            Deskripsi
+                                        </th>
+                                        <th className="px-4 py-2 text-center">
+                                            Nilai Minimal Lulus
+                                        </th>
+                                        <th className="px-4 py-2 text-right">
+                                            Aksi
+                                        </th>
+                                    </tr>
+                                </thead>
 
-                                            return (
-                                                <tr
-                                                    key={major.id}
-                                                    className="border-b last:border-0"
-                                                >
-                                                    {/* Name cell */}
-                                                    <td className="px-4 py-2">
+                                <tbody className="divide-y">
+                                    {majorsData.map((major) => {
+                                        const isEditing =
+                                            editingId === major.id;
+
+                                        return (
+                                            <tr
+                                                key={major.id}
+                                                className="hover:bg-accent/40"
+                                            >
+                                                {/* Major Name */}
+                                                <td className="px-4 py-2 font-medium">
+                                                    {isEditing ? (
+                                                        <Input
+                                                            value={editName}
+                                                            onChange={(e) =>
+                                                                setEditName(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="h-8"
+                                                        />
+                                                    ) : (
+                                                        major.name
+                                                    )}
+                                                </td>
+
+                                                {/* Major Description */}
+                                                <td className="max-w-md px-4 py-2">
+                                                    {isEditing ? (
+                                                        <Input
+                                                            value={
+                                                                editDescription
+                                                            }
+                                                            onChange={(e) =>
+                                                                setEditDescription(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="h-8"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-muted-foreground">
+                                                            {major.description ||
+                                                                '-'}
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                {/* Passing Grade */}
+                                                <td className="px-4 py-2 text-center">
+                                                    {isEditing ? (
+                                                        <Input
+                                                            type="number"
+                                                            min={0}
+                                                            max={100}
+                                                            value={editGrade}
+                                                            onChange={(e) =>
+                                                                setEditGrade(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="mx-auto h-8 w-24 text-center"
+                                                        />
+                                                    ) : (
+                                                        (major.minimum_passing_grade ??
+                                                        '-')
+                                                    )}
+                                                </td>
+
+                                                {/* Actions */}
+                                                <td className="px-4 py-2 text-right">
+                                                    <div className="flex justify-end gap-2">
                                                         {isEditing ? (
-                                                            <Input
-                                                                value={editName}
-                                                                onChange={(e) =>
-                                                                    setEditName(
-                                                                        e.target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                className="h-8 max-w-xs"
-                                                            />
-                                                        ) : (
-                                                            major.name
-                                                        )}
-                                                    </td>
+                                                            <>
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="hover:bg-foreground/10"
+                                                                    onClick={() =>
+                                                                        saveEdit(
+                                                                            major.id,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        savingId ===
+                                                                        major.id
+                                                                    }
+                                                                    aria-label="Simpan perubahan"
+                                                                >
+                                                                    <Save className="h-4 w-4" />
+                                                                </Button>
 
-                                                    {/* Min grade cell */}
-                                                    <td className="px-4 py-2 text-center">
-                                                        {isEditing ? (
-                                                            <Input
-                                                                type="number"
-                                                                min={0}
-                                                                max={100}
-                                                                value={
-                                                                    editGrade
-                                                                }
-                                                                onChange={(e) =>
-                                                                    setEditGrade(
-                                                                        e.target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                className="h-8 w-24 text-center"
-                                                            />
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="hover:bg-foreground/10"
+                                                                    onClick={
+                                                                        cancelEdit
+                                                                    }
+                                                                    aria-label="Batal edit"
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </Button>
+                                                            </>
                                                         ) : (
                                                             <>
-                                                                {major.minimum_passing_grade ??
-                                                                    '-'}
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="hover:bg-foreground/10"
+                                                                    onClick={() =>
+                                                                        startEdit(
+                                                                            major,
+                                                                        )
+                                                                    }
+                                                                    aria-label={`Edit program studi ${major.name}`}
+                                                                >
+                                                                    <Edit2 className="h-4 w-4" />
+                                                                </Button>
+
+                                                                <ConfirmDeleteButton
+                                                                    deleteUrl={`/admin/majors/${major.id}`}
+                                                                    resourceLabel="program studi"
+                                                                    itemName={
+                                                                        major.name
+                                                                    }
+                                                                />
                                                             </>
                                                         )}
-                                                    </td>
-
-                                                    {/* Actions */}
-                                                    <td className="px-4 py-2 text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            {isEditing ? (
-                                                                <>
-                                                                    <Button
-                                                                        size="icon"
-                                                                        variant="ghost"
-                                                                        className="hover:bg-foreground/10"
-                                                                        onClick={() =>
-                                                                            saveEdit(
-                                                                                major.id,
-                                                                            )
-                                                                        }
-                                                                        disabled={
-                                                                            savingId ===
-                                                                            major.id
-                                                                        }
-                                                                        aria-label="Simpan perubahan"
-                                                                    >
-                                                                        <Save className="h-4 w-4" />
-                                                                    </Button>
-
-                                                                    <Button
-                                                                        size="icon"
-                                                                        variant="ghost"
-                                                                        className="hover:bg-foreground/10"
-                                                                        onClick={
-                                                                            cancelEdit
-                                                                        }
-                                                                        aria-label="Batal edit"
-                                                                    >
-                                                                        <X className="h-4 w-4" />
-                                                                    </Button>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <Button
-                                                                        size="icon"
-                                                                        variant="ghost"
-                                                                        className="hover:bg-foreground/10"
-                                                                        onClick={() =>
-                                                                            startEdit(
-                                                                                major,
-                                                                            )
-                                                                        }
-                                                                        aria-label={`Edit program studi ${major.name}`}
-                                                                    >
-                                                                        <Edit2 className="h-4 w-4" />
-                                                                    </Button>
-
-                                                                    <ConfirmDeleteButton
-                                                                        deleteUrl={`/admin/majors/${major.id}`}
-                                                                        resourceLabel="program studi"
-                                                                        itemName={
-                                                                            major.name
-                                                                        }
-                                                                    />
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
             </div>
         </AppLayout>
     );
