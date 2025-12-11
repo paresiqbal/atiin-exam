@@ -32,7 +32,8 @@ class ExamController extends Controller
 
     public function create()
     {
-        $questionBanks = QuestionBank::orderBy('name')
+        $questionBanks = QuestionBank::withCount('questions')
+            ->orderBy('name')
             ->get(['id', 'name']);
 
         $schools = School::orderBy('name')
