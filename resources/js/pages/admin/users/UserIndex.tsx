@@ -202,7 +202,7 @@ export default function UserIndex() {
                             <SelectContent>
                                 <SelectItem value="all">Semua</SelectItem>
                                 <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="instructor">Guru</SelectItem>
+                                <SelectItem value="teacher">Guru</SelectItem>
                                 <SelectItem value="student">Siswa</SelectItem>
                             </SelectContent>
                         </Select>
