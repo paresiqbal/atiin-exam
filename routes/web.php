@@ -57,6 +57,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::resource('students', StudentController::class);
 
         // Exam management routes
+        Route::delete('exams/bulk-delete', [AdminExamController::class, 'bulkDelete'])
+            ->name('exams.bulk-delete');
         Route::resource('exams', AdminExamController::class);
         Route::post('exams/{exam}/publish', [AdminExamController::class, 'publish'])->name('exams.publish');
         Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');

@@ -64,10 +64,8 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
         (exams as Paginated<ExamData>).per_page ?? 10,
     );
 
-    // selection (copy pattern from StudentIndex)
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-    // shadcn date pickers use Date objects
     const [startDate, setStartDate] = useState<Date | undefined>();
     const [endDate, setEndDate] = useState<Date | undefined>();
 
@@ -76,7 +74,6 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
         { title: 'Daftar Ujian', href: baseUrl },
     ];
 
-    // Filtering: search + status + date range
     const filteredExams = useMemo(() => {
         const q = searchQuery.toLowerCase();
 

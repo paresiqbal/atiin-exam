@@ -196,6 +196,61 @@ class ExamController extends Controller
             ->with('success', 'Exam deleted successfully');
     }
 
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return redirect()
+                ->route('admin.exams.index')
+                ->with('info', 'Tidak ada ujian yang dipilih untuk dihapus.');
+        }
+
+        // Exams that have attempts (cannot be deleted)
+        $examsWithAttempts = Exam::whereIn('id', $ids)
+            ->whereHas('attempts')
+            ->get();
+
+        // Exams that are safe to delete (no attempts)
+        $deletableIds = Exam::whereIn('id', $ids)
+            ->whereDoesntHave('attempts')
+            ->pluck('id')
+            ->all();
+
+        if (! empty($deletableIds)) {
+            Exam::whereIn('id', $deletableIds)->delete();
+        }
+
+        // Build flash message
+        $deletedCount = count($deletableIds);
+        $blockedCount = $examsWithAttempts->count();
+
+        if ($deletedCount === 0 && $blockedCount > 0) {
+            return redirect()
+                ->route('admin.exams.index')
+                ->with(
+                    'warning',
+                    'Tidak ada ujian yang dihapus karena semua ujian sudah pernah dikerjakan siswa.'
+                );
+        }
+
+        if ($blockedCount > 0) {
+            $blockedNames = $examsWithAttempts->pluck('name')->join(', ');
+
+            return redirect()
+                ->route('admin.exams.index')
+                ->with(
+                    'warning',
+                    "Sebanyak {$deletedCount} ujian berhasil dihapus. " .
+                        "Beberapa ujian tidak dapat dihapus karena sudah pernah dikerjakan siswa: {$blockedNames}."
+                );
+        }
+
+        return redirect()
+            ->route('admin.exams.index')
+            ->with('success', "Sebanyak {$deletedCount} ujian berhasil dihapus.");
+    }
+
     public function publish(Exam $exam)
     {
         $exam->update(['is_published' => true]);
