@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Edit2, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -29,25 +29,27 @@ import {
 import type { BreadcrumbItem } from '@/types';
 import type { Paginated } from '@/types/pagination';
 import type { User } from '@/types/user';
-import type { PageProps as InertiaPageProps } from '@inertiajs/core';
 
 type RoleFilter = 'all' | 'admin' | 'instructor' | 'student';
 
-interface UsersPageProps extends InertiaPageProps {
+// 👇 Simple, explicit page props type
+type UsersPageProps = {
     users: Paginated<User>;
-}
+};
 
 const baseUrl = '/admin/users';
 
 export default function UserIndex() {
+    // 👇 Tell Inertia what props shape we expect
     const { users } = usePage<UsersPageProps>().props;
 
     const [searchQuery, setSearchQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
     const filteredUsers = useMemo(
         () =>
-            users.data.filter((user) => {
+            users.data.filter((user: User) => {
                 const q = searchQuery.toLowerCase();
                 const matchesSearch =
                     user.name.toLowerCase().includes(q) ||
@@ -58,8 +60,65 @@ export default function UserIndex() {
 
                 return matchesSearch && matchesRole;
             }),
-        [users.data, searchQuery, roleFilter],
+        [users, searchQuery, roleFilter],
     );
+
+    const allSelected = useMemo(
+        () =>
+            filteredUsers.length > 0 &&
+            filteredUsers.every((u: User) => selectedIds.includes(u.id)),
+        [filteredUsers, selectedIds],
+    );
+
+    const handleToggleSelectAll = (checked: boolean) => {
+        if (checked) {
+            // select all currently filtered users
+            setSelectedIds(filteredUsers.map((u) => u.id));
+        } else {
+            // remove only IDs that are in the current filtered list
+            setSelectedIds((prev) =>
+                prev.filter(
+                    (id) => !filteredUsers.some((user) => user.id === id),
+                ),
+            );
+        }
+    };
+
+    const handleToggleSelectOne = (id: number, checked: boolean) => {
+        if (checked) {
+            setSelectedIds((prev) =>
+                prev.includes(id) ? prev : [...prev, id],
+            );
+        } else {
+            setSelectedIds((prev) =>
+                prev.filter((selectedId) => selectedId !== id),
+            );
+        }
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) return;
+
+        if (
+            !window.confirm(
+                `Yakin ingin menghapus ${selectedIds.length} pengguna terpilih?`,
+            )
+        ) {
+            return;
+        }
+
+        router.post(
+            `${baseUrl}/bulk-delete`,
+            {
+                ids: selectedIds,
+            },
+            {
+                onSuccess: () => {
+                    setSelectedIds([]);
+                },
+            },
+        );
+    };
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -112,11 +171,12 @@ export default function UserIndex() {
                             )}
                         </InputGroup>
                     </div>
+
                     <div className="flex items-center gap-2">
                         <Select
                             value={roleFilter}
-                            onValueChange={(value: RoleFilter) =>
-                                setRoleFilter(value)
+                            onValueChange={(value) =>
+                                setRoleFilter(value as RoleFilter)
                             }
                         >
                             <SelectTrigger className="w-[160px]">
@@ -129,6 +189,14 @@ export default function UserIndex() {
                                 <SelectItem value="student">Siswa</SelectItem>
                             </SelectContent>
                         </Select>
+
+                        <Button
+                            variant="destructive"
+                            disabled={selectedIds.length === 0}
+                            onClick={handleBulkDelete}
+                        >
+                            Hapus Terpilih ({selectedIds.length})
+                        </Button>
                     </div>
                 </div>
 
@@ -137,6 +205,17 @@ export default function UserIndex() {
                     <table className="w-full text-sm">
                         <thead className="border-b">
                             <tr>
+                                <th className="w-10 px-4 py-3">
+                                    <input
+                                        type="checkbox"
+                                        checked={allSelected}
+                                        onChange={(e) =>
+                                            handleToggleSelectAll(
+                                                e.target.checked,
+                                            )
+                                        }
+                                    />
+                                </th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                     Nama
                                 </th>
@@ -157,53 +236,72 @@ export default function UserIndex() {
 
                         <tbody className="divide-y">
                             {filteredUsers.length > 0 ? (
-                                filteredUsers.map((user) => (
-                                    <tr
-                                        key={user.id}
-                                        className="transition-colors hover:bg-foreground/10"
-                                    >
-                                        <td className="px-6 py-3">
-                                            {user.name}
-                                        </td>
+                                filteredUsers.map((user: User) => {
+                                    const isSelected = selectedIds.includes(
+                                        user.id,
+                                    );
 
-                                        <td className="px-6 py-3">
-                                            {user.email}
-                                        </td>
-
-                                        <td className="px-6 py-3">
-                                            <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
-                                                {user.role}
-                                            </span>
-                                        </td>
-
-                                        <td className="px-6 py-3">
-                                            {new Date(
-                                                user.created_at,
-                                            ).toLocaleDateString()}
-                                        </td>
-
-                                        <td className="px-6 py-3">
-                                            <div className="flex gap-2">
-                                                <Link
-                                                    href={`${baseUrl}/${user.id}/edit`}
-                                                    className="rounded-md p-2 hover:bg-foreground/20"
-                                                >
-                                                    <Edit2 size={16} />
-                                                </Link>
-
-                                                <ConfirmDeleteButton
-                                                    deleteUrl={`${baseUrl}/${user.id}`}
-                                                    resourceLabel="pengguna"
-                                                    itemName={user.name}
+                                    return (
+                                        <tr
+                                            key={user.id}
+                                            className="transition-colors hover:bg-foreground/10"
+                                        >
+                                            <td className="w-10 px-4 py-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) =>
+                                                        handleToggleSelectOne(
+                                                            user.id,
+                                                            e.target.checked,
+                                                        )
+                                                    }
                                                 />
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+
+                                            <td className="px-6 py-3">
+                                                {user.name}
+                                            </td>
+
+                                            <td className="px-6 py-3">
+                                                {user.email}
+                                            </td>
+
+                                            <td className="px-6 py-3">
+                                                <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize">
+                                                    {user.role}
+                                                </span>
+                                            </td>
+
+                                            <td className="px-6 py-3">
+                                                {new Date(
+                                                    user.created_at,
+                                                ).toLocaleDateString()}
+                                            </td>
+
+                                            <td className="px-6 py-3">
+                                                <div className="flex gap-2">
+                                                    <Link
+                                                        href={`${baseUrl}/${user.id}/edit`}
+                                                        className="rounded-md p-2 hover:bg-foreground/20"
+                                                    >
+                                                        <Edit2 size={16} />
+                                                    </Link>
+
+                                                    <ConfirmDeleteButton
+                                                        deleteUrl={`${baseUrl}/${user.id}`}
+                                                        resourceLabel="pengguna"
+                                                        itemName={user.name}
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             ) : (
                                 <tr>
                                     <td
-                                        colSpan={5}
+                                        colSpan={6}
                                         className="px-6 py-8 text-center text-sm text-slate-500"
                                     >
                                         Tidak ada pengguna ditemukan
