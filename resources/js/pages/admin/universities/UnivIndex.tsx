@@ -1,19 +1,12 @@
-// resources/js/pages/admin/universities/UnivIndex.tsx
-
-import { Head, Link, usePage } from '@inertiajs/react';
-import { Edit2, Eye, Search } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Edit2, Eye, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import {
     InputGroup,
@@ -22,13 +15,23 @@ import {
 } from '@/components/ui/input-group';
 
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/components/ui/pagination';
+
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+
+import { Checkbox } from '@/components/ui/checkbox';
 
 import AppLayout from '@/layouts/app-layout';
 
@@ -64,7 +67,12 @@ const baseUrl = '/admin/universities';
 export default function UnivIndex() {
     const { universities } = usePage<UnivPageProps>().props;
     const data = useMemo(() => universities.data ?? [], [universities.data]);
+
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [rowsPerPage, setRowsPerPage] = useState<number>(
+        (universities as Paginated<University>).per_page ?? 10,
+    );
 
     const filteredUniversities = useMemo(() => {
         const q = searchQuery.toLowerCase();
@@ -89,6 +97,72 @@ export default function UnivIndex() {
             ? (totalMajors / filteredUniversities.length).toFixed(1)
             : '0';
 
+    // Selection logic
+    const allSelected =
+        filteredUniversities.length > 0 &&
+        filteredUniversities.every((u) => selectedIds.includes(u.id));
+
+    const someSelected =
+        selectedIds.length > 0 &&
+        selectedIds.length < filteredUniversities.length;
+
+    const checkboxValue: boolean | 'indeterminate' = allSelected
+        ? true
+        : someSelected
+          ? 'indeterminate'
+          : false;
+
+    const handleToggleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedIds(filteredUniversities.map((u) => u.id));
+        } else {
+            setSelectedIds((prev) =>
+                prev.filter(
+                    (id) => !filteredUniversities.some((u) => u.id === id),
+                ),
+            );
+        }
+    };
+
+    const handleToggleSelectOne = (id: number, checked: boolean) => {
+        if (checked) {
+            setSelectedIds((prev) =>
+                prev.includes(id) ? prev : [...prev, id],
+            );
+        } else {
+            setSelectedIds((prev) =>
+                prev.filter((selectedId) => selectedId !== id),
+            );
+        }
+    };
+
+    const handleBulkDelete = () => {
+        if (selectedIds.length === 0) return;
+
+        return router.delete(`${baseUrl}/bulk-delete`, {
+            data: {
+                ids: selectedIds,
+            },
+            onSuccess: () => {
+                setSelectedIds([]);
+            },
+        });
+    };
+
+    const handleChangeRowsPerPage = (value: string) => {
+        const perPage = Number(value) || 10;
+        setRowsPerPage(perPage);
+
+        router.get(
+            `${baseUrl}`,
+            { page: 1, per_page: perPage },
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Daftar Universitas" />
@@ -106,12 +180,15 @@ export default function UnivIndex() {
 
                     <div>
                         <Link href={`${baseUrl}/create`}>
-                            <Button>Tambah Universitas</Button>
+                            <Button className="flex items-center gap-2">
+                                <Plus className="h-4 w-4" />
+                                Tambah Universitas
+                            </Button>
                         </Link>
                     </div>
                 </div>
 
-                {/* 🔍 Search bar */}
+                {/* 🔍 Search + bulk delete */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
                         <InputGroup className="flex-1">
@@ -131,6 +208,15 @@ export default function UnivIndex() {
                                 </InputGroupAddon>
                             )}
                         </InputGroup>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <ConfirmBulkDeleteButton
+                            count={selectedIds.length}
+                            resourceLabelPlural="universitas"
+                            disabled={selectedIds.length === 0}
+                            onConfirm={handleBulkDelete}
+                        />
                     </div>
                 </div>
 
@@ -170,135 +256,247 @@ export default function UnivIndex() {
                     </Card>
                 </div>
 
-                {/* Table */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Universitas</CardTitle>
-                        <CardDescription>
-                            Daftar lengkap universitas beserta program studi
-                        </CardDescription>
-                    </CardHeader>
+                {/* Table – NO Card wrapper */}
+                <div className="overflow-x-auto rounded-lg border shadow-sm">
+                    <table className="w-full text-sm">
+                        <thead className="border-b bg-accent">
+                            <tr>
+                                <th className="w-10 px-4 py-2">
+                                    <Checkbox
+                                        checked={checkboxValue}
+                                        onCheckedChange={(value) =>
+                                            handleToggleSelectAll(
+                                                value === true,
+                                            )
+                                        }
+                                    />
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Nama Universitas
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Kode
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Kota
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Program Studi
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Aksi
+                                </th>
+                            </tr>
+                        </thead>
 
-                    <CardContent>
-                        {filteredUniversities.length === 0 ? (
-                            <div className="py-10 text-center text-muted-foreground">
-                                Tidak ada universitas ditemukan
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto rounded-lg border">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>
-                                                Nama Universitas
-                                            </TableHead>
-                                            <TableHead>Kode</TableHead>
-                                            <TableHead>Kota</TableHead>
-                                            <TableHead>Program Studi</TableHead>
-                                            <TableHead className="text-right">
-                                                Aksi
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
+                        <tbody className="divide-y">
+                            {filteredUniversities.length > 0 ? (
+                                filteredUniversities.map((u) => {
+                                    const isSelected = selectedIds.includes(
+                                        u.id,
+                                    );
 
-                                    <TableBody>
-                                        {filteredUniversities.map((u) => (
-                                            <TableRow key={u.id}>
-                                                <TableCell className="font-medium">
-                                                    {u.name}
-                                                </TableCell>
+                                    return (
+                                        <tr
+                                            key={u.id}
+                                            className={`transition-colors hover:bg-accent ${
+                                                isSelected ? 'bg-accent' : ''
+                                            }`}
+                                        >
+                                            <td className="w-10 px-4 py-2">
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    onCheckedChange={(value) =>
+                                                        handleToggleSelectOne(
+                                                            u.id,
+                                                            value === true,
+                                                        )
+                                                    }
+                                                />
+                                            </td>
 
-                                                <TableCell>
-                                                    {u.code ? (
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className="font-mono uppercase"
-                                                        >
-                                                            {u.code}
-                                                        </Badge>
+                                            <td className="px-6 py-2 font-medium">
+                                                {u.name || '-'}
+                                            </td>
+
+                                            <td className="px-6 py-2">
+                                                {u.code ? (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="font-mono uppercase"
+                                                    >
+                                                        {u.code}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        -
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            <td className="px-6 py-2">
+                                                {u.city || (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        -
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            <td className="px-6 py-2">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {u.majors.length > 0 ? (
+                                                        u.majors.map((m) => (
+                                                            <Badge
+                                                                key={m.id}
+                                                                variant="outline"
+                                                            >
+                                                                {m.name}
+                                                            </Badge>
+                                                        ))
                                                     ) : (
-                                                        <span className="text-xs text-muted-foreground italic">
-                                                            Tidak ada kode
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-
-                                                <TableCell>
-                                                    {u.city || (
-                                                        <span className="text-xs text-muted-foreground">
+                                                        <span className="text-sm text-muted-foreground">
                                                             -
                                                         </span>
                                                     )}
-                                                </TableCell>
+                                                </div>
+                                            </td>
 
-                                                <TableCell>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {u.majors.length > 0 ? (
-                                                            u.majors.map(
-                                                                (m) => (
-                                                                    <Badge
-                                                                        key={
-                                                                            m.id
-                                                                        }
-                                                                        variant="outline"
-                                                                    >
-                                                                        {m.name}
-                                                                    </Badge>
-                                                                ),
-                                                            )
-                                                        ) : (
-                                                            <span className="text-sm text-muted-foreground">
-                                                                -
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
-                                                        <Button
-                                                            asChild
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            className="hover:bg-foreground/10"
+                                            <td className="px-6 py-2">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        asChild
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="hover:bg-foreground/10"
+                                                    >
+                                                        <Link
+                                                            href={`${baseUrl}/${u.id}`}
+                                                            aria-label={`Lihat detail universitas ${u.name}`}
                                                         >
-                                                            <Link
-                                                                href={`${baseUrl}/${u.id}`}
-                                                                aria-label={`Lihat detail universitas ${u.name}`}
-                                                            >
-                                                                <Eye className="h-4 w-4" />
-                                                            </Link>
-                                                        </Button>
+                                                            <Eye className="h-4 w-4" />
+                                                        </Link>
+                                                    </Button>
 
-                                                        <Button
-                                                            asChild
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            className="hover:bg-foreground/10"
+                                                    <Button
+                                                        asChild
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="hover:bg-foreground/10"
+                                                    >
+                                                        <Link
+                                                            href={`${baseUrl}/${u.id}/edit`}
+                                                            aria-label={`Edit universitas ${u.name}`}
                                                         >
-                                                            <Link
-                                                                href={`${baseUrl}/${u.id}/edit`}
-                                                                aria-label={`Edit universitas ${u.name}`}
-                                                            >
-                                                                <Edit2 className="h-4 w-4" />
-                                                            </Link>
-                                                        </Button>
+                                                            <Edit2 className="h-4 w-4" />
+                                                        </Link>
+                                                    </Button>
 
-                                                        <ConfirmDeleteButton
-                                                            deleteUrl={`${baseUrl}/${u.id}`}
-                                                            resourceLabel="universitas"
-                                                            itemName={u.name}
-                                                        />
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                                                    <ConfirmDeleteButton
+                                                        deleteUrl={`${baseUrl}/${u.id}`}
+                                                        resourceLabel="universitas"
+                                                        itemName={u.name}
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            ) : (
+                                <tr>
+                                    <td
+                                        colSpan={6}
+                                        className="px-6 py-8 text-center text-sm text-slate-500"
+                                    >
+                                        Tidak ada universitas ditemukan
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Footer: selection info + rows-per-page + pagination */}
+                <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+                    <div className="text-sm text-muted-foreground">
+                        {selectedIds.length} dari {universities.total} baris
+                        dipilih.
+                    </div>
+
+                    <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                                Baris per halaman:
+                            </span>
+                            <Select
+                                value={String(rowsPerPage)}
+                                onValueChange={handleChangeRowsPerPage}
+                            >
+                                <SelectTrigger className="w-[80px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="20">20</SelectItem>
+                                    <SelectItem value="30">30</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    {universities.current_page > 1 ? (
+                                        <Link
+                                            href={`${baseUrl}?page=${
+                                                universities.current_page - 1
+                                            }&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationPrevious />
+                                        </Link>
+                                    ) : (
+                                        <PaginationPrevious className="pointer-events-none opacity-50" />
+                                    )}
+                                </PaginationItem>
+
+                                {Array.from(
+                                    { length: universities.last_page },
+                                    (_, i) => i + 1,
+                                ).map((page) => (
+                                    <PaginationItem key={page}>
+                                        <Link
+                                            href={`${baseUrl}?page=${page}&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationLink
+                                                isActive={
+                                                    page ===
+                                                    universities.current_page
+                                                }
+                                            >
+                                                {page}
+                                            </PaginationLink>
+                                        </Link>
+                                    </PaginationItem>
+                                ))}
+
+                                <PaginationItem>
+                                    {universities.current_page <
+                                    universities.last_page ? (
+                                        <Link
+                                            href={`${baseUrl}?page=${
+                                                universities.current_page + 1
+                                            }&per_page=${rowsPerPage}`}
+                                        >
+                                            <PaginationNext />
+                                        </Link>
+                                    ) : (
+                                        <PaginationNext className="pointer-events-none opacity-50" />
+                                    )}
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </div>
+                </div>
             </div>
         </AppLayout>
     );

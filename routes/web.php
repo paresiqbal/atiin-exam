@@ -69,6 +69,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::resource('majors', MajorController::class, ['only' => ['store', 'edit', 'update', 'destroy']]);
         Route::post('majors', [MajorController::class, 'store'])->name('majors.store');
 
+        Route::delete('universities/bulk-delete', [UniversityController::class, 'bulkDelete'])->name('universities.bulk-delete');
         Route::resource('universities', UniversityController::class);
         Route::get('universities/options', [UniversityController::class, 'options'])->name('universities.options');
         Route::post('universities/import/preview', [UniversityImportController::class, 'preview'])->name('universities.import.preview');

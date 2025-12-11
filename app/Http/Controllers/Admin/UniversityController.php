@@ -9,11 +9,13 @@ use Inertia\Inertia;
 
 class UniversityController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = (int) $request->input('per_page', 10);
+
         $universities = University::with('majors')
-            ->withCount('majors')
-            ->paginate(15);
+            ->paginate($perPage)
+            ->withQueryString();
 
         return Inertia::render('admin/universities/UnivIndex', [
             'universities' => $universities,
@@ -22,7 +24,6 @@ class UniversityController extends Controller
 
     public function options()
     {
-        // Return JSON with all universities (id + name only)
         return University::orderBy('name')->get(['id', 'name']);
     }
 
@@ -91,5 +92,22 @@ class UniversityController extends Controller
 
         return redirect()->route('admin.universities.index')
             ->with('success', 'University deleted successfully');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return redirect()
+                ->route('admin.universities.index')
+                ->with('info', 'Tidak ada universitas yang dipilih untuk dihapus.');
+        }
+
+        University::whereIn('id', $ids)->delete();
+
+        return redirect()
+            ->route('admin.universities.index')
+            ->with('success', 'Universitas terpilih berhasil dihapus.');
     }
 }
