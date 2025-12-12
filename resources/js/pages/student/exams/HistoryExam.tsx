@@ -1,25 +1,18 @@
-import { Head } from '@inertiajs/react';
-import { Download, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
+import {
+    CheckCircle2,
+    Download,
+    Search,
+    TrendingUp,
+    X,
+    XCircle,
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 
@@ -27,7 +20,8 @@ interface ExamAttempt {
     id: number;
     exam: {
         id: number;
-        title: string; // or name
+        title?: string | null; // allow missing
+        name?: string | null; // allow missing
     };
     score: number;
     total_score: number;
@@ -36,55 +30,147 @@ interface ExamAttempt {
     completed_at: string;
 }
 
+type PaginationLink = { url: string | null; label: string; active: boolean };
+
 interface ExamHistoryProps {
     attempts: {
         data: ExamAttempt[];
         current_page: number;
         total: number;
         last_page: number;
+        links?: PaginationLink[];
+    };
+    filters?: {
+        q?: string;
+        status?: 'all' | 'passed' | 'failed';
+        sort?: 'date' | 'score';
     };
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/student/dashboard' },
-    { title: 'History Ujian', href: '/student/exam-history' },
+    { title: 'History Ujian', href: '/student/exams/history' },
 ];
 
-function formatDate(value: string) {
+function formatDateCompact(value: string) {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleString('id-ID', {
-        day: '2-digit',
+        day: 'numeric',
         month: 'short',
         year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
     });
 }
 
-export default function HistoryExam({ attempts }: ExamHistoryProps) {
-    const [searchQuery, setSearchQuery] = useState('');
-    const [currentPage, setCurrentPage] = useState(attempts.current_page);
+function Pagination({
+    links,
+    onNavigate,
+}: {
+    links: PaginationLink[];
+    onNavigate: (url: string) => void;
+}) {
+    return (
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+            {links.map((link, idx) => {
+                const label = link.label
+                    .replace('&laquo;', '«')
+                    .replace('&raquo;', '»');
+                return (
+                    <Button
+                        key={`${label}-${idx}`}
+                        variant={link.active ? 'default' : 'outline'}
+                        size="sm"
+                        disabled={!link.url}
+                        onClick={() => link.url && onNavigate(link.url)}
+                        className="h-9 rounded-full"
+                    >
+                        <span dangerouslySetInnerHTML={{ __html: label }} />
+                    </Button>
+                );
+            })}
+        </div>
+    );
+}
 
-    const filteredAttempts = useMemo(() => {
-        const query = searchQuery.toLowerCase();
+export default function HistoryExam() {
+    // ✅ Fix TS constraint issue: cast props from usePage() instead of generic PageProps constraint
+    const { attempts, filters } = usePage()
+        .props as unknown as ExamHistoryProps;
 
-        return attempts.data.filter((attempt) => {
-            const name = attempt.exam?.title || '';
-            return name.toLowerCase().includes(query);
+    const [searchInput, setSearchInput] = useState(filters?.q ?? '');
+    const [searchQuery, setSearchQuery] = useState(filters?.q ?? '');
+    const [filterStatus, setFilterStatus] = useState<
+        'all' | 'passed' | 'failed'
+    >(filters?.status ?? 'all');
+    const [sortBy, setSortBy] = useState<'date' | 'score'>(
+        filters?.sort ?? 'date',
+    );
+
+    const [downloadingIds, setDownloadingIds] = useState<Set<number>>(
+        new Set(),
+    );
+
+    // Debounce typing
+    useEffect(() => {
+        const t = setTimeout(() => setSearchQuery(searchInput), 250);
+        return () => clearTimeout(t);
+    }, [searchInput]);
+
+    // Server-side query (fast + consistent)
+    useEffect(() => {
+        router.get(
+            '/student/exams/history',
+            {
+                q: searchQuery.trim() || undefined,
+                status: filterStatus !== 'all' ? filterStatus : undefined,
+                sort: sortBy,
+            },
+            { preserveScroll: true, preserveState: true, replace: true },
+        );
+    }, [searchQuery, filterStatus, sortBy]);
+
+    // Precompute for UI sorting fallback (still useful if server returns same page)
+    const processed = useMemo(() => {
+        const q = searchQuery.trim().toLowerCase();
+
+        const mapped = attempts.data.map((a) => {
+            const examName = (a.exam?.title ?? a.exam?.name ?? '').toString();
+            return {
+                ...a,
+                examName,
+                examNameLc: examName.toLowerCase(),
+                completedTs: new Date(a.completed_at).getTime() || 0,
+            };
         });
-    }, [searchQuery, attempts.data]);
 
-    const passedCount = attempts.data.filter((a) => a.is_passed).length;
-    const avgPercentage =
-        attempts.data.length > 0
-            ? (
-                  attempts.data.reduce((sum, a) => sum + a.percentage, 0) /
-                  attempts.data.length
-              ).toFixed(1)
-            : '0.0';
+        const filtered = mapped.filter((a) => {
+            const matchesSearch = a.examNameLc.includes(q);
+            if (filterStatus === 'passed') return matchesSearch && a.is_passed;
+            if (filterStatus === 'failed') return matchesSearch && !a.is_passed;
+            return matchesSearch;
+        });
+
+        if (sortBy === 'date')
+            filtered.sort((a, b) => b.completedTs - a.completedTs);
+        else filtered.sort((a, b) => b.percentage - a.percentage);
+
+        return filtered;
+    }, [attempts.data, searchQuery, filterStatus, sortBy]);
+
+    const passedCount = useMemo(
+        () => attempts.data.filter((a) => a.is_passed).length,
+        [attempts.data],
+    );
+    const failedCount = attempts.data.length - passedCount;
+
+    const avgPercentage = useMemo(() => {
+        if (attempts.data.length === 0) return '0.0';
+        const sum = attempts.data.reduce((acc, a) => acc + a.percentage, 0);
+        return (sum / attempts.data.length).toFixed(1);
+    }, [attempts.data]);
 
     const handleDownloadPDF = async (attemptId: number) => {
+        setDownloadingIds((prev) => new Set(prev).add(attemptId));
         try {
             const response = await fetch(
                 `/student/exams/${attemptId}/download-pdf`,
@@ -100,9 +186,19 @@ export default function HistoryExam({ attempts }: ExamHistoryProps) {
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
             }
-        } catch (error) {
-            console.error('Failed to download PDF:', error);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setDownloadingIds((prev) => {
+                const s = new Set(prev);
+                s.delete(attemptId);
+                return s;
+            });
         }
+    };
+
+    const handleNavigate = (url: string) => {
+        router.visit(url, { preserveScroll: true, preserveState: true });
     };
 
     return (
@@ -110,199 +206,267 @@ export default function HistoryExam({ attempts }: ExamHistoryProps) {
             <Head title="History Ujian" />
 
             <div className="p-4">
-                <div className="mx-auto max-w-full space-y-6">
+                <div className="mx-auto max-w-3xl space-y-4">
                     {/* Header */}
                     <div className="space-y-1">
-                        <h1 className="text-3xl font-bold">History Ujian</h1>
-                        <p className="text-muted-foreground">
-                            Tinjau semua percobaan ujian Anda dan unduh
-                            hasilnya.
+                        <h1 className="text-xl font-semibold text-foreground">
+                            History Ujian
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            Tinjau percobaan ujian dan unduh hasilnya.
                         </p>
                     </div>
 
-                    {/* Search */}
-                    <div className="relative max-w-md">
-                        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Cari ujian..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-10 pl-9"
-                        />
-                    </div>
-
-                    {/* Summary Stats */}
-                    <div className="grid gap-4 md:grid-cols-3">
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium">
-                                    Total Percobaan
+                    {/* Summary (smaller) */}
+                    <div className="grid grid-cols-3 gap-2">
+                        <Card className="rounded-2xl">
+                            <CardHeader className="pb-1">
+                                <CardTitle className="text-[11px] font-medium text-muted-foreground">
+                                    Total
                                 </CardTitle>
-                                <CardDescription>
-                                    Jumlah semua percobaan ujian Anda.
-                                </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold">
+                            <CardContent className="pt-0">
+                                <div className="text-xl font-bold">
                                     {attempts.total}
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium">
+                        <Card className="rounded-2xl">
+                            <CardHeader className="pb-1">
+                                <CardTitle className="text-[11px] font-medium text-muted-foreground">
                                     Lulus
                                 </CardTitle>
-                                <CardDescription>
-                                    Total percobaan dengan status lulus.
-                                </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold">
+                            <CardContent className="pt-0">
+                                <div className="text-xl font-bold text-green-600 dark:text-green-400">
                                     {passedCount}
+                                </div>
+                                <div className="text-[11px] text-muted-foreground">
+                                    {failedCount} gagal
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <CardTitle className="text-sm font-medium">
-                                    Skor Rata-rata
+                        <Card className="rounded-2xl">
+                            <CardHeader className="pb-1">
+                                <CardTitle className="text-[11px] font-medium text-muted-foreground">
+                                    Rata-rata
                                 </CardTitle>
-                                <CardDescription>
-                                    Rata-rata persentase dari semua percobaan.
-                                </CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold">
+                            <CardContent className="pt-0">
+                                <div className="text-xl font-bold text-primary">
                                     {avgPercentage}%
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* Attempts Table */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Semua Percobaan</CardTitle>
-                            <CardDescription>
-                                Tinjauan rinci dari setiap percobaan ujian.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {filteredAttempts.length > 0 ? (
-                                <div className="overflow-x-auto rounded-lg border">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Ujian</TableHead>
-                                                <TableHead>Tanggal</TableHead>
-                                                <TableHead className="text-center">
-                                                    Skor
-                                                </TableHead>
-                                                <TableHead className="text-center">
-                                                    Persentase
-                                                </TableHead>
-                                                <TableHead className="text-center">
-                                                    Status
-                                                </TableHead>
-                                                <TableHead className="text-right">
-                                                    Aksi
-                                                </TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredAttempts.map((attempt) => (
-                                                <TableRow key={attempt.id}>
-                                                    <TableCell>
-                                                        <div className="font-medium">
-                                                            {
-                                                                attempt.exam
-                                                                    ?.title
-                                                            }
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {formatDate(
-                                                                attempt.completed_at,
-                                                            )}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            placeholder="Cari ujian..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            className="h-10 rounded-2xl pr-9 pl-9"
+                        />
+                        {searchInput && (
+                            <button
+                                onClick={() => setSearchInput('')}
+                                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                                aria-label="Clear search"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Filters */}
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            variant={
+                                filterStatus === 'all' ? 'default' : 'outline'
+                            }
+                            size="sm"
+                            onClick={() => setFilterStatus('all')}
+                            className="h-9 rounded-full"
+                        >
+                            Semua
+                        </Button>
+                        <Button
+                            variant={
+                                filterStatus === 'passed'
+                                    ? 'default'
+                                    : 'outline'
+                            }
+                            size="sm"
+                            onClick={() => setFilterStatus('passed')}
+                            className="h-9 rounded-full"
+                        >
+                            <CheckCircle2 className="mr-1 h-4 w-4" />
+                            Lulus
+                        </Button>
+                        <Button
+                            variant={
+                                filterStatus === 'failed'
+                                    ? 'default'
+                                    : 'outline'
+                            }
+                            size="sm"
+                            onClick={() => setFilterStatus('failed')}
+                            className="h-9 rounded-full"
+                        >
+                            <XCircle className="mr-1 h-4 w-4" />
+                            Gagal
+                        </Button>
+
+                        <div className="ml-auto flex gap-2">
+                            <Button
+                                variant={
+                                    sortBy === 'date' ? 'default' : 'outline'
+                                }
+                                size="sm"
+                                onClick={() => setSortBy('date')}
+                                className="h-9 rounded-full"
+                            >
+                                Terbaru
+                            </Button>
+                            <Button
+                                variant={
+                                    sortBy === 'score' ? 'default' : 'outline'
+                                }
+                                size="sm"
+                                onClick={() => setSortBy('score')}
+                                className="h-9 rounded-full"
+                            >
+                                Skor
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* List (smaller cards) */}
+                    <div className="space-y-2">
+                        {processed.length > 0 ? (
+                            processed.map((attempt) => {
+                                const examName = attempt.examName || '-';
+
+                                return (
+                                    <Card
+                                        key={attempt.id}
+                                        className="rounded-2xl"
+                                    >
+                                        <CardContent className="p-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0 flex-1">
+                                                    {/* ✅ exam name */}
+                                                    <div className="truncate text-sm font-semibold">
+                                                        {examName}
+                                                    </div>
+                                                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+                                                        {formatDateCompact(
+                                                            attempt.completed_at,
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <Badge
+                                                    variant="outline"
+                                                    className={
+                                                        attempt.is_passed
+                                                            ? 'shrink-0 border-green-200 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-200'
+                                                            : 'shrink-0 border-red-200 bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200'
+                                                    }
+                                                >
+                                                    {attempt.is_passed
+                                                        ? 'Lulus'
+                                                        : 'Gagal'}
+                                                </Badge>
+                                            </div>
+
+                                            <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2">
+                                                <div>
+                                                    <div className="text-[11px] text-muted-foreground">
+                                                        Skor
+                                                    </div>
+                                                    <div className="text-sm font-bold">
                                                         {attempt.score}/
                                                         {attempt.total_score}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-[11px] text-muted-foreground">
+                                                        %
+                                                    </div>
+                                                    <div className="text-sm font-bold text-primary">
                                                         {attempt.percentage.toFixed(
                                                             1,
                                                         )}
                                                         %
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        <Badge
-                                                            variant={
-                                                                attempt.is_passed
-                                                                    ? 'default'
-                                                                    : 'outline'
-                                                            }
-                                                            className="whitespace-nowrap"
-                                                        >
-                                                            {attempt.is_passed
-                                                                ? 'Lulus'
-                                                                : 'Tidak Lulus'}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                handleDownloadPDF(
-                                                                    attempt.id,
-                                                                )
-                                                            }
-                                                            className="gap-2"
-                                                        >
-                                                            <Download className="h-4 w-4" />
-                                                            PDF
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            ) : (
-                                <div className="py-10 text-center text-muted-foreground">
-                                    Tidak ada percobaan yang ditemukan.
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                                                    </div>
+                                                </div>
+                                            </div>
 
-                    {/* Pagination (client-side page state only) */}
-                    {attempts.last_page > 1 && (
-                        <div className="flex justify-center gap-2">
-                            {Array.from(
-                                { length: attempts.last_page },
-                                (_, i) => i + 1,
-                            ).map((page) => (
-                                <Button
-                                    key={page}
-                                    variant={
-                                        page === currentPage
-                                            ? 'default'
-                                            : 'outline'
-                                    }
-                                    onClick={() => setCurrentPage(page)}
-                                >
-                                    {page}
-                                </Button>
-                            ))}
-                        </div>
-                    )}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    handleDownloadPDF(
+                                                        attempt.id,
+                                                    )
+                                                }
+                                                disabled={downloadingIds.has(
+                                                    attempt.id,
+                                                )}
+                                                className="mt-3 h-9 w-full gap-2 rounded-xl"
+                                            >
+                                                <Download className="h-4 w-4" />
+                                                {downloadingIds.has(attempt.id)
+                                                    ? 'Mengunduh...'
+                                                    : 'Unduh PDF'}
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })
+                        ) : (
+                            <Card className="rounded-2xl py-12 text-center">
+                                <CardContent>
+                                    {attempts.data.length === 0 ? (
+                                        <>
+                                            <TrendingUp className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
+                                            <h3 className="mt-3 font-semibold text-foreground">
+                                                Belum ada history ujian
+                                            </h3>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                Selesaikan ujian pertama Anda
+                                                untuk melihat history
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Search className="mx-auto h-10 w-10 text-muted-foreground opacity-50" />
+                                            <h3 className="mt-3 font-semibold text-foreground">
+                                                Tidak ada percobaan ditemukan
+                                            </h3>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                Coba sesuaikan filter atau
+                                                pencarian Anda
+                                            </p>
+                                        </>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Pagination */}
+                        {attempts.links && attempts.links.length > 0 && (
+                            <Pagination
+                                links={attempts.links}
+                                onNavigate={handleNavigate}
+                            />
+                        )}
+                    </div>
                 </div>
             </div>
         </AppLayout>

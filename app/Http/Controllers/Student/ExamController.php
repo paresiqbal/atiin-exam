@@ -17,16 +17,40 @@ use Inertia\Response;
 
 class ExamController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $student = auth()->user();
+        $q = trim((string) $request->query('q', ''));
 
-        $exams = Exam::where('school_id', $student->school_id)
+        $now = now();
+
+        $exams = Exam::query()
+            ->where('school_id', $student->school_id)
             ->where('is_published', true)
-            ->with('questionBank.questions', 'settings')
-            ->orderBy('start_at')
-            ->paginate(15);
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($qq) use ($q) {
+                    $qq->where('name', 'like', "%{$q}%")
+                        ->orWhere('title', 'like', "%{$q}%");
+                });
+            })
+            ->with([
+                'settings',
+                'questionBank' => fn($qb) => $qb->withCount('questions'),
+            ])
+            // ✅ available first, then coming_soon, then ended
+            ->orderByRaw("
+            CASE
+                WHEN ? BETWEEN start_at AND end_at THEN 0
+                WHEN ? < start_at THEN 1
+                ELSE 2
+            END
+        ", [$now, $now])
+            // ✅ inside group, sort by nearest start
+            ->orderBy('start_at', 'asc')
+            ->paginate(10)
+            ->withQueryString();
 
+        // keep your status mapping
         $exams->getCollection()->transform(function ($exam) {
             $exam->status = match (true) {
                 now() < $exam->start_at => 'coming_soon',
@@ -38,6 +62,7 @@ class ExamController extends Controller
 
         return Inertia::render('student/exams/IndexExam', [
             'exams' => $exams,
+            'filters' => ['q' => $q],
         ]);
     }
 
@@ -62,7 +87,6 @@ class ExamController extends Controller
             'selections.*.majors.*' => 'required|exists:majors,id',
         ]);
 
-        // Count total majors selected
         $totalMajors = collect($validated['selections'])
             ->sum(fn($selection) => count($selection['majors']));
 
