@@ -60,32 +60,52 @@ interface Analytics {
     average_score: number | string | null;
 }
 
-interface Props {
-    exam: {
-        id: number;
-        name: string;
-    };
-    attempts: Paginated<Attempt>;
-    analytics: Analytics;
-}
-
 type StatusFilter = 'all' | 'passed' | 'failed';
 type SortBy = 'name' | 'score' | 'date';
 type SortDirection = 'asc' | 'desc';
 
-export default function ExamAttempts({ exam, attempts, analytics }: Props) {
-    const averageScore = Number(analytics.average_score ?? 0);
+interface Props {
+    exam: { id: number; name: string };
+    attempts: Paginated<Attempt>;
+    analytics: Analytics;
 
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-    const [sortBy, setSortBy] = useState<SortBy>('date');
-    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+    // OPTIONAL tapi recommended: backend kirim query aktif biar state konsisten
+    filters?: {
+        q?: string;
+        status?: StatusFilter;
+        sort_by?: SortBy;
+        sort_dir?: SortDirection;
+        per_page?: number;
+    };
+}
 
-    // rows per page + base url (like IndexExam)
-    const [rowsPerPage, setRowsPerPage] = useState<number>(
-        (attempts as Paginated<Attempt>).per_page ?? 10,
-    );
+export default function ExamAttempts({
+    exam,
+    attempts,
+    analytics,
+    filters,
+}: Props) {
     const baseUrl = `/admin/exams/${exam.id}/attempts`;
+
+    const averageScore = Number(analytics.average_score ?? 0);
+    const passRate =
+        analytics.total_attempts > 0
+            ? (analytics.passed / analytics.total_attempts) * 100
+            : 0;
+
+    // state init dari filters (biar reload / pagination tetap konsisten)
+    const [searchQuery, setSearchQuery] = useState(filters?.q ?? '');
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>(
+        filters?.status ?? 'all',
+    );
+    const [sortBy, setSortBy] = useState<SortBy>(filters?.sort_by ?? 'date');
+    const [sortDirection, setSortDirection] = useState<SortDirection>(
+        filters?.sort_dir ?? 'desc',
+    );
+
+    const [rowsPerPage, setRowsPerPage] = useState<number>(
+        filters?.per_page ?? (attempts as Paginated<Attempt>).per_page ?? 10,
+    );
 
     // State for unfreeze dialog
     const [unfreezeDialogOpen, setUnfreezeDialogOpen] = useState(false);
@@ -93,76 +113,60 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
         null,
     );
 
-    const processedAttempts = useMemo(() => {
-        let list = [...attempts.data];
-
-        const q = searchQuery.toLowerCase().trim();
-
-        // Search filter
-        if (q) {
-            list = list.filter((attempt) => {
-                const name = attempt.student.name.toLowerCase();
-                const email = attempt.student.email.toLowerCase();
-                return name.includes(q) || email.includes(q);
-            });
-        }
-
-        // Status (Passed/Failed) filter – only for submitted attempts
-        list = list.filter((attempt) => {
-            const rawScore = Number(attempt.score ?? 0);
-            const percent =
-                attempt.total_score && attempt.total_score > 0
-                    ? (rawScore / attempt.total_score) * 100
-                    : rawScore;
-
-            const isPassed =
-                typeof attempt.is_passed === 'boolean'
-                    ? attempt.is_passed
-                    : percent >= 60;
-
-            if (statusFilter === 'passed') {
-                return attempt.completed_at && isPassed;
-            }
-
-            if (statusFilter === 'failed') {
-                return attempt.completed_at && !isPassed;
-            }
-
-            return true;
-        });
-
-        // Sorting
-        list.sort((a, b) => {
-            let cmp = 0;
-
-            if (sortBy === 'name') {
-                const an = a.student.name.toLowerCase();
-                const bn = b.student.name.toLowerCase();
-                cmp = an.localeCompare(bn);
-            } else if (sortBy === 'score') {
-                const as = Number(a.score ?? 0);
-                const bs = Number(b.score ?? 0);
-                cmp = as - bs;
-            } else if (sortBy === 'date') {
-                // sort by started_at so in-progress attempts also have order
-                const ad = a.started_at ? new Date(a.started_at).getTime() : 0;
-                const bd = b.started_at ? new Date(b.started_at).getTime() : 0;
-                cmp = ad - bd;
-            }
-
-            return sortDirection === 'asc' ? cmp : -cmp;
-        });
-
-        return list;
-    }, [attempts.data, searchQuery, statusFilter, sortBy, sortDirection]);
-
-    const passRate =
-        analytics.total_attempts > 0
-            ? (analytics.passed / analytics.total_attempts) * 100
-            : 0;
+    // helper buat fetch dengan query yang konsisten
+    const pushQuery = (
+        next: Partial<{
+            page: number;
+            per_page: number;
+            q: string;
+            status: StatusFilter;
+            sort_by: SortBy;
+            sort_dir: SortDirection;
+        }>,
+    ) => {
+        router.get(
+            baseUrl,
+            {
+                page: next.page ?? attempts.current_page ?? 1,
+                per_page: next.per_page ?? rowsPerPage,
+                q: next.q ?? searchQuery,
+                status: next.status ?? statusFilter,
+                sort_by: next.sort_by ?? sortBy,
+                sort_dir: next.sort_dir ?? sortDirection,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                replace: true,
+            },
+        );
+    };
 
     const toggleSortDirection = () => {
-        setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+        const nextDir: SortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        setSortDirection(nextDir);
+        pushQuery({ page: 1, sort_dir: nextDir });
+    };
+
+    const handleChangeRowsPerPage = (value: string) => {
+        const perPage = Number(value) || 10;
+        setRowsPerPage(perPage);
+        pushQuery({ page: 1, per_page: perPage });
+    };
+
+    const handleStatusChange = (val: StatusFilter) => {
+        setStatusFilter(val);
+        pushQuery({ page: 1, status: val });
+    };
+
+    const handleSortByChange = (val: SortBy) => {
+        setSortBy(val);
+        pushQuery({ page: 1, sort_by: val });
+    };
+
+    // (opsional) biar search ga request tiap ketik, pakai Enter saja
+    const handleSearchSubmit = () => {
+        pushQuery({ page: 1, q: searchQuery });
     };
 
     // Open dialog with selected attempt
@@ -171,7 +175,6 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
         setUnfreezeDialogOpen(true);
     };
 
-    // Confirm unfreeze
     const handleConfirmUnfreeze = () => {
         if (!selectedAttempt) return;
 
@@ -188,27 +191,13 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
         );
     };
 
-    // Handle dialog open/close (clear selected when closed)
     const handleUnfreezeDialogOpenChange = (open: boolean) => {
         setUnfreezeDialogOpen(open);
-        if (!open) {
-            setSelectedAttempt(null);
-        }
+        if (!open) setSelectedAttempt(null);
     };
 
-    const handleChangeRowsPerPage = (value: string) => {
-        const perPage = Number(value) || 10;
-        setRowsPerPage(perPage);
-
-        router.get(
-            baseUrl,
-            { page: 1, per_page: perPage },
-            {
-                preserveScroll: true,
-                preserveState: true,
-            },
-        );
-    };
+    // IMPORTANT: table harus render attempts.data (page current)
+    const pageAttempts = useMemo(() => attempts.data ?? [], [attempts.data]);
 
     return (
         <AppLayout
@@ -312,23 +301,25 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                 placeholder="Search by student name or email..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSearchSubmit();
+                                }}
                             />
 
                             {searchQuery !== '' && (
                                 <InputGroupAddon align="inline-end">
-                                    {processedAttempts.length} hasil
+                                    Tekan Enter
                                 </InputGroupAddon>
                             )}
                         </InputGroup>
                     </div>
 
-                    {/* Filters & sort */}
                     <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                        {/* Status filter (result) */}
+                        {/* Status filter */}
                         <Select
                             value={statusFilter}
-                            onValueChange={(val: StatusFilter) =>
-                                setStatusFilter(val)
+                            onValueChange={(val) =>
+                                handleStatusChange(val as StatusFilter)
                             }
                         >
                             <SelectTrigger className="w-[150px]">
@@ -345,7 +336,9 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                         <div className="flex items-center gap-2">
                             <Select
                                 value={sortBy}
-                                onValueChange={(val: SortBy) => setSortBy(val)}
+                                onValueChange={(val) =>
+                                    handleSortByChange(val as SortBy)
+                                }
                             >
                                 <SelectTrigger className="w-[150px]">
                                     <SelectValue placeholder="Sort by" />
@@ -374,7 +367,7 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                 </div>
 
                 {/* Attempts Table */}
-                {processedAttempts.length === 0 ? (
+                {pageAttempts.length === 0 ? (
                     <Card>
                         <CardContent className="py-10 text-center text-sm text-muted-foreground">
                             Tidak ada percobaan yang ditemukan dengan filter
@@ -404,7 +397,6 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                         Waktu Pengambilan
                                     </th>
-                                    {/* Tanggal Selesai REMOVED */}
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                         Aksi
                                     </th>
@@ -412,9 +404,8 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                             </thead>
 
                             <tbody className="divide-y">
-                                {processedAttempts.map((attempt) => {
+                                {pageAttempts.map((attempt) => {
                                     const rawScore = Number(attempt.score ?? 0);
-
                                     const percent =
                                         attempt.total_score &&
                                         attempt.total_score > 0
@@ -450,7 +441,6 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                         attempt.completed_at &&
                                         attempt.total_score > 0;
 
-                                    // Status Ujian badge
                                     let statusBadge = (
                                         <Badge
                                             variant="outline"
@@ -522,12 +512,10 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                                     '-'}
                                             </td>
 
-                                            {/* Status Ujian */}
                                             <td className="px-6 py-3 text-sm">
                                                 {statusBadge}
                                             </td>
 
-                                            {/* Score pill */}
                                             <td className="px-6 py-3 text-sm">
                                                 {showScore ? (
                                                     <span
@@ -546,7 +534,6 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                                 )}
                                             </td>
 
-                                            {/* Time taken (Waktu Pengambilan) */}
                                             <td className="px-6 py-3 text-sm">
                                                 {timeTakenMinutes !== null ? (
                                                     <span>
@@ -559,7 +546,6 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                                 )}
                                             </td>
 
-                                            {/* Actions */}
                                             <td className="px-6 py-3 text-sm">
                                                 <div className="flex items-center gap-2">
                                                     <Link
@@ -600,9 +586,14 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                     </div>
                 )}
 
-                {/* Footer: rows per page + pagination (like IndexExam) */}
-                {attempts.last_page > 1 && (
-                    <div className="flex flex-col items-center gap-3 py-4 md:flex-row md:justify-end md:gap-4">
+                {/* Footer: rows per page + pagination (IndexExam style) */}
+                <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+                    <div className="text-sm text-muted-foreground">
+                        Menampilkan {pageAttempts.length} dari {attempts.total}{' '}
+                        data.
+                    </div>
+
+                    <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-muted-foreground">
                                 Baris per halaman:
@@ -627,13 +618,19 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                             <PaginationContent>
                                 <PaginationItem>
                                     {attempts.current_page > 1 ? (
-                                        <Link
-                                            href={`${baseUrl}?page=${
-                                                attempts.current_page - 1
-                                            }&per_page=${rowsPerPage}`}
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                pushQuery({
+                                                    page:
+                                                        attempts.current_page -
+                                                        1,
+                                                })
+                                            }
+                                            className="cursor-pointer"
                                         >
                                             <PaginationPrevious />
-                                        </Link>
+                                        </button>
                                     ) : (
                                         <PaginationPrevious className="pointer-events-none opacity-50" />
                                     )}
@@ -644,8 +641,10 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                     (_, i) => i + 1,
                                 ).map((page) => (
                                     <PaginationItem key={page}>
-                                        <Link
-                                            href={`${baseUrl}?page=${page}&per_page=${rowsPerPage}`}
+                                        <button
+                                            type="button"
+                                            onClick={() => pushQuery({ page })}
+                                            className="cursor-pointer"
                                         >
                                             <PaginationLink
                                                 isActive={
@@ -655,20 +654,26 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                                             >
                                                 {page}
                                             </PaginationLink>
-                                        </Link>
+                                        </button>
                                     </PaginationItem>
                                 ))}
 
                                 <PaginationItem>
                                     {attempts.current_page <
                                     attempts.last_page ? (
-                                        <Link
-                                            href={`${baseUrl}?page=${
-                                                attempts.current_page + 1
-                                            }&per_page=${rowsPerPage}`}
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                pushQuery({
+                                                    page:
+                                                        attempts.current_page +
+                                                        1,
+                                                })
+                                            }
+                                            className="cursor-pointer"
                                         >
                                             <PaginationNext />
-                                        </Link>
+                                        </button>
                                     ) : (
                                         <PaginationNext className="pointer-events-none opacity-50" />
                                     )}
@@ -676,9 +681,8 @@ export default function ExamAttempts({ exam, attempts, analytics }: Props) {
                             </PaginationContent>
                         </Pagination>
                     </div>
-                )}
+                </div>
 
-                {/* Unfreeze Dialog */}
                 <UnfreezeAttemptDialog
                     open={unfreezeDialogOpen}
                     onOpenChange={handleUnfreezeDialogOpenChange}
