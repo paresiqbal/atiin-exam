@@ -102,7 +102,7 @@ class DashboardController extends Controller
             'class' => $student->class ?? 'N/A',
         ];
 
-        return Inertia::render('student/dashboard/Index', [
+        return Inertia::render('student/StudentDashboard', [
             'student_info' => $studentInfo,
             'statistics' => [
                 'total_exams' => $totalExams,
