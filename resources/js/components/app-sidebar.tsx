@@ -155,7 +155,7 @@ export function AppSidebar() {
                 icon: LayoutGrid,
             },
             {
-                title: 'Exams',
+                title: 'Ujian',
                 href: '#',
                 icon: Folder,
                 items: [

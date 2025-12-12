@@ -1,415 +1,204 @@
-'use client';
-
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import {
-    ChartContainer,
-    ChartTooltip,
-    ChartTooltipContent,
-} from '@/components/ui/chart';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
-import { Head, Link } from '@inertiajs/react';
-import { Award, BookOpen, Target, TrendingUp } from 'lucide-react';
+import { Head, usePage } from '@inertiajs/react';
+import type { LucideIcon } from 'lucide-react';
 import {
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Legend,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    XAxis,
-    YAxis,
-} from 'recharts';
+    Bell,
+    BookOpen,
+    CalendarDays,
+    ClipboardList,
+    CreditCard,
+    FileText,
+    IdCard,
+} from 'lucide-react';
 
-interface StudentDashboardProps {
-    student_info?: {
-        name: string;
-        email: string;
-        university: string;
-        major: string;
-        school: string;
-        class: string;
-    };
-    statistics?: {
-        total_exams: number;
-        passed_exams: number;
-        failed_exams: number;
-        average_score: number;
-        pass_rate: number;
-        passing_grade: number;
-    };
-    recent_attempts?: Array<{
-        id: number;
-        exam_name: string;
-        score: number;
-        total_score: number;
-        percentage: number;
-        status: 'passed' | 'failed';
-        completed_at: string;
-        time_taken: string;
-    }>;
-    score_trend?: Array<{
-        exam_number: number;
-        exam_name: string;
-        score: number;
-        percentage: number;
-    }>;
-    performance_by_exam?: Array<{
-        exam_name: string;
-        correct_answers: number;
-        total_questions: number;
-        accuracy: number;
-        status: 'passed' | 'failed';
-    }>;
+type Student = {
+    name?: string | null;
+    email?: string | null;
+    school?: string | null;
+    class?: string | null;
+};
+
+type Banner = {
+    title: string;
+    subtitle?: string;
+    image_url?: string;
+} | null;
+
+function initials(name?: string | null) {
+    const n = (name ?? '').trim();
+    if (!n) return 'ST';
+    const parts = n.split(/\s+/).slice(0, 2);
+    return parts.map((p) => p[0]?.toUpperCase()).join('');
 }
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/student/dashboard' },
-];
+function MenuItem({
+    icon: Icon,
+    label,
+    href,
+    bgClass,
+}: {
+    icon: LucideIcon;
+    label: string;
+    href?: string;
+    bgClass: string;
+}) {
+    const content = (
+        <div className="flex flex-col items-center gap-2">
+            <div
+                className={`flex h-16 w-16 items-center justify-center rounded-2xl ${bgClass}`}
+            >
+                <Icon className="h-7 w-7" />
+            </div>
+            <div className="text-center text-sm text-muted-foreground">
+                {label}
+            </div>
+        </div>
+    );
 
-export default function StudentDashboard({
-    student_info,
-    statistics,
-    recent_attempts,
-    score_trend,
-    performance_by_exam,
-}: StudentDashboardProps) {
-    // ✅ Safe fallbacks so nothing crashes if BE sends nothing / wrong key
-    const info = student_info ?? {
-        name: 'Student',
-        email: '',
-        university: '-',
-        major: '-',
-        school: '-',
-        class: '-',
-    };
+    return href ? (
+        <a href={href} className="transition hover:opacity-90">
+            {content}
+        </a>
+    ) : (
+        <button type="button" className="transition hover:opacity-90">
+            {content}
+        </button>
+    );
+}
 
-    const stats = statistics ?? {
-        total_exams: 0,
-        passed_exams: 0,
-        failed_exams: 0,
-        average_score: 0,
-        pass_rate: 0,
-        passing_grade: 0,
-    };
-
-    const attempts = recent_attempts ?? [];
-    const trend = score_trend ?? [];
-    const examPerf = performance_by_exam ?? [];
+export default function StudentDashboard() {
+    const { props } = usePage<{ student?: Student; banner?: Banner }>();
+    const student: Student = props.student ?? {};
+    const banner = props.banner ?? null;
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AppLayout>
             <Head title="Student Dashboard" />
 
-            <div className="min-h-screen bg-gradient-to-br p-6">
-                <div className="mx-auto max-w-7xl space-y-8">
-                    {/* Header */}
-                    <div className="space-y-2">
-                        <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-                            Selamat Data, {info.name}!
-                        </h1>
-                        <p className="text-gray-600 dark:text-gray-400">
-                            {info.university} • {info.major} • {info.class}
-                        </p>
-                    </div>
+            <div className="mx-auto w-full max-w-3xl space-y-4 p-4">
+                <div className="flex items-center justify-between">
+                    <div className="text-xl font-semibold">Attin One</div>
+                    <button className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+                        <Bell className="h-5 w-5" />
+                    </button>
+                </div>
 
-                    {/* Statistics Cards */}
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                        Total Exams
-                                    </CardTitle>
-                                    <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Card className="rounded-2xl">
+                    <CardContent className="p-3">
+                        <div className="flex items-center gap-3">
+                            <div className="flex-1 space-y-0.5">
+                                <div className="text-xs text-muted-foreground">
+                                    Halo,
                                 </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                                    {stats.total_exams}
+                                <div className="text-base leading-tight font-semibold">
+                                    {student.name ?? '-'}
                                 </div>
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Exams taken
-                                </p>
-                            </CardContent>
-                        </Card>
 
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                        Passed
-                                    </CardTitle>
-                                    <Award className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                <div className="text-xs text-muted-foreground">
+                                    {student.email ?? '-'}
                                 </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                                    {stats.passed_exams}
-                                </div>
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Successfully passed
-                                </p>
-                            </CardContent>
-                        </Card>
 
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                        Failed
-                                    </CardTitle>
-                                    <Award className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                <div className="flex flex-wrap gap-2 pt-2">
+                                    {student.school && (
+                                        <Badge variant="secondary">
+                                            {student.school}
+                                        </Badge>
+                                    )}
+                                    {student.class && (
+                                        <Badge>{student.class}</Badge>
+                                    )}
                                 </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-red-600 dark:text-red-400">
-                                    {stats.failed_exams}
-                                </div>
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Need improvement
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                        Average Score
-                                    </CardTitle>
-                                    <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                                    {stats.average_score}%
-                                </div>
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Overall
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-3">
-                                <div className="flex items-center justify-between">
-                                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                        Pass Rate
-                                    </CardTitle>
-                                    <Target className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                                    {stats.pass_rate}%
-                                </div>
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    Success rate
-                                </p>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Charts Section */}
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        {/* Score Trend */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Score Trend</CardTitle>
-                                <CardDescription>
-                                    Your performance over recent exams
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ChartContainer
-                                    config={{
-                                        percentage: {
-                                            label: 'Score %',
-                                            color: 'hsl(var(--chart-1))',
-                                        },
-                                    }}
-                                    className="h-80"
-                                >
-                                    <ResponsiveContainer
-                                        width="100%"
-                                        height="100%"
-                                    >
-                                        <LineChart data={trend}>
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis dataKey="exam_number" />
-                                            <YAxis domain={[0, 100]} />
-                                            <ChartTooltip
-                                                content={
-                                                    <ChartTooltipContent />
-                                                }
-                                            />
-                                            <Legend />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="percentage"
-                                                stroke="var(--color-percentage)"
-                                                dot={{
-                                                    fill: 'var(--color-percentage)',
-                                                }}
-                                                name="Score %"
-                                            />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card>
-
-                        {/* Accuracy by Exam */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Accuracy by Exam</CardTitle>
-                                <CardDescription>
-                                    Correct answers percentage per exam
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <ChartContainer
-                                    config={{
-                                        accuracy: {
-                                            label: 'Accuracy %',
-                                            color: 'hsl(var(--chart-2))',
-                                        },
-                                    }}
-                                    className="h-80"
-                                >
-                                    <ResponsiveContainer
-                                        width="100%"
-                                        height="100%"
-                                    >
-                                        <BarChart data={examPerf}>
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis
-                                                dataKey="exam_name"
-                                                angle={-45}
-                                                textAnchor="end"
-                                                height={80}
-                                                interval={0}
-                                                tick={{ fontSize: 12 }}
-                                            />
-                                            <YAxis domain={[0, 100]} />
-                                            <ChartTooltip
-                                                content={
-                                                    <ChartTooltipContent />
-                                                }
-                                            />
-                                            <Bar
-                                                dataKey="accuracy"
-                                                fill="var(--color-accuracy)"
-                                                name="Accuracy %"
-                                                radius={[8, 8, 0, 0]}
-                                            />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </ChartContainer>
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Recent Attempts */}
-                    <Card>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle>Recent Exam Attempts</CardTitle>
-                                    <CardDescription>
-                                        Your last 5 completed exams
-                                    </CardDescription>
-                                </div>
-                                <Link
-                                    href="/student/exam-history"
-                                    className="text-sm text-blue-600 hover:underline"
-                                >
-                                    View all
-                                </Link>
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Exam</TableHead>
-                                            <TableHead>Score</TableHead>
-                                            <TableHead>Percentage</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Time Taken</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {attempts.length > 0 ? (
-                                            attempts.map((attempt) => (
-                                                <TableRow key={attempt.id}>
-                                                    <TableCell className="font-medium">
-                                                        {attempt.exam_name}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {attempt.score}/
-                                                        {attempt.total_score}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {attempt.percentage}%
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge
-                                                            variant={
-                                                                attempt.status ===
-                                                                'passed'
-                                                                    ? 'default'
-                                                                    : 'destructive'
-                                                            }
-                                                        >
-                                                            {attempt.status ===
-                                                            'passed'
-                                                                ? 'Passed'
-                                                                : 'Failed'}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {attempt.completed_at}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {attempt.time_taken}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        ) : (
-                                            <TableRow>
-                                                <TableCell
-                                                    colSpan={6}
-                                                    className="py-8 text-center text-muted-foreground"
-                                                >
-                                                    No exam attempts yet
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
+
+                            <Avatar className="h-12 w-12">
+                                <AvatarImage
+                                    src={undefined}
+                                    alt={student.name ?? 'Student'}
+                                />
+                                <AvatarFallback>
+                                    {initials(student.name)}
+                                </AvatarFallback>
+                            </Avatar>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {banner && (
+                    <Card className="overflow-hidden rounded-2xl">
+                        <CardContent className="p-0">
+                            <div className="flex h-24 items-center justify-between bg-muted px-4">
+                                <div>
+                                    <div className="font-semibold">
+                                        {banner.title}
+                                    </div>
+                                    {banner.subtitle && (
+                                        <div className="text-sm text-muted-foreground">
+                                            {banner.subtitle}
+                                        </div>
+                                    )}
+                                </div>
+                                {banner.image_url && (
+                                    <img
+                                        src={banner.image_url}
+                                        alt="Banner"
+                                        className="h-16 w-28 rounded-xl object-cover"
+                                    />
+                                )}
                             </div>
                         </CardContent>
                     </Card>
+                )}
+
+                <div className="space-y-2">
+                    <div className="text-xl font-semibold">Menu</div>
+
+                    <div className="grid grid-cols-3 gap-6 pt-2">
+                        <MenuItem
+                            icon={CalendarDays}
+                            label="Jadwal TO"
+                            href="#"
+                            bgClass="bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-200"
+                        />
+                        <MenuItem
+                            icon={ClipboardList}
+                            label="Jadwal Ujian"
+                            href="/student/exams"
+                            bgClass="bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-200"
+                        />
+                        <MenuItem
+                            icon={FileText}
+                            label="Hasil Ujian"
+                            href="/student/exams/history"
+                            bgClass="bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-200"
+                        />
+                        <MenuItem
+                            icon={BookOpen}
+                            label="Universitas"
+                            href="/student/universities"
+                            bgClass="bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-200"
+                        />
+                        <MenuItem
+                            icon={CreditCard}
+                            label="Pembayaran"
+                            href="#"
+                            bgClass="bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-200"
+                        />
+                        <MenuItem
+                            icon={IdCard}
+                            label="Kartu"
+                            href="#"
+                            bgClass="bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-200"
+                        />
+                        <MenuItem
+                            icon={BookOpen}
+                            label="Perpustakaan"
+                            href="#"
+                            bgClass="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200"
+                        />
+                    </div>
                 </div>
             </div>
         </AppLayout>
