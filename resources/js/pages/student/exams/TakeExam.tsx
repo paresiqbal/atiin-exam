@@ -23,7 +23,7 @@ import {
     Menu,
     X,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface Option {
     id: number;
@@ -73,6 +73,63 @@ interface Toast {
     type: ToastType;
 }
 
+function resolveHtmlImages(html: string) {
+    if (!html) return html;
+    if (typeof window === 'undefined') return html;
+
+    try {
+        const base = window.location.origin;
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        doc.querySelectorAll('img').forEach((img) => {
+            const raw = (img.getAttribute('src') || '').trim();
+            if (!raw) return;
+
+            // Keep already valid URL types
+            if (
+                raw.startsWith('http://') ||
+                raw.startsWith('https://') ||
+                raw.startsWith('data:') ||
+                raw.startsWith('blob:')
+            ) {
+                img.setAttribute('loading', 'lazy');
+                img.setAttribute('decoding', 'async');
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                return;
+            }
+
+            // Windows path / file URL cannot be rendered by browser
+            if (/^[a-zA-Z]:\\/.test(raw) || raw.startsWith('file://')) {
+                img.setAttribute(
+                    'data-warning',
+                    'invalid-local-file-src-not-accessible',
+                );
+                return;
+            }
+
+            const normalized = raw.startsWith('/')
+                ? raw
+                : raw.startsWith('storage/')
+                  ? `/${raw}`
+                  : raw.startsWith('uploads/')
+                    ? `/${raw}`
+                    : `/${raw}`;
+
+            img.setAttribute('src', `${base}${normalized}`);
+            img.setAttribute('loading', 'lazy');
+            img.setAttribute('decoding', 'async');
+
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+        });
+
+        return doc.body.innerHTML;
+    } catch {
+        return html;
+    }
+}
+
 export default function TakeExam({
     attempt,
     exam,
@@ -104,10 +161,28 @@ export default function TakeExam({
     const currentQuestion = hasQuestions
         ? questions[currentQuestionIndex]
         : null;
+
     const answeredCount = Object.keys(answers).length;
     const progress = hasQuestions
         ? (answeredCount / questions.length) * 100
         : 0;
+
+    // ✅ React Compiler friendly deps (no optional chaining in deps)
+    const questionText = currentQuestion?.question_text ?? '';
+    const optionList = currentQuestion?.options ?? [];
+
+    const currentQuestionHtml = useMemo(() => {
+        if (!questionText) return '';
+        return resolveHtmlImages(questionText);
+    }, [questionText]);
+
+    const optionsHtml = useMemo(() => {
+        const map: Record<number, string> = {};
+        for (const opt of optionList) {
+            map[opt.id] = resolveHtmlImages(opt.option_text ?? '');
+        }
+        return map;
+    }, [optionList]);
 
     // Toast helper
     const showToast = (message: string, type: ToastType = 'warning') => {
@@ -140,13 +215,10 @@ export default function TakeExam({
     // Time warnings
     useEffect(() => {
         if (timeLeft === 600) {
-            // 10 minutes
             showToast('⏰ Waktu tersisa 10 menit!', 'warning');
         } else if (timeLeft === 300) {
-            // 5 minutes
             showToast('⚠️ Waktu tersisa 5 menit!', 'error');
         } else if (timeLeft === 60) {
-            // 1 minute
             showToast('🚨 Waktu tersisa 1 menit!', 'error');
         }
     }, [timeLeft]);
@@ -249,11 +321,8 @@ export default function TakeExam({
 
         setFlaggedQuestions((prev) => {
             const next = new Set(prev);
-            if (next.has(currentQuestion.id)) {
-                next.delete(currentQuestion.id);
-            } else {
-                next.add(currentQuestion.id);
-            }
+            if (next.has(currentQuestion.id)) next.delete(currentQuestion.id);
+            else next.add(currentQuestion.id);
             return next;
         });
     };
@@ -263,8 +332,7 @@ export default function TakeExam({
 
         const answeredIds = Object.keys(answers).map(Number);
         const totalQuestions = questions.length;
-        const totalAnswered = answeredIds.length;
-        const diff = totalQuestions - totalAnswered;
+        const diff = totalQuestions - answeredIds.length;
 
         setUnansweredCount(diff);
         setConfirmOpen(true);
@@ -375,15 +443,14 @@ export default function TakeExam({
                         ) : (
                             currentQuestion && (
                                 <div className="space-y-4">
-                                    {/* Question Card */}
                                     <Card className="border-2">
                                         <CardHeader>
                                             <div className="flex items-start justify-between gap-4">
                                                 <CardTitle className="flex-1 text-base leading-relaxed md:text-lg">
                                                     <div
-                                                        className="prose prose-sm dark:prose-invert max-w-none [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg"
+                                                        className="prose prose-sm dark:prose-invert max-w-none [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-border [&_p]:my-2"
                                                         dangerouslySetInnerHTML={{
-                                                            __html: currentQuestion.question_text,
+                                                            __html: currentQuestionHtml,
                                                         }}
                                                     />
                                                 </CardTitle>
@@ -418,7 +485,6 @@ export default function TakeExam({
                                                 </div>
                                             </div>
 
-                                            {/* Save Status */}
                                             {saveStatus !== 'idle' && (
                                                 <div className="mt-3 flex items-center gap-2 text-sm">
                                                     {saveStatus ===
@@ -482,9 +548,14 @@ export default function TakeExam({
 
                                                             <div className="flex-1">
                                                                 <div
-                                                                    className="prose prose-sm dark:prose-invert max-w-none [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg"
+                                                                    className="prose prose-sm dark:prose-invert max-w-none [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-border [&_p]:my-2"
                                                                     dangerouslySetInnerHTML={{
-                                                                        __html: option.option_text,
+                                                                        __html:
+                                                                            optionsHtml[
+                                                                                option
+                                                                                    .id
+                                                                            ] ??
+                                                                            option.option_text,
                                                                     }}
                                                                 />
                                                             </div>
@@ -493,7 +564,6 @@ export default function TakeExam({
                                                 )}
                                             </RadioGroup>
 
-                                            {/* Clear Answer */}
                                             {answers[currentQuestion.id] && (
                                                 <Button
                                                     variant="outline"
@@ -508,7 +578,6 @@ export default function TakeExam({
                                         </CardContent>
                                     </Card>
 
-                                    {/* Desktop Navigation */}
                                     <div className="hidden items-center justify-between md:flex">
                                         <Button
                                             variant="outline"
@@ -561,7 +630,6 @@ export default function TakeExam({
                     </div>
                 </main>
 
-                {/* Desktop Question Navigator Sidebar */}
                 <aside className="hidden w-64 overflow-y-auto border-l bg-card p-4 lg:block">
                     <h3 className="mb-3 text-sm font-semibold">
                         Navigasi Soal
@@ -598,7 +666,6 @@ export default function TakeExam({
                 </aside>
             </div>
 
-            {/* Mobile Bottom Navigation */}
             {hasQuestions && (
                 <div className="sticky bottom-0 flex gap-2 border-t bg-card p-3 md:hidden">
                     <Button
@@ -636,7 +703,6 @@ export default function TakeExam({
                 </div>
             )}
 
-            {/* Mobile Question Navigator */}
             {showQuestionNav && (
                 <div className="fixed inset-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
                     <div className="h-full overflow-y-auto p-4">
@@ -691,7 +757,6 @@ export default function TakeExam({
                 </div>
             )}
 
-            {/* Toast Notifications */}
             <div className="fixed top-20 right-4 z-50 max-w-sm space-y-2">
                 {toasts.map((toast) => (
                     <div
@@ -720,7 +785,6 @@ export default function TakeExam({
                 ))}
             </div>
 
-            {/* Submit Confirmation Dialog */}
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <DialogContent className="rounded-2xl">
                     <DialogHeader>
