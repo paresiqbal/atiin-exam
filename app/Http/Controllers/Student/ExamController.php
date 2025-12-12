@@ -10,47 +10,22 @@ use App\Models\Major;
 use App\Models\University;
 use App\Services\ExamResultsPdfService;
 use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ExamController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         $student = auth()->user();
-        $q = trim((string) $request->query('q', ''));
 
-        $now = now();
-
-        $exams = Exam::query()
-            ->where('school_id', $student->school_id)
+        $exams = Exam::where('school_id', $student->school_id)
             ->where('is_published', true)
-            ->when($q !== '', function ($query) use ($q) {
-                $query->where(function ($qq) use ($q) {
-                    $qq->where('name', 'like', "%{$q}%")
-                        ->orWhere('title', 'like', "%{$q}%");
-                });
-            })
-            ->with([
-                'settings',
-                'questionBank' => fn($qb) => $qb->withCount('questions'),
-            ])
-            // ✅ available first, then coming_soon, then ended
-            ->orderByRaw("
-            CASE
-                WHEN ? BETWEEN start_at AND end_at THEN 0
-                WHEN ? < start_at THEN 1
-                ELSE 2
-            END
-        ", [$now, $now])
-            // ✅ inside group, sort by nearest start
-            ->orderBy('start_at', 'asc')
-            ->paginate(10)
-            ->withQueryString();
+            ->with('questionBank.questions', 'settings')
+            ->orderBy('start_at')
+            ->paginate(15);
 
-        // keep your status mapping
         $exams->getCollection()->transform(function ($exam) {
             $exam->status = match (true) {
                 now() < $exam->start_at => 'coming_soon',
@@ -62,7 +37,6 @@ class ExamController extends Controller
 
         return Inertia::render('student/exams/IndexExam', [
             'exams' => $exams,
-            'filters' => ['q' => $q],
         ]);
     }
 
@@ -91,18 +65,15 @@ class ExamController extends Controller
             ->sum(fn($selection) => count($selection['majors']));
 
         if ($totalMajors > 4) {
-            return back()->withErrors(['selections' => 'Maximum 4 majors can be selected']);
+            return back()->withErrors([
+                'selections' => 'Maximum 4 majors can be selected',
+            ]);
         }
 
-        $token = ExamToken::where('token', $validated['token'])->first();
+        $token = ExamToken::where('token', $validated['token'])->firstOrFail();
+        $exam  = $token->exam;
 
-        if (!$token) {
-            return back()->withErrors(['token' => 'Invalid token']);
-        }
-
-        $exam = $token->exam;
-
-        if (!$exam->is_published) {
+        if (! $exam->is_published) {
             return back()->withErrors(['token' => 'This exam is not available yet']);
         }
 
@@ -116,51 +87,36 @@ class ExamController extends Controller
 
         $student = auth()->user();
 
-        // 🔹 Save / update university selections
         $student->update([
             'university_selections' => $validated['selections'],
         ]);
 
-        // 🔹 Check if this student already has an attempt for this exam
         $existingAttempt = ExamAttempt::where('student_id', $student->id)
             ->where('exam_id', $exam->id)
             ->latest()
             ->first();
 
         if ($existingAttempt) {
-            // If attempt is frozen, send them to the same attempt (FrozenExam will show)
             if ($existingAttempt->is_frozen) {
-                return redirect()
-                    ->route('student.exams.take', $existingAttempt->id);
+                return redirect()->route('student.exams.take', $existingAttempt->id);
             }
 
-            // If still in progress, just continue that attempt
             if ($existingAttempt->status === 'in_progress') {
                 return redirect()
                     ->route('student.exams.take', $existingAttempt->id)
-                    ->with('info', 'Kamu sudah memulai ujian ini, lanjutkan ujian yang sama.');
-            }
-
-            // If already submitted, block new attempt (1 attempt per exam)
-            if ($existingAttempt->status === 'submitted') {
-                return back()->withErrors([
-                    'token' => 'Kamu sudah menyelesaikan ujian ini dan tidak dapat mengulang.',
-                ]);
+                    ->with('info', 'Melanjutkan ujian yang sedang berjalan.');
             }
         }
 
-        // 🔹 No existing attempt that can be reused → create a new one
         $attempt = ExamAttempt::create([
             'student_id' => $student->id,
-            'exam_id' => $exam->id,
+            'exam_id'    => $exam->id,
             'started_at' => now(),
-            'status' => 'in_progress',
+            'status'     => 'in_progress',
         ]);
 
         return redirect()->route('student.exams.take', $attempt->id);
     }
-
-
 
     public function take(ExamAttempt $attempt)
     {

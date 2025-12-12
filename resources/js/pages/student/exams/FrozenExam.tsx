@@ -1,6 +1,5 @@
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -66,12 +65,6 @@ export default function FrozenExam({ attempt, frozen_reason }: Props) {
                             Silakan hubungi admin untuk membuka kembali ujian
                             Anda.
                         </p>
-
-                        <Link href="/student/dashboard">
-                            <Button variant="outline" className="w-full">
-                                Kembali ke Dashboard
-                            </Button>
-                        </Link>
                     </div>
                 </CardContent>
             </Card>
