@@ -1,16 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
 
+import { AttemptQuestionList } from '@/components/AttemptQuestionList';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 import { ArrowLeft, CheckCircle2, Download, XCircle } from 'lucide-react';
@@ -64,10 +59,7 @@ export default function AttemptDetail({
     passingScore,
     isPassed,
     questionDetails,
-    questionPerformance,
 }: Props) {
-    const [expandedItem, setExpandedItem] = useState<string | null>(null);
-
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Admin Dashboard', href: '/admin/dashboard' },
         { title: 'Ujian', href: '/admin/exams' },
@@ -312,142 +304,7 @@ export default function AttemptDetail({
                         <CardTitle>Rincian Pertanyaan</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        {questionDetails.length === 0 ? (
-                            <p className="py-6 text-sm text-muted-foreground">
-                                Tidak ada pertanyaan yang ditemukan untuk
-                                percobaan ini.
-                            </p>
-                        ) : (
-                            <Accordion
-                                type="single"
-                                collapsible
-                                className="w-full space-y-3"
-                                value={expandedItem ?? undefined}
-                                onValueChange={(val) =>
-                                    setExpandedItem(val || null)
-                                }
-                            >
-                                {questionDetails.map((question, index) => {
-                                    const perf =
-                                        questionPerformance[question.id];
-
-                                    return (
-                                        <AccordionItem
-                                            key={question.id}
-                                            value={String(question.id)}
-                                            className="rounded-lg border bg-card px-4"
-                                        >
-                                            <AccordionTrigger className="py-3 hover:no-underline">
-                                                <div className="flex w-full items-start gap-4 text-left">
-                                                    <div className="mt-1">
-                                                        {question.is_correct ? (
-                                                            <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                                        ) : (
-                                                            <XCircle className="h-5 w-5 text-destructive" />
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex-1">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <span className="text-xs font-semibold text-muted-foreground">
-                                                                P{index + 1}
-                                                            </span>
-                                                            <span className="text-xs text-muted-foreground uppercase">
-                                                                {question.question_type.replace(
-                                                                    /_/g,
-                                                                    ' ',
-                                                                )}
-                                                            </span>
-                                                            <span className="text-xs text-muted-foreground">
-                                                                {
-                                                                    question.points_earned
-                                                                }
-                                                                /
-                                                                {
-                                                                    question.points
-                                                                }{' '}
-                                                                poin
-                                                            </span>
-                                                            {perf && (
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    | Correct by{' '}
-                                                                    {perf.percentage.toFixed(
-                                                                        1,
-                                                                    )}
-                                                                    %
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div className="mt-2 text-sm">
-                                                            <div
-                                                                className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
-                                                                dangerouslySetInnerHTML={{
-                                                                    __html: question.question_text,
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </AccordionTrigger>
-
-                                            <AccordionContent className="pt-0 pr-1 pb-4 pl-9">
-                                                <div className="grid gap-4 md:grid-cols-2">
-                                                    {/* Student Answer */}
-                                                    <div
-                                                        className={cn(
-                                                            'rounded-md border p-3',
-                                                            question.is_correct
-                                                                ? 'border-green-500/20 bg-green-500/10'
-                                                                : 'border-destructive/20 bg-destructive/5',
-                                                        )}
-                                                    >
-                                                        <p className="mb-1 text-xs font-medium text-muted-foreground">
-                                                            Jawaban Siswa
-                                                        </p>
-                                                        {question.student_answer ? (
-                                                            <div
-                                                                className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
-                                                                dangerouslySetInnerHTML={{
-                                                                    __html: question.student_answer,
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-xs text-muted-foreground italic">
-                                                                Tidak dijawab
-                                                            </p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Correct Answer */}
-                                                    <div className="rounded-md border bg-secondary/40 p-3">
-                                                        <p className="mb-1 text-xs font-medium text-muted-foreground">
-                                                            Jawaban Benar
-                                                        </p>
-                                                        {question.correct_answer ? (
-                                                            <div
-                                                                className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
-                                                                dangerouslySetInnerHTML={{
-                                                                    __html: question.correct_answer,
-                                                                }}
-                                                            />
-                                                        ) : (
-                                                            <p className="text-xs text-muted-foreground italic">
-                                                                Tidak ada
-                                                                jawaban benar
-                                                                yang
-                                                                dikonfigurasi
-                                                                answer
-                                                                configured
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    );
-                                })}
-                            </Accordion>
-                        )}
+                        <AttemptQuestionList questions={questionDetails} />
                     </CardContent>
                 </Card>
             </div>
