@@ -7,18 +7,26 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { Head, useForm } from '@inertiajs/react';
-import { Plus, X } from 'lucide-react';
+import {
+    Building2,
+    Check,
+    ClipboardPaste,
+    GraduationCap,
+    Plus,
+    Search,
+    X,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 interface Major {
     id: number;
@@ -48,8 +56,8 @@ interface Props {
 }
 
 interface Selection {
-    university_id: string; // will be university.id as string
-    majors: string[]; // major ids as strings
+    university_id: string;
+    majors: string[];
 }
 
 interface FormData {
@@ -68,6 +76,13 @@ export default function JoinExam({ universities, exam }: Props) {
         ],
     });
 
+    const [openUniversityDialog, setOpenUniversityDialog] = useState(false);
+    const [currentSelectionIndex, setCurrentSelectionIndex] = useState<
+        number | null
+    >(null);
+    const [universitySearch, setUniversitySearch] = useState('');
+    const [pasteFeedback, setPasteFeedback] = useState(false);
+
     const selections = data.selections;
 
     // Helpers
@@ -81,6 +96,15 @@ export default function JoinExam({ universities, exam }: Props) {
     const getUniversityById = (id: string) =>
         universities.find((u) => u.id === Number(id));
 
+    // Filter universities by search
+    const filteredUniversities = useMemo(() => {
+        const query = universitySearch.toLowerCase().trim();
+        if (!query) return universities;
+        return universities.filter((uni) =>
+            uni.name.toLowerCase().includes(query),
+        );
+    }, [universities, universitySearch]);
+
     const updateSelections = (next: Selection[]) => {
         setData('selections', next);
     };
@@ -89,9 +113,16 @@ export default function JoinExam({ universities, exam }: Props) {
         const next = [...selections];
         next[index] = {
             university_id: universityId,
-            majors: [], // reset majors when university changes
+            majors: [],
         };
         updateSelections(next);
+        setOpenUniversityDialog(false);
+        setUniversitySearch('');
+    };
+
+    const handleOpenUniversityDialog = (index: number) => {
+        setCurrentSelectionIndex(index);
+        setOpenUniversityDialog(true);
     };
 
     const handleMajorToggle = (index: number, majorId: string) => {
@@ -101,16 +132,12 @@ export default function JoinExam({ universities, exam }: Props) {
         const isSelected = majors.includes(majorId);
 
         if (isSelected) {
-            // uncheck → always allowed
             next[index].majors = majors.filter((m) => m !== majorId);
             updateSelections(next);
             return;
         }
 
-        // check → enforce global max 4 majors
         if (totalMajorsSelected >= 4) {
-            // optional UX, backend also enforces this
-            alert('Maksimal 4 jurusan dapat dipilih.');
             return;
         }
 
@@ -130,12 +157,19 @@ export default function JoinExam({ universities, exam }: Props) {
         );
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handlePasteToken = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            setData('token', text.trim());
+            setPasteFeedback(true);
+            setTimeout(() => setPasteFeedback(false), 2000);
+        } catch (err) {
+            console.error('Failed to paste:', err);
+        }
+    };
 
-        // Light frontend validation (backend will still validate)
+    const handleSubmit = () => {
         if (selections.some((s) => !s.university_id || s.majors.length === 0)) {
-            alert('Lengkapi pilihan universitas dan jurusan Anda.');
             return;
         }
 
@@ -145,78 +179,144 @@ export default function JoinExam({ universities, exam }: Props) {
     return (
         <AppLayout breadcrumbs={[]}>
             <Head title="Masuk Ujian" />
-            <div className="flex min-h-screen items-center justify-center p-4">
-                <Card className="w-full max-w-2xl shadow-2xl">
-                    <CardHeader className="space-y-2 text-center">
-                        <CardTitle className="text-3xl font-bold">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-8 dark:from-gray-900 dark:to-gray-800">
+                <div className="mx-auto max-w-3xl space-y-6">
+                    {/* Header */}
+                    <div className="space-y-2 text-center">
+                        <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                            <GraduationCap className="h-8 w-8 text-primary" />
+                        </div>
+                        <h1 className="text-3xl font-bold text-foreground md:text-4xl">
                             Masuk Ujian
-                        </CardTitle>
-                        <CardDescription>
+                        </h1>
+                        <p className="mx-auto max-w-xl text-muted-foreground">
                             Masukkan token ujian dan pilih hingga{' '}
-                            <span className="font-semibold">2 universitas</span>{' '}
+                            <span className="font-semibold text-foreground">
+                                2 universitas
+                            </span>{' '}
                             dengan maksimal{' '}
-                            <span className="font-semibold">4 jurusan</span>{' '}
-                            secara keseluruhan.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Exam Info */}
-                            {exam && (
-                                <Alert className="border-blue-200 bg-blue-50">
-                                    <AlertDescription className="space-y-2">
-                                        <div>
-                                            <strong>Ujian:</strong> {exam.name}
-                                        </div>
-                                        <div>
-                                            <strong>Durasi:</strong>{' '}
-                                            {exam.settings
-                                                ?.time_limit_minutes || 90}{' '}
-                                            menit
-                                        </div>
-                                        <div>
-                                            <strong>Dimulai:</strong>{' '}
-                                            {new Date(
-                                                exam.start_at,
-                                            ).toLocaleString()}
-                                        </div>
-                                    </AlertDescription>
-                                </Alert>
-                            )}
+                            <span className="font-semibold text-foreground">
+                                4 jurusan
+                            </span>{' '}
+                            secara keseluruhan
+                        </p>
+                    </div>
 
-                            {/* Token Input */}
-                            <div className="space-y-2">
-                                <Label htmlFor="token">Token Ujian *</Label>
-                                <Input
-                                    id="token"
-                                    type="text"
-                                    placeholder="Masukkan token ujian"
-                                    value={data.token}
-                                    onChange={(e) =>
-                                        setData('token', e.target.value)
-                                    }
-                                    className={
-                                        errors.token ? 'border-red-500' : ''
-                                    }
-                                />
-                                {errors.token && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.token}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* University & Major Selections */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <Label>
-                                        Pilih Universitas &amp; Jurusan *
-                                    </Label>
-                                    <span className="text-sm text-gray-500">
-                                        {totalMajorsSelected}/4 jurusan dipilih
+                    {/* Exam Info */}
+                    {exam && (
+                        <Alert className="rounded-2xl border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+                            <AlertDescription className="space-y-2 text-sm">
+                                <div className="flex items-start gap-2">
+                                    <span className="min-w-[80px] font-semibold">
+                                        Ujian:
+                                    </span>
+                                    <span>{exam.name}</span>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <span className="min-w-[80px] font-semibold">
+                                        Durasi:
+                                    </span>
+                                    <span>
+                                        {exam.settings?.time_limit_minutes ||
+                                            90}{' '}
+                                        menit
                                     </span>
                                 </div>
+                                <div className="flex items-start gap-2">
+                                    <span className="min-w-[80px] font-semibold">
+                                        Dimulai:
+                                    </span>
+                                    <span>
+                                        {new Date(exam.start_at).toLocaleString(
+                                            'id-ID',
+                                        )}
+                                    </span>
+                                </div>
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
+                    <div className="space-y-6">
+                        {/* Token Input Card */}
+                        <Card className="rounded-2xl border-2">
+                            <CardContent className="pt-6">
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="token"
+                                        className="text-base font-semibold"
+                                    >
+                                        Token Ujian
+                                    </Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="token"
+                                            type="text"
+                                            placeholder="Masukkan atau paste token ujian"
+                                            value={data.token}
+                                            onChange={(e) =>
+                                                setData('token', e.target.value)
+                                            }
+                                            className={`h-12 rounded-xl pr-24 text-base ${
+                                                errors.token
+                                                    ? 'border-red-500'
+                                                    : ''
+                                            }`}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handlePasteToken}
+                                            className="absolute top-1/2 right-2 -translate-y-1/2 gap-2"
+                                        >
+                                            {pasteFeedback ? (
+                                                <>
+                                                    <Check className="h-4 w-4 text-green-600" />
+                                                    <span className="text-green-600">
+                                                        Paste!
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ClipboardPaste className="h-4 w-4" />
+                                                    Paste
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                    {errors.token && (
+                                        <p className="text-sm text-red-500">
+                                            {errors.token}
+                                        </p>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* University & Major Selections Card */}
+                        <Card className="rounded-2xl border-2">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-xl">
+                                            Pilih Universitas & Jurusan
+                                        </CardTitle>
+                                        <CardDescription className="mt-1">
+                                            Pilih program studi yang ingin Anda
+                                            daftar
+                                        </CardDescription>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-2xl font-bold text-primary">
+                                            {totalMajorsSelected}/4
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                            Jurusan
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
                                 {selections.map((selection, index) => {
                                     const selectedUni = getUniversityById(
                                         selection.university_id,
@@ -234,71 +334,61 @@ export default function JoinExam({ universities, exam }: Props) {
                                     return (
                                         <div
                                             key={index}
-                                            className="space-y-3 rounded-lg border p-4"
+                                            className="space-y-4 rounded-2xl border-2 bg-card p-4 md:p-6"
                                         >
+                                            {/* Header */}
                                             <div className="flex items-center justify-between">
-                                                <h3 className="font-semibold">
-                                                    Pilihan {index + 1}
-                                                </h3>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                                                        {index + 1}
+                                                    </div>
+                                                    <h3 className="text-lg font-semibold">
+                                                        Pilihan {index + 1}
+                                                    </h3>
+                                                </div>
                                                 {selections.length > 1 && (
-                                                    <button
+                                                    <Button
                                                         type="button"
+                                                        variant="ghost"
+                                                        size="sm"
                                                         onClick={() =>
                                                             handleRemoveUniversity(
                                                                 index,
                                                             )
                                                         }
-                                                        className="text-red-500 hover:text-red-700"
+                                                        className="text-red-500 hover:bg-red-50 hover:text-red-700"
                                                     >
                                                         <X className="h-4 w-4" />
-                                                    </button>
+                                                    </Button>
                                                 )}
                                             </div>
 
-                                            {/* University Select */}
+                                            {/* University Selection */}
                                             <div className="space-y-2">
-                                                <Label>Universitas *</Label>
-                                                <div
-                                                    className={
-                                                        universityError
-                                                            ? 'rounded-md border-red-500'
-                                                            : ''
+                                                <Label className="text-sm font-medium">
+                                                    Universitas
+                                                </Label>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        handleOpenUniversityDialog(
+                                                            index,
+                                                        )
                                                     }
+                                                    className={`h-12 w-full justify-start rounded-xl text-left font-normal ${
+                                                        universityError
+                                                            ? 'border-red-500'
+                                                            : ''
+                                                    }`}
                                                 >
-                                                    <Select
-                                                        value={
-                                                            selection.university_id
-                                                        }
-                                                        onValueChange={(
-                                                            value,
-                                                        ) =>
-                                                            handleUniversityChange(
-                                                                index,
-                                                                value,
-                                                            )
-                                                        }
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Pilih universitas" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {universities.map(
-                                                                (uni) => (
-                                                                    <SelectItem
-                                                                        key={
-                                                                            uni.id
-                                                                        }
-                                                                        value={uni.id.toString()}
-                                                                    >
-                                                                        {
-                                                                            uni.name
-                                                                        }
-                                                                    </SelectItem>
-                                                                ),
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
+                                                    <Building2 className="mr-2 h-4 w-4 shrink-0" />
+                                                    <span className="truncate">
+                                                        {selectedUni
+                                                            ? selectedUni.name
+                                                            : 'Pilih universitas'}
+                                                    </span>
+                                                </Button>
                                                 {universityError && (
                                                     <p className="text-sm text-red-500">
                                                         {universityError}
@@ -308,61 +398,75 @@ export default function JoinExam({ universities, exam }: Props) {
 
                                             {/* Major Checkboxes */}
                                             {selectedUni && (
-                                                <div className="space-y-2">
-                                                    <Label>
-                                                        Jurusan * (max 4 total)
+                                                <div className="space-y-3">
+                                                    <Label className="text-sm font-medium">
+                                                        Jurusan (Pilih minimal
+                                                        1)
                                                     </Label>
-                                                    <div className="space-y-2">
-                                                        {selectedUni.majors.map(
-                                                            (major) => {
-                                                                const majorId =
-                                                                    major.id.toString();
-                                                                const isChecked =
-                                                                    selection.majors.includes(
-                                                                        majorId,
-                                                                    );
-                                                                const disabled =
-                                                                    !isChecked &&
-                                                                    totalMajorsSelected >=
-                                                                        4;
+                                                    {selectedUni.majors.length >
+                                                    0 ? (
+                                                        <div className="max-h-60 space-y-2 overflow-y-auto pr-2">
+                                                            {selectedUni.majors.map(
+                                                                (major) => {
+                                                                    const majorId =
+                                                                        major.id.toString();
+                                                                    const isChecked =
+                                                                        selection.majors.includes(
+                                                                            majorId,
+                                                                        );
+                                                                    const disabled =
+                                                                        !isChecked &&
+                                                                        totalMajorsSelected >=
+                                                                            4;
 
-                                                                return (
-                                                                    <div
-                                                                        key={
-                                                                            major.id
-                                                                        }
-                                                                        className="flex items-center"
-                                                                    >
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            id={`major-${index}-${major.id}`}
-                                                                            checked={
-                                                                                isChecked
-                                                                            }
-                                                                            disabled={
-                                                                                disabled
-                                                                            }
-                                                                            onChange={() =>
-                                                                                handleMajorToggle(
-                                                                                    index,
-                                                                                    majorId,
-                                                                                )
-                                                                            }
-                                                                            className="h-4 w-4 rounded border-gray-300"
-                                                                        />
+                                                                    return (
                                                                         <label
-                                                                            htmlFor={`major-${index}-${major.id}`}
-                                                                            className="ml-2 flex-1 cursor-pointer text-sm"
-                                                                        >
-                                                                            {
-                                                                                major.name
+                                                                            key={
+                                                                                major.id
                                                                             }
+                                                                            className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-all ${
+                                                                                isChecked
+                                                                                    ? 'border-primary bg-primary/5'
+                                                                                    : disabled
+                                                                                      ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-50'
+                                                                                      : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                                                                            }`}
+                                                                        >
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={
+                                                                                    isChecked
+                                                                                }
+                                                                                disabled={
+                                                                                    disabled
+                                                                                }
+                                                                                onChange={() =>
+                                                                                    handleMajorToggle(
+                                                                                        index,
+                                                                                        majorId,
+                                                                                    )
+                                                                                }
+                                                                                className="h-4 w-4 rounded border-gray-300"
+                                                                            />
+                                                                            <span className="flex-1 text-sm font-medium">
+                                                                                {
+                                                                                    major.name
+                                                                                }
+                                                                            </span>
+                                                                            {isChecked && (
+                                                                                <Check className="h-4 w-4 text-primary" />
+                                                                            )}
                                                                         </label>
-                                                                    </div>
-                                                                );
-                                                            },
-                                                        )}
-                                                    </div>
+                                                                    );
+                                                                },
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="py-4 text-center text-sm text-muted-foreground">
+                                                            Tidak ada jurusan
+                                                            tersedia
+                                                        </p>
+                                                    )}
                                                     {majorsError && (
                                                         <p className="text-sm text-red-500">
                                                             {majorsError}
@@ -376,38 +480,111 @@ export default function JoinExam({ universities, exam }: Props) {
 
                                 {/* Add Another University Button */}
                                 {canAddUniversity && (
-                                    <button
+                                    <Button
                                         type="button"
+                                        variant="outline"
                                         onClick={handleAddUniversity}
-                                        className="flex w-full items-center justify-center gap-2 rounded border-2 border-dashed border-gray-300 py-2 text-gray-600 hover:border-gray-400 hover:text-gray-700"
+                                        className="h-12 w-full gap-2 rounded-xl border-2 border-dashed"
                                     >
                                         <Plus className="h-4 w-4" />
-                                        Tambah Universitas
-                                    </button>
+                                        Tambah Universitas Kedua
+                                    </Button>
                                 )}
 
-                                {/* Global selections error (e.g. “Maximum 4 majors can be selected”) */}
+                                {/* Global selections error */}
                                 {errors.selections && (
-                                    <p className="text-sm text-red-500">
+                                    <p className="text-center text-sm text-red-500">
                                         {errors.selections as string}
                                     </p>
                                 )}
-                            </div>
+                            </CardContent>
+                        </Card>
 
-                            {/* Submit Button */}
-                            <Button
-                                type="submit"
-                                disabled={processing}
-                                className="w-full"
-                            >
-                                {processing
-                                    ? 'Memulai Ujian...'
-                                    : 'Mulai Ujian'}
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
+                        {/* Submit Button */}
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={processing}
+                            className="h-14 w-full rounded-xl text-lg"
+                            size="lg"
+                        >
+                            {processing ? 'Memulai Ujian...' : 'Mulai Ujian'}
+                        </Button>
+                    </div>
+                </div>
             </div>
+
+            {/* University Search Dialog */}
+            <Dialog
+                open={openUniversityDialog}
+                onOpenChange={setOpenUniversityDialog}
+            >
+                <DialogContent className="max-h-[80vh] max-w-2xl rounded-2xl p-0">
+                    <DialogHeader className="border-b px-6 pt-6 pb-4">
+                        <DialogTitle>Pilih Universitas</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="px-6 py-4">
+                        {/* Search Input */}
+                        <div className="relative">
+                            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder="Cari universitas..."
+                                value={universitySearch}
+                                onChange={(e) =>
+                                    setUniversitySearch(e.target.value)
+                                }
+                                className="h-11 rounded-xl pl-9"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+
+                    {/* University List */}
+                    <div className="max-h-[50vh] overflow-y-auto px-6 pb-6">
+                        {filteredUniversities.length > 0 ? (
+                            <div className="space-y-2">
+                                {filteredUniversities.map((uni) => (
+                                    <button
+                                        key={uni.id}
+                                        type="button"
+                                        onClick={() =>
+                                            currentSelectionIndex !== null &&
+                                            handleUniversityChange(
+                                                currentSelectionIndex,
+                                                uni.id.toString(),
+                                            )
+                                        }
+                                        className="w-full rounded-xl border-2 p-4 text-left transition-all hover:border-primary hover:bg-primary/5"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                                            <div className="min-w-0 flex-1">
+                                                <div className="font-medium">
+                                                    {uni.name}
+                                                </div>
+                                                <div className="mt-1 text-sm text-muted-foreground">
+                                                    {uni.majors.length} program
+                                                    studi
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-12 text-center">
+                                <Search className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
+                                <p className="mt-4 font-semibold text-foreground">
+                                    Tidak ada universitas ditemukan
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Coba kata kunci lain
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
