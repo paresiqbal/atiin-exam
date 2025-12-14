@@ -7,6 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { AlertTriangle } from 'lucide-react';
 
 export function SubmitConfirmDialog({
     open,
@@ -19,19 +20,25 @@ export function SubmitConfirmDialog({
     unansweredCount: number;
     onConfirm: () => void;
 }) {
+    const hasUnanswered = unansweredCount > 0;
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="rounded-2xl">
                 <DialogHeader>
-                    <DialogTitle>
-                        {unansweredCount > 0
+                    <DialogTitle className="flex items-center gap-2">
+                        {hasUnanswered && (
+                            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                        )}
+
+                        {hasUnanswered
                             ? 'Beberapa pertanyaan belum terjawab'
                             : 'Kirim Ujian?'}
                     </DialogTitle>
 
                     <DialogDescription>
-                        {unansweredCount > 0
-                            ? `Kamu masih punya ${unansweredCount} soal yang belum terjawab. Yakin ingin mengirim?`
+                        {hasUnanswered
+                            ? `Kamu masih punya ${unansweredCount} soal yang belum terjawab. Kamu tetap bisa mengirim ujian, tapi jawaban kosong akan bernilai 0.`
                             : 'Kamu sudah menjawab semua pertanyaan. Siap untuk mengirim?'}
                     </DialogDescription>
                 </DialogHeader>
@@ -46,10 +53,14 @@ export function SubmitConfirmDialog({
                     </Button>
 
                     <Button
-                        className="flex-1 bg-green-600 text-white hover:bg-green-700"
                         onClick={onConfirm}
+                        className={`flex-1 text-white ${
+                            hasUnanswered
+                                ? 'bg-yellow-500 hover:bg-yellow-600'
+                                : 'bg-green-600 hover:bg-green-700'
+                        }`}
                     >
-                        Ya, Kirim Ujian
+                        {hasUnanswered ? 'Tetap Kirim' : 'Kirim Ujian'}
                     </Button>
                 </DialogFooter>
             </DialogContent>
