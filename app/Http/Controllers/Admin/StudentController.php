@@ -135,9 +135,17 @@ class StudentController extends Controller
 
     public function cards()
     {
-        $schools = School::with(['students' => function ($query) {
-            $query->where('role', 'student')
-                ->select('id', 'name', 'email', 'class', 'school_id');
+        $schools = School::with(['students' => function ($q) {
+            $q->where('role', 'student')
+                ->with('school:id,name')
+                ->select([
+                    'id',
+                    'name',
+                    'email',
+                    'class',
+                    'school_id',
+                ])
+                ->orderBy('name');
         }])
             ->orderBy('name')
             ->get(['id', 'name']);
@@ -147,6 +155,7 @@ class StudentController extends Controller
         ]);
     }
 
+
     public function downloadCards(Request $request)
     {
         $schoolId = $request->query('school_id');
@@ -155,7 +164,18 @@ class StudentController extends Controller
             return back()->withErrors(['error' => 'Pilih sekolah terlebih dahulu']);
         }
 
-        $school = School::findOrFail($schoolId);
+        $school = School::with(['students' => function ($q) {
+            $q->where('role', 'student')
+                ->with('school:id,name')
+                ->select([
+                    'id',
+                    'name',
+                    'email',
+                    'class',
+                    'school_id',
+                ])
+                ->orderBy('name');
+        }])->findOrFail($schoolId);
 
         $pdfService = new StudentCardsPdfService();
         $pdf = $pdfService->generate($school);

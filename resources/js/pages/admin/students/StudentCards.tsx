@@ -22,6 +22,10 @@ interface Student {
     name: string;
     email: string;
     class?: string | null;
+    school?: {
+        id: number;
+        name: string;
+    } | null;
 }
 
 interface School {
@@ -326,6 +330,15 @@ export default function StudentCards({ schools }: StudentCardsProps) {
                                                 </span>
                                                 <span className="font-mono text-[11px]">
                                                     {student.email}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-medium">
+                                                    Sekolah
+                                                </span>
+                                                <span>
+                                                    {student.school?.name ||
+                                                        '-'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center justify-between text-xs">
