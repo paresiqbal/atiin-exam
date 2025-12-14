@@ -441,118 +441,128 @@ export default function Results({
                 )}
 
                 {/* Rincian Soal */}
-                <div className="space-y-4">
-                    <h2 className="text-xl font-semibold">Rincian Soal</h2>
+                <div className="space-y-3">
+                    <div className="flex items-end justify-between gap-3">
+                        <div>
+                            <h2 className="text-lg font-semibold">
+                                Rincian Soal
+                            </h2>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                Tap soal untuk melihat jawaban kamu & jawaban
+                                benar.
+                            </p>
+                        </div>
+
+                        <Badge variant="outline" className="shrink-0 text-xs">
+                            {questionDetails.length} soal
+                        </Badge>
+                    </div>
+
                     <Accordion
                         type="single"
                         collapsible
-                        className="w-full space-y-4"
+                        className="w-full space-y-2"
                     >
-                        {questionDetails.map((question, index) => (
-                            <AccordionItem
-                                key={question.id}
-                                value={`item-${question.id}`}
-                                className="rounded-lg border bg-card px-4"
-                            >
-                                {/* Trigger */}
-                                <AccordionTrigger className="py-4 hover:no-underline">
-                                    <div className="flex w-full items-start gap-4 text-left">
-                                        <div className="mt-1">
-                                            {question.is_correct ? (
-                                                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                            ) : (
-                                                <XCircle className="h-5 w-5 text-destructive" />
-                                            )}
-                                        </div>
+                        {questionDetails.map((q, index) => {
+                            const statusText = q.is_correct ? 'BENAR' : 'SALAH';
 
-                                        <div className="flex-1">
-                                            <div className="pr-4 font-medium">
-                                                <span className="mr-2 text-muted-foreground">
-                                                    Soal {index + 1}.
-                                                </span>
+                            return (
+                                <AccordionItem
+                                    key={q.id}
+                                    value={`q-${q.id}`}
+                                    className="rounded-lg border bg-card px-3 shadow-sm"
+                                >
+                                    <AccordionTrigger className="py-3 hover:no-underline">
+                                        <div className="flex w-full items-start gap-2.5 text-left">
+                                            <div className="mt-0.5">
+                                                {q.is_correct ? (
+                                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                                ) : (
+                                                    <XCircle className="h-4 w-4 text-destructive" />
+                                                )}
+                                            </div>
+
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="text-sm font-semibold">
+                                                        Soal {index + 1}
+                                                    </span>
+
+                                                    <Badge
+                                                        variant={
+                                                            q.is_correct
+                                                                ? 'default'
+                                                                : 'destructive'
+                                                        }
+                                                        className="h-5 px-2 text-[10px]"
+                                                    >
+                                                        {statusText}
+                                                    </Badge>
+                                                </div>
+
+                                                {/* Preview (small + no images) */}
                                                 <div
-                                                    className="prose prose-sm max-w-none [&_img]:hidden"
+                                                    className="prose prose-sm dark:prose-invert mt-1 line-clamp-2 max-w-none text-xs text-muted-foreground [&_img]:hidden [&_p]:my-1"
                                                     dangerouslySetInnerHTML={{
-                                                        __html: question.question_text,
+                                                        __html: q.question_text,
                                                     }}
                                                 />
                                             </div>
                                         </div>
+                                    </AccordionTrigger>
 
-                                        {/* Poin */}
-                                        <div className="font-mono text-sm whitespace-nowrap text-muted-foreground">
-                                            {question.points_earned} /{' '}
-                                            {question.points} poin
-                                        </div>
-                                    </div>
-                                </AccordionTrigger>
+                                    <AccordionContent className="pb-3">
+                                        <div className="space-y-3">
+                                            {/* Full question */}
 
-                                {/* Content */}
-                                <AccordionContent className="space-y-4 pt-2 pb-4 pl-9">
-                                    {/* Soal lengkap (termasuk gambar) */}
-                                    <div className="rounded-md bg-muted/40 p-3">
-                                        <div className="mb-1 text-xs font-medium text-muted-foreground">
-                                            Soal Lengkap
-                                        </div>
-                                        <div
-                                            className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
-                                            dangerouslySetInnerHTML={{
-                                                __html: question.question_text,
-                                            }}
-                                        />
-                                    </div>
+                                            {/* Answers */}
+                                            <div className="grid gap-2 md:grid-cols-2">
+                                                {/* Student answer */}
+                                                <div
+                                                    className={cn(
+                                                        'rounded-md border p-3',
+                                                        q.is_correct
+                                                            ? 'border-green-500/25 bg-green-500/5'
+                                                            : 'border-yellow-500/25 bg-yellow-500/5',
+                                                    )}
+                                                >
+                                                    <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                                                        Jawaban Kamu
+                                                    </div>
 
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        {/* Jawaban siswa */}
-                                        <div
-                                            className={cn(
-                                                'rounded-md border p-3',
-                                                question.is_correct
-                                                    ? 'border-green-500/20 bg-green-500/10'
-                                                    : 'border-destructive/20 bg-destructive/5',
-                                            )}
-                                        >
-                                            <div className="mb-1 text-xs font-medium text-muted-foreground">
-                                                Jawaban Kamu
-                                            </div>
-
-                                            <div className="font-medium">
-                                                {question.student_answer ? (
-                                                    <div
-                                                        className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
-                                                        dangerouslySetInnerHTML={{
-                                                            __html: question.student_answer,
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <span className="text-muted-foreground italic">
-                                                        Belum menjawab
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Jawaban benar hanya jika salah */}
-                                        {!question.is_correct && (
-                                            <div className="rounded-md border bg-secondary/50 p-3">
-                                                <div className="mb-1 text-xs font-medium text-muted-foreground">
-                                                    Jawaban Benar
+                                                    {q.student_answer ? (
+                                                        <div
+                                                            className="prose prose-sm dark:prose-invert max-w-none [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-md [&_img]:border [&_img]:border-border [&_p]:my-2"
+                                                            dangerouslySetInnerHTML={{
+                                                                __html: q.student_answer,
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <p className="text-xs text-muted-foreground italic">
+                                                            Belum menjawab.
+                                                        </p>
+                                                    )}
                                                 </div>
 
-                                                <div className="font-medium text-green-600 dark:text-green-400">
+                                                {/* Correct answer */}
+                                                <div className="rounded-md border border-green-500/25 bg-green-500/5 p-3">
+                                                    <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                                                        Jawaban Benar
+                                                    </div>
+
                                                     <div
-                                                        className="prose prose-sm max-w-none [&_img]:h-auto [&_img]:max-w-full"
+                                                        className="prose prose-sm dark:prose-invert max-w-none text-green-700 dark:text-green-300 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-md [&_img]:border [&_img]:border-border [&_p]:my-2"
                                                         dangerouslySetInnerHTML={{
-                                                            __html: question.correct_answer,
+                                                            __html: q.correct_answer,
                                                         }}
                                                     />
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        ))}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            );
+                        })}
                     </Accordion>
                 </div>
             </div>
