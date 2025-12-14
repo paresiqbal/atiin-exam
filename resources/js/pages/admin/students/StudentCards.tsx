@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { Download, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import AppLayout from '@/layouts/app-layout';
 
@@ -14,7 +14,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-
+import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
 
 interface Student {
@@ -57,12 +57,17 @@ export default function StudentCards({ schools }: StudentCardsProps) {
     );
     const [cardsCreated, setCardsCreated] = useState(false);
 
+    // ✅ Only track focus (not openResults)
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+    const searchWrapRef = useRef<HTMLDivElement | null>(null);
+
     const filteredSchools = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
-        if (!q) {
-            return [];
-        }
-        return schools.filter((s) => s.name.toLowerCase().includes(q));
+        if (!q) return [];
+        return schools
+            .filter((s) => s.name.toLowerCase().includes(q))
+            .slice(0, 20);
     }, [searchQuery, schools]);
 
     const selectedSchool = useMemo(
@@ -70,9 +75,22 @@ export default function StudentCards({ schools }: StudentCardsProps) {
         [schools, selectedSchoolId],
     );
 
+    const totalStudents = selectedSchool?.students.length ?? 0;
+
+    // ✅ derived UI state (no effect needed)
+    const hasQuery = searchQuery.trim() !== '';
+    const showResults = isSearchFocused && hasQuery;
+
+    const helperText = !hasQuery
+        ? 'Ketik untuk mencari sekolah.'
+        : filteredSchools.length === 0
+          ? `Tidak ada sekolah yang cocok dengan "${searchQuery}".`
+          : `${filteredSchools.length} sekolah ditemukan. Klik untuk memilih.`;
+
     const handleSelectSchool = (schoolId: number) => {
         setSelectedSchoolId(schoolId);
         setCardsCreated(false);
+        setIsSearchFocused(false); // close dropdown
     };
 
     const handleCreateCards = () => {
@@ -80,7 +98,11 @@ export default function StudentCards({ schools }: StudentCardsProps) {
         setCardsCreated(true);
     };
 
-    const totalStudents = selectedSchool?.students.length ?? 0;
+    const handleDownload = () => {
+        if (!selectedSchool || !cardsCreated) return;
+        const url = `/admin/students/cards/download?school_id=${selectedSchool.id}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -88,14 +110,13 @@ export default function StudentCards({ schools }: StudentCardsProps) {
 
             <div className="flex h-full flex-1 flex-col px-4 py-6 lg:px-6">
                 {/* Page header */}
-                <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                     <div className="space-y-1">
-                        <h1 className="text-3xl font-bold tracking-tight">
+                        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
                             Kartu Siswa
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Cari sekolah, pilih salah satu, lalu buat kartu
-                            untuk semua siswa di sekolah tersebut.
+                            Cari sekolah → pilih → buat kartu → download PDF.
                         </p>
                     </div>
 
@@ -111,92 +132,123 @@ export default function StudentCards({ schools }: StudentCardsProps) {
                     )}
                 </div>
 
-                {/* Top bar: search + button */}
-                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="relative flex-1">
-                        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="Cari nama sekolah, contoh: SMA Negeri 1..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="h-10 pl-9 text-sm"
-                        />
-                    </div>
+                {/* Search + Actions */}
+                <div className="mb-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
+                    {/* Search box with dropdown */}
+                    <div ref={searchWrapRef} className="relative">
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder="Cari sekolah… (contoh: SMA Negeri 1)"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onFocus={() => setIsSearchFocused(true)}
+                                onBlur={() => {
+                                    // Delay close to allow clicking result
+                                    window.setTimeout(
+                                        () => setIsSearchFocused(false),
+                                        120,
+                                    );
+                                }}
+                                className="h-10 pl-9"
+                            />
+                        </div>
 
-                    <Button
-                        type="button"
-                        onClick={handleCreateCards}
-                        disabled={!selectedSchool}
-                        className="w-full sm:w-auto"
-                    >
-                        {selectedSchool
-                            ? `Buat Kartu untuk ${totalStudents} siswa`
-                            : 'Pilih sekolah terlebih dahulu'}
-                    </Button>
-                </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            {helperText}
+                        </p>
 
-                {/* Info text (only when searching) */}
-                <div className="mb-3 text-xs text-muted-foreground">
-                    {searchQuery.trim() !== '' &&
-                        (filteredSchools.length === 0
-                            ? `Tidak ada sekolah yang cocok dengan "${searchQuery}".`
-                            : `${filteredSchools.length} sekolah ditemukan. Klik salah satu untuk dipilih.`)}
-                </div>
-                <Button
-                    onClick={() => {
-                        if (selectedSchool) {
-                            window.location.href = `/admin/students/cards/download?school_id=${selectedSchool.id}`;
-                        }
-                    }}
-                    variant="outline"
-                    disabled={!cardsCreated}
-                >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download PDF
-                </Button>
+                        {/* dropdown */}
+                        {showResults && (
+                            <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-lg border bg-background shadow-md">
+                                {filteredSchools.length === 0 ? (
+                                    <div className="p-3 text-sm text-muted-foreground">
+                                        Tidak ada hasil.
+                                    </div>
+                                ) : (
+                                    <div className="max-h-64 overflow-auto">
+                                        {filteredSchools.map((school) => {
+                                            const active =
+                                                school.id === selectedSchoolId;
+                                            return (
+                                                <button
+                                                    key={school.id}
+                                                    type="button"
+                                                    onMouseDown={(e) => {
+                                                        // prevents input blur from cancelling click
+                                                        e.preventDefault();
+                                                    }}
+                                                    onClick={() =>
+                                                        handleSelectSchool(
+                                                            school.id,
+                                                        )
+                                                    }
+                                                    className={cn(
+                                                        'flex w-full items-start justify-between gap-3 px-3 py-2 text-left text-sm transition',
+                                                        active
+                                                            ? 'bg-muted'
+                                                            : 'hover:bg-muted/70',
+                                                    )}
+                                                >
+                                                    <div className="min-w-0">
+                                                        <div className="line-clamp-1 font-medium">
+                                                            {school.name}
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {
+                                                                school.students
+                                                                    .length
+                                                            }{' '}
+                                                            siswa
+                                                        </div>
+                                                    </div>
 
-                {/* Search results (only visible when there is a query) */}
-                {searchQuery.trim() !== '' && (
-                    <div className="mb-6 max-h-72 overflow-auto rounded-lg border bg-background">
-                        {filteredSchools.length === 0 ? (
-                            <div className="p-4 text-sm text-muted-foreground">
-                                Tidak ada sekolah yang cocok dengan kata kunci{' '}
-                                <span className="font-medium">
-                                    &quot;{searchQuery}&quot;
-                                </span>
-                                .
+                                                    {active && (
+                                                        <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground">
+                                                            Dipilih
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            filteredSchools.map((school) => {
-                                const isActive = school.id === selectedSchoolId;
-                                return (
-                                    <button
-                                        key={school.id}
-                                        type="button"
-                                        className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition ${
-                                            isActive
-                                                ? 'bg-muted font-medium'
-                                                : 'hover:bg-muted/70'
-                                        }`}
-                                        onClick={() =>
-                                            handleSelectSchool(school.id)
-                                        }
-                                    >
-                                        <div className="flex flex-col">
-                                            <span className="line-clamp-1">
-                                                {school.name}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground">
-                                                {school.students.length} siswa
-                                                terdaftar
-                                            </span>
-                                        </div>
-                                    </button>
-                                );
-                            })
                         )}
                     </div>
-                )}
+
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2 md:min-w-[260px]">
+                        <Button
+                            type="button"
+                            onClick={handleCreateCards}
+                            disabled={!selectedSchool}
+                            className="h-10 w-full"
+                        >
+                            {selectedSchool
+                                ? `Buat Kartu (${totalStudents})`
+                                : 'Pilih sekolah dulu'}
+                        </Button>
+
+                        <Button
+                            type="button"
+                            onClick={handleDownload}
+                            variant="outline"
+                            disabled={!selectedSchool || !cardsCreated}
+                            className="h-10 w-full"
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            Download PDF
+                        </Button>
+
+                        {!cardsCreated && selectedSchool && (
+                            <p className="text-xs text-muted-foreground">
+                                Setelah klik <b>Buat Kartu</b>, tombol download
+                                akan aktif.
+                            </p>
+                        )}
+                    </div>
+                </div>
 
                 {/* Cards area */}
                 <Card className="flex flex-1 flex-col">
@@ -210,20 +262,20 @@ export default function StudentCards({ schools }: StudentCardsProps) {
                             )}
                         </CardTitle>
                         <CardDescription>
-                            Kartu siswa akan muncul di sini setelah Anda memilih
-                            sekolah dan menekan tombol{' '}
+                            Kartu siswa akan muncul setelah memilih sekolah dan
+                            menekan tombol{' '}
                             <span className="font-medium">
                                 &quot;Buat Kartu&quot;
                             </span>
                             .
                         </CardDescription>
                     </CardHeader>
+
                     <CardContent className="flex-1">
                         {!selectedSchool || !cardsCreated ? (
                             <div className="flex h-full flex-col items-center justify-center gap-2 py-16 text-center text-sm text-muted-foreground">
                                 <p>
-                                    Cari dan pilih sekolah di bagian atas,
-                                    kemudian klik{' '}
+                                    Cari & pilih sekolah, lalu klik{' '}
                                     <span className="font-medium">
                                         &quot;Buat Kartu&quot;
                                     </span>
@@ -245,7 +297,6 @@ export default function StudentCards({ schools }: StudentCardsProps) {
                                         key={student.id}
                                         className="flex h-full flex-col rounded-lg border bg-background p-3 text-sm shadow-sm print:shadow-none"
                                     >
-                                        {/* Header: avatar + name + school */}
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-12 w-12">
                                                 <AvatarImage
@@ -266,10 +317,8 @@ export default function StudentCards({ schools }: StudentCardsProps) {
                                             </div>
                                         </div>
 
-                                        {/* Divider */}
                                         <div className="mt-3 h-px w-full bg-muted" />
 
-                                        {/* Details */}
                                         <div className="mt-2 space-y-1.5 text-xs">
                                             <div className="flex flex-col gap-0.5">
                                                 <span className="font-medium">
@@ -289,7 +338,6 @@ export default function StudentCards({ schools }: StudentCardsProps) {
                                             </div>
                                         </div>
 
-                                        {/* Photo placeholder */}
                                         <div className="mt-3 rounded border border-dashed px-2 py-1 text-center text-[11px] text-muted-foreground">
                                             Placeholder foto siswa — ganti
                                             dengan foto resmi saat siap.
