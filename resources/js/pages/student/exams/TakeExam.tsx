@@ -1,29 +1,23 @@
+import { ExamHeader } from '@/components/ExamHeader';
+import { OptionList } from '@/components/OptionList';
+import { QuestionCard } from '@/components/QuestionCard';
+import { QuestionNavigator } from '@/components/QuestionNavigator';
+import { SubmitConfirmDialog } from '@/components/SubmitConfirmDialog';
+import { ToastStack } from '@/components/ToastStack';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAnswerSync } from '@/hooks/useAnswerSync';
+import { useExamTimer } from '@/hooks/useExamTimer';
+import { useExamViolations } from '@/hooks/useExamViolations';
+import { useToasts } from '@/hooks/useToasts';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { cn } from '@/lib/utils';
+    extractFirstImageSrc,
+    normalizeImageSrc,
+    resolveHtmlImages,
+} from '@/utils/htmlImages';
 import { Head, router } from '@inertiajs/react';
-import axios from 'axios';
-import {
-    AlertTriangle,
-    CheckCircle2,
-    ChevronLeft,
-    ChevronRight,
-    Clock,
-    Flag,
-    Menu,
-    X,
-} from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 interface Option {
     id: number;
@@ -33,6 +27,7 @@ interface Option {
 interface Question {
     id: number;
     question_text: string;
+    image_url?: string | null;
     question_type: 'multiple_choice' | 'true_false' | 'multiple_select';
     points: number;
     options: Option[];
@@ -64,73 +59,7 @@ interface Props {
     elapsedMinutes: number;
 }
 
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
-type ToastType = 'warning' | 'error' | 'success';
-
-interface Toast {
-    id: number;
-    message: string;
-    type: ToastType;
-}
-
-function resolveHtmlImages(html: string) {
-    if (!html) return html;
-    if (typeof window === 'undefined') return html;
-
-    try {
-        const base = window.location.origin;
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-
-        doc.querySelectorAll('img').forEach((img) => {
-            const raw = (img.getAttribute('src') || '').trim();
-            if (!raw) return;
-
-            // Keep already valid URL types
-            if (
-                raw.startsWith('http://') ||
-                raw.startsWith('https://') ||
-                raw.startsWith('data:') ||
-                raw.startsWith('blob:')
-            ) {
-                img.setAttribute('loading', 'lazy');
-                img.setAttribute('decoding', 'async');
-                img.style.maxWidth = '100%';
-                img.style.height = 'auto';
-                return;
-            }
-
-            // Windows path / file URL cannot be rendered by browser
-            if (/^[a-zA-Z]:\\/.test(raw) || raw.startsWith('file://')) {
-                img.setAttribute(
-                    'data-warning',
-                    'invalid-local-file-src-not-accessible',
-                );
-                return;
-            }
-
-            const normalized = raw.startsWith('/')
-                ? raw
-                : raw.startsWith('storage/')
-                  ? `/${raw}`
-                  : raw.startsWith('uploads/')
-                    ? `/${raw}`
-                    : `/${raw}`;
-
-            img.setAttribute('src', `${base}${normalized}`);
-            img.setAttribute('loading', 'lazy');
-            img.setAttribute('decoding', 'async');
-
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-        });
-
-        return doc.body.innerHTML;
-    } catch {
-        return html;
-    }
-}
-
-export default function TakeExam({
+export default function TakeExamPage({
     attempt,
     exam,
     questions,
@@ -139,23 +68,20 @@ export default function TakeExam({
     elapsedMinutes,
 }: Props) {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [answers, setAnswers] = useState<Record<number, number>>(
-        responses || {},
-    );
     const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(
         new Set(),
     );
-    const [timeLeft, setTimeLeft] = useState(
-        Math.max(0, timeLimit * 60 - Math.floor(elapsedMinutes) * 60),
-    );
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [unansweredCount, setUnansweredCount] = useState(0);
-    const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
     const [showQuestionNav, setShowQuestionNav] = useState(false);
-    const [toasts, setToasts] = useState<Toast[]>([]);
 
-    const submitRef = useRef(false);
-    const toastIdRef = useRef(0);
+    const { toasts, showToast, removeToast } = useToasts();
+
+    const { answers, saveStatus, selectAnswer, clearAnswer } = useAnswerSync({
+        attemptId: attempt.id,
+        initialAnswers: responses || {},
+        onToast: showToast,
+    });
 
     const hasQuestions = Array.isArray(questions) && questions.length > 0;
     const currentQuestion = hasQuestions
@@ -167,154 +93,55 @@ export default function TakeExam({
         ? (answeredCount / questions.length) * 100
         : 0;
 
-    // ✅ React Compiler friendly deps (no optional chaining in deps)
+    // timer
+    const { timeLeft, formatted } = useExamTimer({
+        timeLimit,
+        elapsedMinutes,
+        onExpired: () => router.post(`/student/exams/${attempt.id}/submit`),
+        onWarn: showToast,
+    });
+
+    // anti-cheat
+    useExamViolations({
+        attemptId: attempt.id,
+        attemptStatus: attempt.status,
+        onToast: showToast,
+        onFrozen: () => setTimeout(() => window.location.reload(), 2000),
+    });
+
+    // html + images
     const questionText = currentQuestion?.question_text ?? '';
-    const optionList = currentQuestion?.options ?? [];
 
     const currentQuestionHtml = useMemo(() => {
         if (!questionText) return '';
         return resolveHtmlImages(questionText);
     }, [questionText]);
 
+    const currentQuestionImage = useMemo(() => {
+        if (!currentQuestion) return null;
+
+        const fromField =
+            currentQuestion.image_url && currentQuestion.image_url.trim() !== ''
+                ? currentQuestion.image_url.trim()
+                : null;
+
+        const fromHtml = extractFirstImageSrc(currentQuestion.question_text);
+        const src = fromField ?? fromHtml;
+        if (!src) return null;
+
+        return normalizeImageSrc(src);
+    }, [currentQuestion]);
+
     const optionsHtml = useMemo(() => {
         const map: Record<number, string> = {};
-        for (const opt of optionList) {
+        const opts = currentQuestion?.options ?? [];
+
+        for (const opt of opts) {
             map[opt.id] = resolveHtmlImages(opt.option_text ?? '');
         }
+
         return map;
-    }, [optionList]);
-
-    // Toast helper
-    const showToast = (message: string, type: ToastType = 'warning') => {
-        const id = toastIdRef.current++;
-        setToasts((prev) => [...prev, { id, message, type }]);
-        setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== id));
-        }, 4000);
-    };
-
-    const removeToast = (id: number) => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-    };
-
-    // Countdown timer + auto-submit when time runs out
-    useEffect(() => {
-        if (timeLeft <= 0 && !submitRef.current) {
-            submitRef.current = true;
-            router.post(`/student/exams/${attempt.id}/submit`);
-            return;
-        }
-
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => Math.max(0, prev - 1));
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [timeLeft, attempt.id]);
-
-    // Time warnings
-    useEffect(() => {
-        if (timeLeft === 600) {
-            showToast('⏰ Waktu tersisa 10 menit!', 'warning');
-        } else if (timeLeft === 300) {
-            showToast('⚠️ Waktu tersisa 5 menit!', 'error');
-        } else if (timeLeft === 60) {
-            showToast('🚨 Waktu tersisa 1 menit!', 'error');
-        }
-    }, [timeLeft]);
-
-    // Anti-cheat: detect tab switch
-    useEffect(() => {
-        const DEFAULT_MAX_WARNINGS = 3;
-
-        const handleVisibilityChange = async () => {
-            if (document.hidden && attempt.status === 'in_progress') {
-                try {
-                    const response = await fetch(
-                        `/student/exams/${attempt.id}/log-violation`,
-                        {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN':
-                                    document
-                                        .querySelector(
-                                            'meta[name="csrf-token"]',
-                                        )
-                                        ?.getAttribute('content') || '',
-                            },
-                            body: JSON.stringify({
-                                violation_type: 'tab_switch',
-                            }),
-                        },
-                    );
-
-                    const data = await response.json();
-
-                    if (data.is_frozen) {
-                        showToast(data.message || 'Ujian dibekukan!', 'error');
-                        setTimeout(() => window.location.reload(), 2000);
-                    } else {
-                        const violationCount =
-                            data.violation_count ?? data.count ?? 0;
-                        const maxWarnings =
-                            data.max_violations ?? DEFAULT_MAX_WARNINGS;
-                        showToast(
-                            `⚠️ PERINGATAN ${violationCount}/${maxWarnings}: Jangan keluar dari halaman ujian!`,
-                            'warning',
-                        );
-                    }
-                } catch (error) {
-                    console.error('Error logging violation:', error);
-                }
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () =>
-            document.removeEventListener(
-                'visibilitychange',
-                handleVisibilityChange,
-            );
-    }, [attempt.id, attempt.status]);
-
-    const handleOptionSelect = async (optionId: string) => {
-        if (!currentQuestion) return;
-
-        const id = parseInt(optionId, 10);
-
-        setAnswers((prev) => ({
-            ...prev,
-            [currentQuestion.id]: id,
-        }));
-
-        setSaveStatus('saving');
-
-        try {
-            await axios.post(`/student/exams/${attempt.id}/save-answer`, {
-                question_id: currentQuestion.id,
-                selected_option_id: id,
-            });
-            setSaveStatus('saved');
-            setTimeout(() => setSaveStatus('idle'), 1500);
-        } catch {
-            setSaveStatus('error');
-            showToast('Gagal menyimpan jawaban', 'error');
-        }
-    };
-
-    const handleClearAnswer = () => {
-        if (!currentQuestion) return;
-
-        setAnswers((prev) => {
-            const next = { ...prev };
-            delete next[currentQuestion.id];
-            return next;
-        });
-
-        setSaveStatus('saved');
-        setTimeout(() => setSaveStatus('idle'), 1500);
-    };
+    }, [currentQuestion?.options]);
 
     const toggleFlag = () => {
         if (!currentQuestion) return;
@@ -329,24 +156,13 @@ export default function TakeExam({
 
     const handleSubmit = () => {
         if (!hasQuestions) return;
-
-        const answeredIds = Object.keys(answers).map(Number);
-        const totalQuestions = questions.length;
-        const diff = totalQuestions - answeredIds.length;
-
+        const total = questions.length;
+        const diff = total - Object.keys(answers).length;
         setUnansweredCount(diff);
         setConfirmOpen(true);
     };
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    };
-
     const confirmSubmit = () => {
-        if (submitRef.current) return;
-        submitRef.current = true;
         router.post(`/student/exams/${attempt.id}/submit`);
     };
 
@@ -362,68 +178,19 @@ export default function TakeExam({
         <div className="flex min-h-screen flex-col bg-background">
             <Head title={`Taking Exam: ${exam.title}`} />
 
-            {/* Compact Header */}
-            <header className="sticky top-0 z-20 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-                <div className="mx-auto w-full max-w-5xl px-4 py-3">
-                    <div className="flex items-center justify-between gap-4">
-                        {/* Left: Title & Progress */}
-                        <div className="min-w-0 flex-1">
-                            <h1 className="truncate text-base font-bold md:text-lg">
-                                {exam.title}
-                            </h1>
-                            <div className="mt-1 flex items-center gap-3">
-                                <p className="text-xs text-muted-foreground md:text-sm">
-                                    {currentQuestionIndex + 1}/
-                                    {questions.length}
-                                </p>
-                                <p className="text-xs font-medium text-primary md:text-sm">
-                                    {answeredCount}/{questions.length} terjawab
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Right: Timer & Menu */}
-                        <div className="flex items-center gap-2">
-                            <div
-                                className={cn(
-                                    'flex items-center gap-1.5 rounded-full border px-2 py-1.5 font-mono text-sm font-medium md:gap-2 md:px-4 md:py-2 md:text-lg',
-                                    timeLeft < 300
-                                        ? 'border-destructive/20 bg-destructive/10 text-destructive'
-                                        : timeLeft < 600
-                                          ? 'border-orange-200 bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-200'
-                                          : 'bg-secondary',
-                                )}
-                            >
-                                <Clock className="h-3 w-3 md:h-5 md:w-5" />
-                                <span className="tabular-nums">
-                                    {formatTime(timeLeft)}
-                                </span>
-                            </div>
-
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                    setShowQuestionNav(!showQuestionNav)
-                                }
-                                className="md:hidden"
-                            >
-                                {showQuestionNav ? (
-                                    <X className="h-5 w-5" />
-                                ) : (
-                                    <Menu className="h-5 w-5" />
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <Progress value={progress} className="mt-3 h-1.5" />
-                </div>
-            </header>
+            <ExamHeader
+                title={exam.title}
+                currentIndex={currentQuestionIndex}
+                total={questions.length}
+                answeredCount={answeredCount}
+                progress={progress}
+                timeLeft={timeLeft}
+                formattedTime={formatted}
+                showNav={showQuestionNav}
+                onToggleNav={() => setShowQuestionNav((s) => !s)}
+            />
 
             <div className="flex flex-1 overflow-hidden">
-                {/* Main Content */}
                 <main className="flex-1 overflow-y-auto">
                     <div className="mx-auto w-full max-w-4xl px-4 py-6">
                         {!hasQuestions ? (
@@ -443,140 +210,23 @@ export default function TakeExam({
                         ) : (
                             currentQuestion && (
                                 <div className="space-y-4">
-                                    <Card className="border-2">
-                                        <CardHeader>
-                                            <div className="flex items-start justify-between gap-4">
-                                                <CardTitle className="flex-1 text-base leading-relaxed md:text-lg">
-                                                    <div
-                                                        className="prose prose-sm dark:prose-invert max-w-none [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-border [&_p]:my-2"
-                                                        dangerouslySetInnerHTML={{
-                                                            __html: currentQuestionHtml,
-                                                        }}
-                                                    />
-                                                </CardTitle>
-
-                                                <div className="flex shrink-0 flex-col items-end gap-2">
-                                                    <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium whitespace-nowrap">
-                                                        {currentQuestion.points}{' '}
-                                                        poin
-                                                    </span>
-                                                    <Button
-                                                        variant={
-                                                            isFlagged(
-                                                                currentQuestion.id,
-                                                            )
-                                                                ? 'default'
-                                                                : 'ghost'
-                                                        }
-                                                        size="sm"
-                                                        onClick={toggleFlag}
-                                                        className="h-8 w-8 p-0"
-                                                    >
-                                                        <Flag
-                                                            className={cn(
-                                                                'h-4 w-4',
-                                                                isFlagged(
-                                                                    currentQuestion.id,
-                                                                ) &&
-                                                                    'fill-current',
-                                                            )}
-                                                        />
-                                                    </Button>
-                                                </div>
-                                            </div>
-
-                                            {saveStatus !== 'idle' && (
-                                                <div className="mt-3 flex items-center gap-2 text-sm">
-                                                    {saveStatus ===
-                                                        'saving' && (
-                                                        <span className="text-muted-foreground">
-                                                            Menyimpan...
-                                                        </span>
-                                                    )}
-                                                    {saveStatus === 'saved' && (
-                                                        <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                                                            <CheckCircle2 className="h-4 w-4" />
-                                                            Tersimpan
-                                                        </span>
-                                                    )}
-                                                    {saveStatus === 'error' && (
-                                                        <span className="flex items-center gap-1 text-destructive">
-                                                            <AlertTriangle className="h-4 w-4" />
-                                                            Gagal menyimpan
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </CardHeader>
-
-                                        <CardContent className="space-y-4">
-                                            <RadioGroup
-                                                value={
-                                                    answers[
-                                                        currentQuestion.id
-                                                    ]?.toString() || ''
-                                                }
-                                                onValueChange={
-                                                    handleOptionSelect
-                                                }
-                                                className="space-y-3"
-                                            >
-                                                {currentQuestion.options.map(
-                                                    (option) => (
-                                                        <div
-                                                            key={option.id}
-                                                            onClick={() =>
-                                                                handleOptionSelect(
-                                                                    option.id.toString(),
-                                                                )
-                                                            }
-                                                            className={cn(
-                                                                'flex cursor-pointer items-start space-x-3 rounded-xl border-2 p-4 transition-all hover:bg-accent',
-                                                                answers[
-                                                                    currentQuestion
-                                                                        .id
-                                                                ] === option.id
-                                                                    ? 'border-primary bg-accent ring-1 ring-primary'
-                                                                    : 'border-input hover:border-primary/50',
-                                                            )}
-                                                        >
-                                                            <RadioGroupItem
-                                                                value={option.id.toString()}
-                                                                id={`option-${option.id}`}
-                                                                className="pointer-events-none mt-1"
-                                                            />
-
-                                                            <div className="flex-1">
-                                                                <div
-                                                                    className="prose prose-sm dark:prose-invert max-w-none [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-border [&_p]:my-2"
-                                                                    dangerouslySetInnerHTML={{
-                                                                        __html:
-                                                                            optionsHtml[
-                                                                                option
-                                                                                    .id
-                                                                            ] ??
-                                                                            option.option_text,
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    ),
-                                                )}
-                                            </RadioGroup>
-
-                                            {answers[currentQuestion.id] && (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={handleClearAnswer}
-                                                    className="w-full md:w-auto"
-                                                >
-                                                    <X className="mr-2 h-4 w-4" />
-                                                    Hapus Jawaban
-                                                </Button>
-                                            )}
-                                        </CardContent>
-                                    </Card>
+                                    <QuestionCard
+                                        questionHtml={currentQuestionHtml}
+                                        questionImage={currentQuestionImage}
+                                        points={currentQuestion.points}
+                                        flagged={isFlagged(currentQuestion.id)}
+                                        onToggleFlag={toggleFlag}
+                                        saveStatus={saveStatus}
+                                    >
+                                        <OptionList
+                                            questionId={currentQuestion.id}
+                                            options={currentQuestion.options}
+                                            value={answers[currentQuestion.id]}
+                                            optionsHtml={optionsHtml}
+                                            onSelect={selectAnswer}
+                                            onClear={clearAnswer}
+                                        />
+                                    </QuestionCard>
 
                                     <div className="hidden items-center justify-between md:flex">
                                         <Button
@@ -630,42 +280,18 @@ export default function TakeExam({
                     </div>
                 </main>
 
-                <aside className="hidden w-64 overflow-y-auto border-l bg-card p-4 lg:block">
-                    <h3 className="mb-3 text-sm font-semibold">
-                        Navigasi Soal
-                    </h3>
-                    <div className="grid grid-cols-4 gap-2">
-                        {questions.map((q, idx) => (
-                            <button
-                                key={q.id}
-                                onClick={() => jumpToQuestion(idx)}
-                                className={cn(
-                                    'h-10 rounded-lg border-2 text-sm font-medium transition-all',
-                                    idx === currentQuestionIndex
-                                        ? 'border-primary bg-primary text-primary-foreground'
-                                        : isAnswered(q.id)
-                                          ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-950 dark:text-green-200'
-                                          : 'border-input hover:border-primary/50 hover:bg-accent',
-                                )}
-                            >
-                                {idx + 1}
-                                {isFlagged(q.id) && (
-                                    <Flag className="ml-1 inline h-3 w-3 fill-current" />
-                                )}
-                            </button>
-                        ))}
-                    </div>
-
-                    {flaggedQuestions.size > 0 && (
-                        <div className="mt-4 border-t pt-4">
-                            <p className="text-xs text-muted-foreground">
-                                {flaggedQuestions.size} soal ditandai
-                            </p>
-                        </div>
-                    )}
-                </aside>
+                <QuestionNavigator
+                    variant="desktop"
+                    questions={questions}
+                    currentQuestionIndex={currentQuestionIndex}
+                    isAnswered={isAnswered}
+                    isFlagged={isFlagged}
+                    onJump={jumpToQuestion}
+                    flaggedCount={flaggedQuestions.size}
+                />
             </div>
 
+            {/* mobile bottom controls */}
             {hasQuestions && (
                 <div className="sticky bottom-0 flex gap-2 border-t bg-card p-3 md:hidden">
                     <Button
@@ -703,122 +329,28 @@ export default function TakeExam({
                 </div>
             )}
 
+            {/* mobile nav overlay */}
             {showQuestionNav && (
-                <div className="fixed inset-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
-                    <div className="h-full overflow-y-auto p-4">
-                        <div className="mb-4 flex items-center justify-between">
-                            <h3 className="font-semibold">Navigasi Soal</h3>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setShowQuestionNav(false)}
-                            >
-                                <X className="h-5 w-5" />
-                            </Button>
-                        </div>
-
-                        <div className="grid grid-cols-5 gap-2">
-                            {questions.map((q, idx) => (
-                                <button
-                                    key={q.id}
-                                    onClick={() => jumpToQuestion(idx)}
-                                    className={cn(
-                                        'relative h-12 rounded-lg border-2 text-sm font-medium transition-all',
-                                        idx === currentQuestionIndex
-                                            ? 'border-primary bg-primary text-primary-foreground'
-                                            : isAnswered(q.id)
-                                              ? 'border-green-200 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-200'
-                                              : 'border-input hover:border-primary/50',
-                                    )}
-                                >
-                                    {idx + 1}
-                                    {isFlagged(q.id) && (
-                                        <Flag className="absolute top-1 right-1 h-2.5 w-2.5 fill-current" />
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="mt-6 space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded border-2 border-primary bg-primary" />
-                                <span>Soal saat ini</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded border-2 border-green-200 bg-green-50" />
-                                <span>Sudah dijawab</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded border-2 border-input" />
-                                <span>Belum dijawab</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <QuestionNavigator
+                    variant="mobile"
+                    questions={questions}
+                    currentQuestionIndex={currentQuestionIndex}
+                    isAnswered={isAnswered}
+                    isFlagged={isFlagged}
+                    onJump={jumpToQuestion}
+                    flaggedCount={flaggedQuestions.size}
+                    onCloseMobile={() => setShowQuestionNav(false)}
+                />
             )}
 
-            <div className="fixed top-20 right-4 z-50 max-w-sm space-y-2">
-                {toasts.map((toast) => (
-                    <div
-                        key={toast.id}
-                        className={cn(
-                            'animate-in rounded-lg border-2 p-4 shadow-lg slide-in-from-right',
-                            toast.type === 'error'
-                                ? 'border-red-200 bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-200'
-                                : toast.type === 'warning'
-                                  ? 'border-orange-200 bg-orange-50 text-orange-900 dark:bg-orange-950 dark:text-orange-200'
-                                  : 'border-green-200 bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-200',
-                        )}
-                    >
-                        <div className="flex items-start gap-3">
-                            <span className="flex-1 text-sm font-medium">
-                                {toast.message}
-                            </span>
-                            <button
-                                onClick={() => removeToast(toast.id)}
-                                className="text-current opacity-70 hover:opacity-100"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
+            <ToastStack toasts={toasts} onRemove={removeToast} />
 
-            <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <DialogContent className="rounded-2xl">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {unansweredCount > 0
-                                ? 'Beberapa pertanyaan belum terjawab'
-                                : 'Kirim Ujian?'}
-                        </DialogTitle>
-
-                        <DialogDescription>
-                            {unansweredCount > 0
-                                ? `Kamu masih punya ${unansweredCount} soal yang belum terjawab. Yakin ingin mengirim?`
-                                : 'Kamu sudah menjawab semua pertanyaan. Siap untuk mengirim?'}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <DialogFooter className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => setConfirmOpen(false)}
-                            className="flex-1"
-                        >
-                            Batal
-                        </Button>
-
-                        <Button
-                            className="flex-1 bg-green-600 text-white hover:bg-green-700"
-                            onClick={confirmSubmit}
-                        >
-                            Ya, Kirim Ujian
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <SubmitConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                unansweredCount={unansweredCount}
+                onConfirm={confirmSubmit}
+            />
         </div>
     );
 }
