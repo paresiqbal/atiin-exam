@@ -124,9 +124,6 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')
 
 // Route Student
 Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')->group(function () {
-    // Route::get('/dashboard', function () {
-    //     return inertia('student/StudentDashboard');
-    // })->name('dashboard');
     Route::get('/dashboard', [StudentDashboardController::class, '__invoke'])->name('dashboard');
 
     Route::get('/universities', [StudentUniversityController::class, 'index'])->name('universities.index');
