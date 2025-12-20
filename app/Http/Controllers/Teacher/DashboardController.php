@@ -3,169 +3,244 @@
 namespace App\Http\Controllers\Teacher;
 
 use App\Http\Controllers\Controller;
-use App\Models\Exam;
-use App\Models\ExamAttempt;
-use App\Models\Question;
-use App\Models\QuestionBank;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $teacher = $request->user();
-        $totalExams = Exam::where('teacher_id', $teacher->id)->count();
-        $publishedExams = Exam::where('teacher_id', $teacher->id)->where('is_published', true)->count();
-        $draftExams = Exam::where('teacher_id', $teacher->id)->where('is_published', false)->count();
+        $teacherId = $request->user()->id;
 
-        // Attempt Statistics (attempts for teacher’s exams)
-        $totalAttempts = ExamAttempt::whereHas('exam', function ($q) use ($teacher) {
-            $q->where('teacher_id', $teacher->id);
-        })->count();
+        // Detect owner columns safely (so no "unknown column" 500)
+        $examOwnerColumn = $this->detectOwnerColumn('exams', ['teacher_id', 'user_id', 'created_by']);
+        $bankOwnerColumn = $this->detectOwnerColumn('question_banks', ['teacher_id', 'user_id', 'created_by']);
+        $questionOwnerColumn = $this->detectOwnerColumn('questions', ['teacher_id', 'user_id', 'created_by']);
 
-        $completedAttempts = ExamAttempt::where('status', 'submitted')
-            ->whereHas('exam', function ($q) use ($teacher) {
-                $q->where('teacher_id', $teacher->id);
-            })
-            ->count();
+        // ---- Exams stats (teacher scoped)
+        $examsQuery = DB::table('exams');
+        if ($examOwnerColumn) {
+            $examsQuery->where("exams.$examOwnerColumn", $teacherId);
+        } else {
+            // If we can't detect an owner column, we can't scope correctly.
+            // Keep it empty rather than crashing.
+            $examsQuery->whereRaw('1=0');
+        }
 
-        $inProgressAttempts = ExamAttempt::where('status', 'in_progress')
-            ->whereHas('exam', function ($q) use ($teacher) {
-                $q->where('teacher_id', $teacher->id);
-            })
-            ->count();
+        $totalExams = (clone $examsQuery)->count();
+        $publishedExams = (clone $examsQuery)->where('is_published', true)->count();
+        $draftExams = (clone $examsQuery)->where('is_published', false)->count();
 
-        // Calculate pass/fail (teacher’s submitted attempts)
-        $submittedAttempts = ExamAttempt::with(['student.major', 'exam'])
-            ->where('status', 'submitted')
-            ->whereHas('exam', function ($q) use ($teacher) {
-                $q->where('teacher_id', $teacher->id);
-            })
+        // ---- Attempts stats (attempts for teacher's exams)
+        $attemptsBase = DB::table('exam_attempts')
+            ->join('exams', 'exams.id', '=', 'exam_attempts.exam_id');
+
+        if ($examOwnerColumn) {
+            $attemptsBase->where("exams.$examOwnerColumn", $teacherId);
+        } else {
+            $attemptsBase->whereRaw('1=0');
+        }
+
+        $totalAttempts = (clone $attemptsBase)->count();
+        $completedAttempts = (clone $attemptsBase)->where('exam_attempts.status', 'submitted')->count();
+        $inProgressAttempts = (clone $attemptsBase)->where('exam_attempts.status', 'in_progress')->count();
+
+        // Pass/fail calculation (safe even if major/min grade is missing)
+        $submitted = (clone $attemptsBase)
+            ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id')
+            ->leftJoin('majors', 'majors.id', '=', 'students.major_id')
+            ->where('exam_attempts.status', 'submitted')
+            ->select([
+                'exam_attempts.score',
+                DB::raw('COALESCE(majors.minimum_passing_grade, 0) as min_pass'),
+            ])
             ->get();
 
         $passedAttempts = 0;
-        foreach ($submittedAttempts as $attempt) {
-            $passingScore = $attempt->student->major->minimum_passing_grade ?? 0;
-            if ($attempt->score >= $passingScore) {
+        foreach ($submitted as $row) {
+            if ((float)$row->score >= (float)$row->min_pass) {
                 $passedAttempts++;
             }
         }
         $failedAttempts = $completedAttempts - $passedAttempts;
 
-        // Question Statistics (teacher only)
-        $totalQuestionBanks = QuestionBank::where('teacher_id', $teacher->id)->count();
-
-        // If questions are linked to teacher directly:
-        $totalQuestions = Question::where('teacher_id', $teacher->id)->count();
-
-        // If your questions don’t have teacher_id and only belong to question banks, use this instead:
-        // $bankIds = QuestionBank::where('teacher_id', $teacher->id)->pluck('id');
-        // $totalQuestions = Question::whereIn('question_bank_id', $bankIds)->count();
-
-        // Average Score (teacher’s submitted attempts)
+        // Average score (submitted only)
         $averageScore = $completedAttempts > 0
-            ? round(
-                ExamAttempt::where('status', 'submitted')
-                    ->whereHas('exam', function ($q) use ($teacher) {
-                        $q->where('teacher_id', $teacher->id);
-                    })
-                    ->avg('score'),
-                2
-            )
+            ? round((float) (clone $attemptsBase)->where('exam_attempts.status', 'submitted')->avg('exam_attempts.score'), 2)
             : 0;
 
-        // Recent Attempts (last 5 submitted for teacher’s exams)
-        $recentAttempts = ExamAttempt::with(['student.major', 'exam'])
-            ->where('status', 'submitted')
-            ->whereHas('exam', function ($q) use ($teacher) {
-                $q->where('teacher_id', $teacher->id);
-            })
-            ->orderByDesc('completed_at')
-            ->take(5)
+        // ---- Question stats (teacher scoped)
+        $totalQuestionBanks = 0;
+        if ($bankOwnerColumn && Schema::hasTable('question_banks')) {
+            $totalQuestionBanks = DB::table('question_banks')
+                ->where($bankOwnerColumn, $teacherId)
+                ->count();
+        }
+
+        $totalQuestions = 0;
+        if ($questionOwnerColumn && Schema::hasTable('questions')) {
+            // If questions table has owner column, use it
+            $totalQuestions = DB::table('questions')
+                ->where($questionOwnerColumn, $teacherId)
+                ->count();
+        } elseif (Schema::hasTable('questions') && Schema::hasTable('question_banks') && $bankOwnerColumn && Schema::hasColumn('questions', 'question_bank_id')) {
+            // Fallback: scope questions via teacher's banks
+            $totalQuestions = DB::table('questions')
+                ->join('question_banks', 'question_banks.id', '=', 'questions.question_bank_id')
+                ->where("question_banks.$bankOwnerColumn", $teacherId)
+                ->count();
+        }
+
+        // ---- Recent attempts (last 5 submitted)
+        $recentAttempts = (clone $attemptsBase)
+            ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id')
+            ->where('exam_attempts.status', 'submitted')
+            ->orderByDesc('exam_attempts.completed_at')
+            ->limit(5)
+            ->select([
+                'exam_attempts.id',
+                DB::raw('COALESCE(students.name, "-") as student_name'),
+                DB::raw('COALESCE(exams.name, "-") as exam_name'),
+                'exam_attempts.score',
+                'exam_attempts.total_score',
+                'exam_attempts.completed_at',
+                'students.major_id',
+            ])
             ->get()
-            ->map(function ($attempt) {
-                $passingScore = $attempt->student->major->minimum_passing_grade ?? 0;
+            ->map(function ($row) {
+                $percentage = ((float)$row->total_score > 0)
+                    ? round(((float)$row->score / (float)$row->total_score) * 100, 2)
+                    : 0;
 
                 return [
-                    'id' => $attempt->id,
-                    'student_name' => $attempt->student->name,
-                    'exam_name' => $attempt->exam->name,
-                    'score' => $attempt->score,
-                    'total_score' => $attempt->total_score,
-                    'percentage' => $attempt->total_score > 0
-                        ? round(($attempt->score / $attempt->total_score) * 100, 2)
-                        : 0,
-                    'passed' => $attempt->score >= $passingScore,
-                    'completed_at' => optional($attempt->completed_at)->format('M d, Y H:i'),
+                    'id' => (int) $row->id,
+                    'student_name' => $row->student_name,
+                    'exam_name' => $row->exam_name,
+                    'score' => (float) $row->score,
+                    'total_score' => (float) $row->total_score,
+                    'percentage' => $percentage,
+                    // we'll fill passed below safely (requires major min grade)
+                    'passed' => false,
+                    'completed_at' => $row->completed_at ? date('M d, Y H:i', strtotime($row->completed_at)) : null,
+                    '_major_id' => $row->major_id, // internal temp
                 ];
             });
 
-        // Exam Performance (top 5 teacher exams by latest created_at, same as admin)
-        $examPerformance = Exam::with(['attempts.student.major'])
-            ->where('teacher_id', $teacher->id)
+        // Fill passed for recent attempts (safe lookup)
+        $majorMin = [];
+        if (Schema::hasTable('majors')) {
+            $majorIds = $recentAttempts->pluck('_major_id')->filter()->unique()->values();
+            if ($majorIds->count()) {
+                $majorMin = DB::table('majors')
+                    ->whereIn('id', $majorIds)
+                    ->pluck('minimum_passing_grade', 'id')
+                    ->toArray();
+            }
+        }
+
+        $recentAttempts = $recentAttempts->map(function ($a) use ($majorMin) {
+            $min = $a['_major_id'] ? ($majorMin[$a['_major_id']] ?? 0) : 0;
+            $a['passed'] = ((float)$a['score'] >= (float)$min);
+            unset($a['_major_id']);
+            return $a;
+        })->values();
+
+        // ---- Exam performance (top 5 latest exams)
+        $examsTop = (clone $examsQuery)
             ->orderByDesc('created_at')
-            ->take(5)
-            ->get()
-            ->map(function ($exam) {
-                $attempts = $exam->attempts;
+            ->limit(5)
+            ->select(['exams.id', 'exams.name'])
+            ->get();
 
-                $passed = 0;
-                foreach ($attempts->where('status', 'submitted') as $attempt) {
-                    $passingScore = $attempt->student->major->minimum_passing_grade ?? 0;
-                    if ($attempt->score >= $passingScore) {
-                        $passed++;
-                    }
+        $examPerformance = $examsTop->map(function ($exam) use ($attemptsBase) {
+            $attempts = (clone $attemptsBase)
+                ->where('exams.id', $exam->id)
+                ->select(['exam_attempts.status', 'exam_attempts.score', 'exam_attempts.student_id'])
+                ->get();
+
+            // pass/fail only based on submitted attempts
+            $submitted = $attempts->where('status', 'submitted');
+            $submittedCount = $submitted->count();
+
+            $studentIds = $submitted->pluck('student_id')->unique()->values();
+            $minPassByStudent = [];
+
+            if ($studentIds->count()) {
+                $rows = DB::table('users as students')
+                    ->leftJoin('majors', 'majors.id', '=', 'students.major_id')
+                    ->whereIn('students.id', $studentIds)
+                    ->select(['students.id', DB::raw('COALESCE(majors.minimum_passing_grade, 0) as min_pass')])
+                    ->get();
+
+                foreach ($rows as $r) {
+                    $minPassByStudent[$r->id] = (float)$r->min_pass;
+                }
+            }
+
+            $passed = 0;
+            foreach ($submitted as $a) {
+                $min = $minPassByStudent[$a->student_id] ?? 0;
+                if ((float)$a->score >= (float)$min) $passed++;
+            }
+
+            $failed = $submittedCount - $passed;
+            $passRate = $submittedCount > 0 ? round(($passed / $submittedCount) * 100, 2) : 0;
+
+            return [
+                'name' => $exam->name,
+                'total_attempts' => $attempts->count(),
+                'passed' => $passed,
+                'failed' => $failed,
+                'pass_rate' => $passRate,
+            ];
+        })->values();
+
+        // ---- Student activity (top 5 by attempts count across teacher exams)
+        $studentActivity = (clone $attemptsBase)
+            ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id')
+            ->select([
+                'students.id as student_id',
+                'students.name',
+                'students.email',
+                'students.major_id',
+                DB::raw('COUNT(*) as total_exams'),
+            ])
+            ->groupBy('students.id', 'students.name', 'students.email', 'students.major_id')
+            ->orderByDesc('total_exams')
+            ->limit(5)
+            ->get()
+            ->map(function ($s) use ($attemptsBase) {
+                // compute passed/failed for this student within teacher exams
+                $submitted = (clone $attemptsBase)
+                    ->where('exam_attempts.student_id', $s->student_id)
+                    ->where('exam_attempts.status', 'submitted')
+                    ->select(['exam_attempts.score'])
+                    ->get();
+
+                $minPass = 0;
+                if ($s->major_id) {
+                    $minPass = (float) (DB::table('majors')->where('id', $s->major_id)->value('minimum_passing_grade') ?? 0);
                 }
 
-                $totalSubmitted = $attempts->where('status', 'submitted')->count();
-                $failed = $totalSubmitted - $passed;
-
-                return [
-                    'name' => $exam->name,
-                    'total_attempts' => $attempts->count(),
-                    'passed' => $passed,
-                    'failed' => $failed,
-                    'pass_rate' => $totalSubmitted > 0
-                        ? round(($passed / $totalSubmitted) * 100, 2)
-                        : 0,
-                ];
-            });
-
-        // Student Activity (top 5 students by attempts on teacher’s exams)
-        $studentActivity = ExamAttempt::with(['student.major'])
-            ->whereHas('exam', function ($q) use ($teacher) {
-                $q->where('teacher_id', $teacher->id);
-            })
-            ->get()
-            ->groupBy('student_id')
-            ->map(function ($attempts) {
-                $student = $attempts->first()->student;
-
                 $passed = 0;
-                foreach ($attempts->where('status', 'submitted') as $attempt) {
-                    $passingScore = $student->major->minimum_passing_grade ?? 0;
-                    if ($attempt->score >= $passingScore) {
-                        $passed++;
-                    }
+                foreach ($submitted as $a) {
+                    if ((float)$a->score >= $minPass) $passed++;
                 }
 
-                $total = $attempts->count();
-                $failed = $attempts->where('status', 'submitted')->count() - $passed;
+                $failed = $submitted->count() - $passed;
 
                 return [
-                    'name' => $student->name,
-                    'email' => $student->email,
-                    'total_exams' => $total,
+                    'name' => $s->name ?? '-',
+                    'email' => $s->email ?? '-',
+                    'total_exams' => (int) $s->total_exams,
                     'passed' => $passed,
                     'failed' => $failed,
                 ];
             })
-            ->sortByDesc('total_exams')
-            ->take(5)
             ->values();
 
-        // Return same prop structure (so FE can mirror admin)
         return Inertia::render('teacher/TeacherDashboard', [
             'statistics' => [
                 'exams' => [
@@ -190,5 +265,16 @@ class DashboardController extends Controller
             'exam_performance' => $examPerformance,
             'student_activity' => $studentActivity,
         ]);
+    }
+
+    private function detectOwnerColumn(string $table, array $candidates): ?string
+    {
+        if (!Schema::hasTable($table)) return null;
+
+        foreach ($candidates as $col) {
+            if (Schema::hasColumn($table, $col)) return $col;
+        }
+
+        return null;
     }
 }

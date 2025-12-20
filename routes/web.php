@@ -21,6 +21,7 @@ use App\Http\Controllers\Student\DashboardController as StudentDashboardControll
 use App\Http\Controllers\Student\ExamController;
 use App\Http\Controllers\Student\ExamHistoryController;
 use App\Http\Controllers\Student\UniversityController as StudentUniversityController;
+use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardController;
 use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\QuestionController;
 use App\Http\Controllers\Teacher\QuestionImportController;
@@ -101,26 +102,26 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 
 
 // Route Teacher
-Route::middleware(['auth', 'role:teacher'])->prefix('teacher')->name('teacher.')->group(function () {
-    Route::get('/dashboard', function () {
-        return inertia('teacher/TeacherDashboard');
-    })->name('dashboard');
+Route::middleware(['auth', 'role:teacher'])
+    ->prefix('teacher')
+    ->name('teacher.')
+    ->group(function () {
+        Route::get('/dashboard', [TeacherDashboardController::class, 'index'])
+            ->name('dashboard');
 
-    Route::resource('question-banks', QuestionBankController::class);
-    Route::post('question-banks/{questionBank}/questions', [QuestionController::class, 'store'])->name('questions.store');
-    Route::put('questions/{question}', [QuestionController::class, 'update'])->name('questions.update');
-    Route::delete('questions/{question}', [QuestionController::class, 'destroy'])->name('questions.destroy');
-    Route::post('questions/images', [QuestionController::class, 'uploadImage'])->name('questions.images.upload');
+        Route::resource('question-banks', QuestionBankController::class);
+        Route::post('question-banks/{questionBank}/questions', [QuestionController::class, 'store'])->name('questions.store');
+        Route::put('questions/{question}', [QuestionController::class, 'update'])->name('questions.update');
+        Route::delete('questions/{question}', [QuestionController::class, 'destroy'])->name('questions.destroy');
+        Route::post('questions/images', [QuestionController::class, 'uploadImage'])->name('questions.images.upload');
 
-    Route::get('question-banks/{questionBank}/questions/create', [QuestionController::class, 'create'])->name('questions.create');
-    Route::get('questions/{question}/edit', [QuestionController::class, 'edit'])->name('questions.edit');
+        Route::get('question-banks/{questionBank}/questions/create', [QuestionController::class, 'create'])->name('questions.create');
+        Route::get('questions/{question}/edit', [QuestionController::class, 'edit'])->name('questions.edit');
 
-    // Import routes
-    Route::post('question-banks/{questionBank}/questions/import/preview', [QuestionImportController::class, 'preview'])->name('questions.import.preview');
-    Route::post('question-banks/{questionBank}/questions/import', [QuestionImportController::class, 'import'])->name('questions.import');
-    Route::get('question-banks/{questionBank}/questions/import/template', [QuestionImportController::class, 'downloadTemplate'])->name('questions.import.template');
-});
-
+        Route::post('question-banks/{questionBank}/questions/import/preview', [QuestionImportController::class, 'preview'])->name('questions.import.preview');
+        Route::post('question-banks/{questionBank}/questions/import', [QuestionImportController::class, 'import'])->name('questions.import');
+        Route::get('question-banks/{questionBank}/questions/import/template', [QuestionImportController::class, 'downloadTemplate'])->name('questions.import.template');
+    });
 
 // Route Student
 Route::middleware(['auth', 'role:student'])->prefix('student')->name('student.')->group(function () {
