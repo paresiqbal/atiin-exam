@@ -40,9 +40,11 @@ export default function Welcome() {
                     <nav className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/15">
-                                <span className="text-sm font-semibold text-primary">
-                                    AT
-                                </span>
+                                <img
+                                    src="/assets/attinlogo.png"
+                                    alt="ATTIN Logo"
+                                    className="h-5 w-5 object-contain"
+                                />
                             </div>
                             <div>
                                 <div className="text-sm font-semibold">
