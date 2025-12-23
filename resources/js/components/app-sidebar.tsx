@@ -113,6 +113,11 @@ export function AppSidebar() {
                 ],
             },
             {
+                title: 'Konsultan',
+                href: '/admin/consultant-requests',
+                icon: UsersRound,
+            },
+            {
                 title: 'Pembayaran',
                 href: '/admin/payments',
                 icon: Wallet,
@@ -173,6 +178,11 @@ export function AppSidebar() {
                 title: 'Universitas',
                 href: '/student/universities',
                 icon: Book,
+            },
+            {
+                title: 'Konsultan',
+                href: '/student/consultant-requests',
+                icon: UsersRound,
             },
             {
                 title: 'Pembayaran',

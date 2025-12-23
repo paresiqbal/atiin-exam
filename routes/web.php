@@ -1,5 +1,10 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Laravel\Fortify\Features;
+
+// controllers
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController as AdminExamController;
 use App\Http\Controllers\Admin\MajorController;
@@ -7,15 +12,11 @@ use App\Http\Controllers\Admin\QuestionBankController as AdminQuestionBankContro
 use App\Http\Controllers\Admin\QuestionController as AdminQuestionController;
 use App\Http\Controllers\Admin\QuestionImportController as AdminQuestionImportController;
 use App\Http\Controllers\Admin\SchoolController;
+use App\Http\Controllers\Admin\ConsultantRequestController as AdminConsultantRequestController;
 use App\Http\Controllers\Admin\StudentAccountController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UniversityController;
 use App\Http\Controllers\Admin\UniversityImportController;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
-use Laravel\Fortify\Features;
-
-// controllers
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardControll
 use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\QuestionController;
 use App\Http\Controllers\Teacher\QuestionImportController;
+use App\Http\Controllers\Student\ConsultantRequestController as StudentConsultantRequestController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -110,9 +112,12 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('question-banks/{questionBank}/questions/import', [AdminQuestionImportController::class, 'import'])->name('questions.import');
         Route::get('questions/import/template', [AdminQuestionImportController::class, 'downloadTemplate'])->name('questions.import.template');
         Route::post('questions/upload-image', [AdminQuestionController::class, 'uploadImage'])->name('questions.uploadImage');
+
+        // Consultant Request management routes
+        Route::get('/consultant-requests', [AdminConsultantRequestController::class, 'index'])->name('consultant-requests.index');
+        Route::get('/consultant-requests/{consultantRequest}', [AdminConsultantRequestController::class, 'show'])->name('consultant-requests.show');
+        Route::get('/consultant-requests/{consultantRequest}/print', [AdminConsultantRequestController::class, 'print'])->name('consultant-requests.print');
     });
-
-
 
 // Route Teacher
 Route::middleware(['auth', 'role:teacher'])
@@ -144,6 +149,7 @@ Route::middleware(['auth', 'role:student',])->prefix('student')->name('student.'
 
     Route::get('/universities', [StudentUniversityController::class, 'index'])->name('universities.index');
 
+    // exams
     Route::get('/exams', [ExamController::class, 'index'])->name('exams.index');
     Route::get('/exams/join', [ExamController::class, 'joinForm'])->name('exams.join');
     Route::post('/exams/start', [ExamController::class, 'startExam'])->name('exams.start');
@@ -155,6 +161,11 @@ Route::middleware(['auth', 'role:student',])->prefix('student')->name('student.'
     Route::get('/exams/history', [ExamHistoryController::class, 'index'])->name('exams.history');
     Route::post('/exams/{attempt}/log-violation', [ExamController::class, 'logViolation'])
         ->name('exams.logViolation');
+
+    // consultant requests
+    Route::get('/consultant-requests', [StudentConsultantRequestController::class, 'index'])->name('consultant-requests.index');
+    Route::get('/consultant-requests/create', [StudentConsultantRequestController::class, 'create'])->name('consultant-requests.create');
+    Route::post('/consultant-requests', [StudentConsultantRequestController::class, 'store'])->name('consultant-requests.store');
 });
 
 
