@@ -174,6 +174,11 @@ export function AppSidebar() {
                 href: '/student/universities',
                 icon: Book,
             },
+            {
+                title: 'Pembayaran',
+                href: '/student/account',
+                icon: Book,
+            },
         ];
     }
 

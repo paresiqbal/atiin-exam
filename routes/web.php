@@ -140,8 +140,7 @@ Route::middleware(['auth', 'role:teacher'])
 Route::middleware(['auth', 'role:student',])->prefix('student')->name('student.')->group(function () {
     Route::get('/dashboard', [StudentDashboardController::class, '__invoke'])->name('dashboard');
 
-    Route::get('account', [StudentStudentAccountController::class, 'index'])
-        ->name('account');
+    Route::get('account', [StudentStudentAccountController::class, 'index'])->name('account');
 
     Route::get('/universities', [StudentUniversityController::class, 'index'])->name('universities.index');
 
