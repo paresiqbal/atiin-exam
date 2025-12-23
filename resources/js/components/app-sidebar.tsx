@@ -21,6 +21,7 @@ import {
     PersonStanding,
     University,
     UsersRound,
+    Wallet,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -110,6 +111,11 @@ export function AppSidebar() {
                         href: '/admin/students/cards',
                     },
                 ],
+            },
+            {
+                title: 'Pembayaran',
+                href: '/admin/payments',
+                icon: Wallet,
             },
             {
                 title: 'Pengguna',

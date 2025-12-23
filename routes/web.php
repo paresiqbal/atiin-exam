@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\QuestionBankController as AdminQuestionBankContro
 use App\Http\Controllers\Admin\QuestionController as AdminQuestionController;
 use App\Http\Controllers\Admin\QuestionImportController as AdminQuestionImportController;
 use App\Http\Controllers\Admin\SchoolController;
+use App\Http\Controllers\Admin\StudentAccountController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UniversityController;
 use App\Http\Controllers\Admin\UniversityImportController;
@@ -44,19 +45,28 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::delete('users/bulk-delete', [UserController::class, 'bulkDelete'])->name('users.bulk-delete');
         Route::resource('users', UserController::class);
 
+        // User import routes
         Route::post('users/import/preview', [UserImportController::class, 'preview'])->name('users.import.preview');
         Route::post('users/import', [UserImportController::class, 'import'])->name('users.import');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
         Route::get('users/import/template', [UserImportController::class, 'downloadTemplate'])->name('users.import.template');
 
+        // School management routes
         Route::delete('schools/bulk-delete', [SchoolController::class, 'bulkDelete'])->name('schools.bulk-delete');
         Route::get('users/import/schools', [UserImportController::class, 'downloadSchoolList'])->name('users.import.schools');
         Route::resource('schools', SchoolController::class);
 
+        // Student card routes
         Route::get('students/cards', [StudentController::class, 'cards'])->name('students.cards');
         Route::get('students/cards/download', [StudentController::class, 'downloadCards'])->name('students.cards.download');
         Route::delete('students/bulk-delete', [StudentController::class, 'bulkDelete'])->name('students.bulk-delete');
         Route::resource('students', StudentController::class);
+
+        // student account management routes
+        Route::get('payments', [StudentAccountController::class, 'accounts'])->name('payments.index');
+        Route::post('students/{user}/account-type', [StudentAccountController::class, 'updateAccountType'])->name('students.update-account-type');
+        Route::post('students/{user}/toggle-pro', [StudentAccountController::class, 'togglePro'])->name('students.toggle-pro');
+        Route::post('students/{user}/extend-pro', [StudentAccountController::class, 'extendPro'])->name('students.extend-pro');
 
         // Exam management routes
         Route::delete('exams/bulk-delete', [AdminExamController::class, 'bulkDelete'])
@@ -70,9 +80,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('/attempts/{attempt}/download-pdf', [AdminExamController::class, 'downloadAttemptPdf'])->name('attempts.download-pdf');
         Route::post('/exams/attempts/{attempt}/unfreeze', [AdminExamController::class, 'unfreezeAttempt'])->name('admin.exams.attempts.unfreeze');
 
+        // Major management routes
         Route::resource('majors', MajorController::class, ['only' => ['store', 'edit', 'update', 'destroy']]);
         Route::post('majors', [MajorController::class, 'store'])->name('majors.store');
 
+        // University management routes
         Route::delete('universities/bulk-delete', [UniversityController::class, 'bulkDelete'])->name('universities.bulk-delete');
         Route::resource('universities', UniversityController::class);
         Route::get('universities/options', [UniversityController::class, 'options'])->name('universities.options');
@@ -80,7 +92,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('universities/import', [UniversityImportController::class, 'import'])->name('universities.import');
         Route::get('universities/import/template', [UniversityImportController::class, 'downloadTemplate'])->name('universities.import.template');
 
-
+        // Question Bank management routes
         Route::delete('question-banks/bulk-delete', [AdminQuestionBankController::class, 'bulkDelete'])
             ->name('question-banks.bulk-delete');
         Route::resource('question-banks', AdminQuestionBankController::class);
