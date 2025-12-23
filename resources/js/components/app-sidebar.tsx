@@ -19,6 +19,7 @@ import {
     FileUser,
     Folder,
     LayoutGrid,
+    Newspaper,
     PersonStanding,
     University,
     UsersRound,
@@ -122,6 +123,18 @@ export function AppSidebar() {
                 title: 'Pembayaran',
                 href: '/admin/payments',
                 icon: Wallet,
+            },
+            {
+                title: 'Berita',
+                href: '#',
+                icon: Newspaper,
+                items: [
+                    { title: 'Semua Berita', href: '/admin/news' },
+                    {
+                        title: 'Buat Berita',
+                        href: '/admin/news/create',
+                    },
+                ],
             },
             {
                 title: 'Pengguna',

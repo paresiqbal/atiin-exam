@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\QuestionController as AdminQuestionController;
 use App\Http\Controllers\Admin\QuestionImportController as AdminQuestionImportController;
 use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\ConsultantRequestController as AdminConsultantRequestController;
+use App\Http\Controllers\Admin\NewsController;
 use App\Http\Controllers\Admin\StudentAccountController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UniversityController;
@@ -117,6 +118,9 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('/consultant-requests', [AdminConsultantRequestController::class, 'index'])->name('consultant-requests.index');
         Route::get('/consultant-requests/{consultantRequest}', [AdminConsultantRequestController::class, 'show'])->name('consultant-requests.show');
         Route::get('/consultant-requests/{consultantRequest}/print', [AdminConsultantRequestController::class, 'print'])->name('consultant-requests.print');
+
+        // news
+        Route::resource('news', NewsController::class);
     });
 
 // Route Teacher

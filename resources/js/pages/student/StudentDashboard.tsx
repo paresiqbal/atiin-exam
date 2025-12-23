@@ -194,7 +194,7 @@ export default function StudentDashboard() {
                         />
                         <MenuItem
                             icon={BookOpen}
-                            label="Perpustakaan"
+                            label="Berita"
                             href="#"
                             bgClass="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200"
                         />
