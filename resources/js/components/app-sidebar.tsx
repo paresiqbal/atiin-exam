@@ -16,6 +16,7 @@ import {
     Backpack,
     Book,
     BookOpen,
+    FileUser,
     Folder,
     LayoutGrid,
     PersonStanding,
@@ -115,7 +116,7 @@ export function AppSidebar() {
             {
                 title: 'Konsultan',
                 href: '/admin/consultant-requests',
-                icon: UsersRound,
+                icon: FileUser,
             },
             {
                 title: 'Pembayaran',
@@ -182,7 +183,7 @@ export function AppSidebar() {
             {
                 title: 'Konsultan',
                 href: '/student/consultant-requests',
-                icon: UsersRound,
+                icon: FileUser,
             },
             {
                 title: 'Pembayaran',
