@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // user middleware
         $middleware->alias([
             'role' => App\Http\Middleware\RoleMiddleware::class,
+            'pro'  => \App\Http\Middleware\EnsurePro::class,
         ]);
     })
 

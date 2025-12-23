@@ -77,12 +77,13 @@ class User extends Authenticatable
 
     public function checkProExpiration(): void
     {
-        if (
-            $this->account_type === 'pro'
-            && $this->pro_expires_at
-            && $this->pro_expires_at->isPast()
-        ) {
-            $this->update(['account_type' => 'regular']);
+        if ($this->account_type !== 'pro') return;
+
+        if ($this->pro_expires_at && $this->pro_expires_at->isPast()) {
+            $this->forceFill([
+                'account_type' => 'regular',
+                'pro_expires_at' => null,
+            ])->save();
         }
     }
 
