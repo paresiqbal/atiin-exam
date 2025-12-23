@@ -15,6 +15,8 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('role')->default('student');
             $table->string('password');
+            $table->enum('account_type', ['regular', 'pro'])->default('regular');
+            $table->timestamp('pro_expires_at')->nullable();
             $table->unsignedBigInteger('university_id')->nullable();
             $table->unsignedBigInteger('major_id')->nullable();
             $table->foreignId('school_id')->nullable()->onDelete('set null');

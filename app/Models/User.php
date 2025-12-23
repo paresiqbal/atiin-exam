@@ -17,6 +17,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'account_type',
+        'pro_expires_at',
         'university_id',
         'major_id',
         'school_id',
@@ -37,6 +39,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'pro_expires_at' => 'datetime',
             'university_selections' => 'array',
         ];
     }
@@ -64,6 +67,23 @@ class User extends Authenticatable
     public function isStudent(): bool
     {
         return $this->role === 'student';
+    }
+
+    public function isPro(): bool
+    {
+        return $this->account_type === 'pro'
+            && ($this->pro_expires_at === null || $this->pro_expires_at->isFuture());
+    }
+
+    public function checkProExpiration(): void
+    {
+        if (
+            $this->account_type === 'pro'
+            && $this->pro_expires_at
+            && $this->pro_expires_at->isPast()
+        ) {
+            $this->update(['account_type' => 'regular']);
+        }
     }
 
     public function questionBanks()
