@@ -203,6 +203,11 @@ export function AppSidebar() {
                 href: '/student/account',
                 icon: Book,
             },
+            {
+                title: 'Berita',
+                href: '/student/news',
+                icon: Newspaper,
+            },
         ];
     }
 

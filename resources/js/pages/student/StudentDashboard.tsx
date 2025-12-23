@@ -195,7 +195,7 @@ export default function StudentDashboard() {
                         <MenuItem
                             icon={BookOpen}
                             label="Berita"
-                            href="#"
+                            href="/student/news"
                             bgClass="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200"
                         />
                     </div>

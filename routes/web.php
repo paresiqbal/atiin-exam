@@ -30,6 +30,7 @@ use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\QuestionController;
 use App\Http\Controllers\Teacher\QuestionImportController;
 use App\Http\Controllers\Student\ConsultantRequestController as StudentConsultantRequestController;
+use App\Http\Controllers\Student\StudentNewsController;
 
 Route::get('/', function () {
     return Inertia::render('welcome', [
@@ -170,6 +171,10 @@ Route::middleware(['auth', 'role:student',])->prefix('student')->name('student.'
     Route::get('/consultant-requests', [StudentConsultantRequestController::class, 'index'])->name('consultant-requests.index');
     Route::get('/consultant-requests/create', [StudentConsultantRequestController::class, 'create'])->name('consultant-requests.create');
     Route::post('/consultant-requests', [StudentConsultantRequestController::class, 'store'])->name('consultant-requests.store');
+
+    // news
+    Route::get('/news', [StudentNewsController::class, 'index'])->name('news.index');
+    Route::get('/news/{news}', [StudentNewsController::class, 'show'])->name('news.show');
 });
 
 
