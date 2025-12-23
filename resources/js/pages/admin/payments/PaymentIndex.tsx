@@ -304,15 +304,6 @@ export default function PaymentIndex() {
                                                 <div className="font-medium">
                                                     {s.name || '-'}
                                                 </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {s.university?.name
-                                                        ? `${s.university.name}${
-                                                              s.major?.name
-                                                                  ? ` • ${s.major.name}`
-                                                                  : ''
-                                                          }`
-                                                        : ''}
-                                                </div>
                                             </td>
 
                                             <td className="px-6 py-2">

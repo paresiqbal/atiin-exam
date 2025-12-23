@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\UserImportController;
 use App\Http\Controllers\Student\DashboardController as StudentDashboardController;
 use App\Http\Controllers\Student\ExamController;
 use App\Http\Controllers\Student\ExamHistoryController;
+use App\Http\Controllers\Student\StudentAccountController as StudentStudentAccountController;
 use App\Http\Controllers\Student\UniversityController as StudentUniversityController;
 use App\Http\Controllers\Teacher\DashboardController as TeacherDashboardController;
 use App\Http\Controllers\Teacher\QuestionBankController;
@@ -138,6 +139,9 @@ Route::middleware(['auth', 'role:teacher'])
 // Route Student
 Route::middleware(['auth', 'role:student',])->prefix('student')->name('student.')->group(function () {
     Route::get('/dashboard', [StudentDashboardController::class, '__invoke'])->name('dashboard');
+
+    Route::get('account', [StudentStudentAccountController::class, 'index'])
+        ->name('account');
 
     Route::get('/universities', [StudentUniversityController::class, 'index'])->name('universities.index');
 
