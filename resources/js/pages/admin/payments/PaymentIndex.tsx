@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Search } from 'lucide-react';
+import { ClockArrowUp, Gem, Hourglass, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import AppLayout from '@/layouts/app-layout';
@@ -38,6 +38,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
+
 interface School {
     id: number;
     name: string;
@@ -75,8 +82,8 @@ interface AccountsPageProps extends InertiaPageProps {
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Admin Dashboard', href: '/admin/dashboard' },
-    { title: 'Student Accounts', href: '/admin/students/accounts' },
+    { title: 'Dashboard Admin', href: '/admin/dashboard' },
+    { title: 'Akun Siswa', href: '/admin/students/accounts' },
 ];
 
 const baseUrl = '/admin/students/accounts';
@@ -103,7 +110,7 @@ export default function PaymentIndex() {
     const { students, filters } = usePage<AccountsPageProps>().props;
     const data = useMemo(() => students.data ?? [], [students.data]);
 
-    // server-driven filters (recommended)
+    // server-driven filters
     const [search, setSearch] = useState(filters?.search ?? '');
     const [accountType, setAccountType] = useState<string>(
         filters?.account_type ?? 'all',
@@ -112,22 +119,24 @@ export default function PaymentIndex() {
     const applyFilters = (
         next?: Partial<{ search: string; account_type: string }>,
     ) => {
+        const nextSearch = next?.search ?? search;
+        const nextAccountType = next?.account_type ?? accountType;
+
         router.get(
             baseUrl,
             {
-                search: next?.search ?? search,
-                account_type:
-                    (next?.account_type ?? accountType === 'all')
-                        ? ''
-                        : accountType,
+                search: nextSearch,
+                account_type: nextAccountType === 'all' ? '' : nextAccountType,
                 page: 1,
             },
             { preserveScroll: true, preserveState: true },
         );
     };
 
-    // quick stats
+    // stats
     const total = students.total ?? data.length;
+    const totalPage = data.length;
+
     const totalPro = useMemo(
         () => data.filter((s) => s.account_type === 'pro').length,
         [data],
@@ -164,14 +173,14 @@ export default function PaymentIndex() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Student Accounts" />
+            <Head title="Akun Siswa" />
 
             <div className="space-y-6 p-4">
                 <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
                     <div>
-                        <h1 className="text-3xl font-bold">Student Accounts</h1>
+                        <h1 className="text-3xl font-bold">Akun Siswa</h1>
                         <p className="text-muted-foreground">
-                            Kelola status Regular / Pro, expiry, dan
+                            Kelola status Regular / Pro, masa aktif, dan
                             perpanjangan.
                         </p>
                     </div>
@@ -216,7 +225,7 @@ export default function PaymentIndex() {
                             }}
                         >
                             <SelectTrigger className="w-[220px]">
-                                <SelectValue placeholder="Semua account" />
+                                <SelectValue placeholder="Semua akun" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Semua</SelectItem>
@@ -228,22 +237,39 @@ export default function PaymentIndex() {
                 </div>
 
                 {/* Stats */}
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-4">
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-sm font-medium">
-                                Total (page)
+                                Total Siswa
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="text-3xl font-bold">
-                            {data.length}
+                            {total}
                         </CardContent>
+                        <p className="px-6 pb-4 text-xs text-muted-foreground">
+                            Total semua siswa (paginate)
+                        </p>
                     </Card>
 
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-sm font-medium">
-                                Pro (page)
+                                Siswa (Halaman Ini)
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-3xl font-bold">
+                            {totalPage}
+                        </CardContent>
+                        <p className="px-6 pb-4 text-xs text-muted-foreground">
+                            Jumlah yang tampil saat ini
+                        </p>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-sm font-medium">
+                                Pro (Halaman Ini)
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="text-3xl font-bold">
@@ -254,7 +280,7 @@ export default function PaymentIndex() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-sm font-medium">
-                                Regular (page)
+                                Regular (Halaman Ini)
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="text-3xl font-bold">
@@ -265,160 +291,195 @@ export default function PaymentIndex() {
 
                 {/* Table */}
                 <div className="overflow-x-auto rounded-lg border shadow-sm">
-                    <table className="w-full text-sm">
-                        <thead className="border-b bg-accent">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    Nama
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    Email
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    Sekolah
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    Status
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    Pro Expiry
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    Aksi
-                                </th>
-                            </tr>
-                        </thead>
+                    <TooltipProvider delayDuration={150}>
+                        <table className="w-full text-sm">
+                            <thead className="border-b bg-accent">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                        Nama
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                        Email
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                        Sekolah
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                        Status
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                        Masa Aktif Pro
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                        Aksi
+                                    </th>
+                                </tr>
+                            </thead>
 
-                        <tbody className="divide-y">
-                            {data.length > 0 ? (
-                                data.map((s) => {
-                                    const expired = isExpired(s.pro_expires_at);
-                                    const isPro = s.account_type === 'pro';
+                            <tbody className="divide-y">
+                                {data.length > 0 ? (
+                                    data.map((s) => {
+                                        const expired = isExpired(
+                                            s.pro_expires_at,
+                                        );
+                                        const isPro = s.account_type === 'pro';
 
-                                    return (
-                                        <tr
-                                            key={s.id}
-                                            className="transition-colors hover:bg-accent"
-                                        >
-                                            <td className="px-6 py-2">
-                                                <div className="font-medium">
-                                                    {s.name || '-'}
-                                                </div>
-                                            </td>
+                                        return (
+                                            <tr
+                                                key={s.id}
+                                                className="transition-colors hover:bg-accent"
+                                            >
+                                                <td className="px-6 py-2">
+                                                    <div className="font-medium">
+                                                        {s.name || '-'}
+                                                    </div>
+                                                </td>
 
-                                            <td className="px-6 py-2">
-                                                <span className="font-mono text-sm">
-                                                    {s.email || '-'}
-                                                </span>
-                                            </td>
-
-                                            <td className="px-6 py-2">
-                                                {s.school ? (
-                                                    <Badge variant="outline">
-                                                        {s.school.name}
-                                                    </Badge>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        -
+                                                <td className="px-6 py-2">
+                                                    <span className="font-mono text-sm">
+                                                        {s.email || '-'}
                                                     </span>
-                                                )}
-                                            </td>
+                                                </td>
 
-                                            <td className="px-6 py-2">
-                                                {isPro ? (
-                                                    <Badge>PRO</Badge>
-                                                ) : (
-                                                    <Badge variant="secondary">
-                                                        REGULAR
-                                                    </Badge>
-                                                )}
-                                            </td>
-
-                                            <td className="px-6 py-2">
-                                                {isPro ? (
-                                                    s.pro_expires_at ? (
-                                                        <Badge
-                                                            variant={
-                                                                expired
-                                                                    ? 'destructive'
-                                                                    : 'outline'
-                                                            }
-                                                        >
-                                                            {formatDate(
-                                                                s.pro_expires_at,
-                                                            )}
-                                                            {expired
-                                                                ? ' (expired)'
-                                                                : ''}
+                                                <td className="px-6 py-2">
+                                                    {s.school ? (
+                                                        <Badge variant="outline">
+                                                            {s.school.name}
                                                         </Badge>
                                                     ) : (
-                                                        <Badge variant="outline">
-                                                            No expiry
+                                                        <span className="text-xs text-muted-foreground">
+                                                            -
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                <td className="px-6 py-2">
+                                                    {isPro ? (
+                                                        <Badge>Pro</Badge>
+                                                    ) : (
+                                                        <Badge variant="secondary">
+                                                            Regular
                                                         </Badge>
-                                                    )
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        -
-                                                    </span>
-                                                )}
-                                            </td>
+                                                    )}
+                                                </td>
 
-                                            <td className="px-6 py-2">
-                                                <div className="flex flex-wrap gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="secondary"
-                                                        onClick={() =>
-                                                            handleTogglePro(
-                                                                s.id,
-                                                            )
-                                                        }
-                                                    >
-                                                        Toggle Pro
-                                                    </Button>
+                                                <td className="px-6 py-2">
+                                                    {isPro ? (
+                                                        s.pro_expires_at ? (
+                                                            <Badge
+                                                                variant={
+                                                                    expired
+                                                                        ? 'destructive'
+                                                                        : 'outline'
+                                                                }
+                                                            >
+                                                                {formatDate(
+                                                                    s.pro_expires_at,
+                                                                )}
+                                                                {expired
+                                                                    ? ' (kedaluwarsa)'
+                                                                    : ''}
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="outline">
+                                                                -
+                                                            </Badge>
+                                                        )
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            -
+                                                        </span>
+                                                    )}
+                                                </td>
 
-                                                    <ExtendDialog
-                                                        disabled={!isPro}
-                                                        onExtend={(months) =>
-                                                            handleExtendPro(
-                                                                s.id,
+                                                <td className="px-6 py-2">
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {/* Toggle Pro */}
+                                                        <Tooltip>
+                                                            <TooltipTrigger
+                                                                asChild
+                                                            >
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant={
+                                                                        isPro
+                                                                            ? 'default'
+                                                                            : 'secondary'
+                                                                    }
+                                                                    onClick={() =>
+                                                                        handleTogglePro(
+                                                                            s.id,
+                                                                        )
+                                                                    }
+                                                                    aria-label={
+                                                                        isPro
+                                                                            ? 'Ubah ke Regular'
+                                                                            : 'Ubah ke Pro'
+                                                                    }
+                                                                >
+                                                                    <Gem
+                                                                        className={
+                                                                            isPro
+                                                                                ? 'h-4 w-4 text-white'
+                                                                                : 'h-4 w-4 text-slate-700'
+                                                                        }
+                                                                    />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="top">
+                                                                {isPro
+                                                                    ? 'Ubah ke Regular'
+                                                                    : 'Ubah ke Pro'}
+                                                            </TooltipContent>
+                                                        </Tooltip>
+
+                                                        {/* Extend */}
+                                                        <ExtendDialog
+                                                            disabled={!isPro}
+                                                            onExtend={(
                                                                 months,
-                                                            )
-                                                        }
-                                                    />
+                                                            ) =>
+                                                                handleExtendPro(
+                                                                    s.id,
+                                                                    months,
+                                                                )
+                                                            }
+                                                        />
 
-                                                    <SetPlanDialog
-                                                        currentType={
-                                                            s.account_type
-                                                        }
-                                                        currentExpiry={
-                                                            s.pro_expires_at ??
-                                                            null
-                                                        }
-                                                        onSave={(payload) =>
-                                                            handleUpdateAccountType(
-                                                                s.id,
-                                                                payload,
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            ) : (
-                                <tr>
-                                    <td
-                                        colSpan={6}
-                                        className="px-6 py-8 text-center text-slate-500"
-                                    >
-                                        -
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                                        {/* Set Plan */}
+                                                        <SetPlanDialog
+                                                            currentType={
+                                                                s.account_type
+                                                            }
+                                                            currentExpiry={
+                                                                s.pro_expires_at ??
+                                                                null
+                                                            }
+                                                            onSave={(payload) =>
+                                                                handleUpdateAccountType(
+                                                                    s.id,
+                                                                    payload,
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                ) : (
+                                    <tr>
+                                        <td
+                                            colSpan={6}
+                                            className="px-6 py-8 text-center text-slate-500"
+                                        >
+                                            -
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </TooltipProvider>
                 </div>
 
                 {/* Footer info */}
@@ -443,16 +504,30 @@ function ExtendDialog({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button size="sm" variant="outline" disabled={disabled}>
-                    Extend
-                </Button>
+                <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                size="icon"
+                                variant="outline"
+                                disabled={disabled}
+                                aria-label="Perpanjang Pro"
+                            >
+                                <ClockArrowUp className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            Perpanjang Pro
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </DialogTrigger>
 
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Extend Pro</DialogTitle>
+                    <DialogTitle>Perpanjang Pro</DialogTitle>
                     <DialogDescription>
-                        Tambah masa aktif Pro (bulan).
+                        Tambah masa aktif Pro (dalam bulan).
                     </DialogDescription>
                 </DialogHeader>
 
@@ -486,7 +561,7 @@ function ExtendDialog({
                             setOpen(false);
                         }}
                     >
-                        Extend
+                        Perpanjang
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -510,7 +585,6 @@ function SetPlanDialog({
     const [type, setType] = useState<AccountType>(currentType);
     const [expiry, setExpiry] = useState<string>(currentExpiry ?? '');
 
-    // HTML date input wants YYYY-MM-DD
     const dateValue = useMemo(() => {
         if (!expiry) return '';
         const d = new Date(expiry);
@@ -533,22 +607,36 @@ function SetPlanDialog({
             }}
         >
             <DialogTrigger asChild>
-                <Button size="sm" variant="outline">
-                    Set
-                </Button>
+                <TooltipProvider delayDuration={150}>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                size="icon"
+                                variant="outline"
+                                aria-label="Atur tipe akun"
+                            >
+                                <Hourglass className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                            Atur Tipe Akun
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
             </DialogTrigger>
 
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Set Account Type</DialogTitle>
+                    <DialogTitle>Atur Tipe Akun</DialogTitle>
                     <DialogDescription>
-                        Atur manual Regular / Pro + expiry (optional).
+                        Ubah manual Regular / Pro dan tanggal berakhir
+                        (opsional).
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label>Account Type</Label>
+                        <Label>Tipe Akun</Label>
                         <Select
                             value={type}
                             onValueChange={(v) => setType(v as AccountType)}
@@ -565,9 +653,9 @@ function SetPlanDialog({
 
                     <div className="space-y-2">
                         <Label>
-                            Pro Expiry (optional)
+                            Tanggal Berakhir Pro (opsional)
                             <span className="ml-2 text-xs text-muted-foreground">
-                                (kosongkan untuk no expiry)
+                                (kosongkan untuk tanpa batas)
                             </span>
                         </Label>
 
@@ -575,10 +663,7 @@ function SetPlanDialog({
                             type="date"
                             value={type === 'pro' ? dateValue : ''}
                             disabled={type !== 'pro'}
-                            onChange={(e) => {
-                                // store as YYYY-MM-DD string
-                                setExpiry(e.target.value);
-                            }}
+                            onChange={(e) => setExpiry(e.target.value)}
                         />
                     </div>
                 </div>
