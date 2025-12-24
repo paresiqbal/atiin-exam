@@ -162,13 +162,36 @@ class ExamController extends Controller
 
     public function edit(Exam $exam): Response
     {
-        $questionBanks = QuestionBank::select('id', 'name')->get();
+        if ($exam->admin_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $exam->load([
+            'school:id,name',
+            'settings:exam_id,time_limit_minutes,shuffle_questions,allow_review,max_attempts',
+            'questionBanks' => function ($q) {
+                $q->select('question_banks.id', 'question_banks.name')
+                    ->withPivot(['duration_minutes', 'sort_order'])
+                    ->orderBy('exam_question_bank.sort_order');
+            },
+        ]);
+
+        // list dropdown
+        $questionBanks = \App\Models\QuestionBank::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $schools = \App\Models\School::query()
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return Inertia::render('admin/exams/EditExam', [
-            'exam' => $exam->load('settings'),
+            'exam' => $exam,
             'questionBanks' => $questionBanks,
+            'schools' => $schools,
         ]);
     }
+
 
     public function update(Request $request, Exam $exam)
     {
@@ -216,7 +239,7 @@ class ExamController extends Controller
         $exam->questionBanks()->sync($syncData);
 
         $exam->settings()->update([
-            'time_limit_minutes' => $totalMinutes, // <-- total from banks
+            'time_limit_minutes' => $totalMinutes,
             'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
             'allow_review'       => $validated['allow_review'] ?? true,
         ]);
