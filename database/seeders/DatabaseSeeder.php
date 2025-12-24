@@ -23,7 +23,6 @@ class DatabaseSeeder extends Seeder
             UniversitySeeder::class,
             MajorSeeder::class,
             QuestionBankSeeder::class,
-            ExamSeeder::class,
             UserSeeder::class,
         ]);
     }

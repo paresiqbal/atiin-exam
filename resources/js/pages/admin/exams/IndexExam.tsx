@@ -79,9 +79,9 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
 
         return data.filter((exam) => {
             const nameMatch = exam.name.toLowerCase().includes(q);
-            const bankMatch = exam.question_bank?.name
-                ?.toLowerCase()
-                .includes(q);
+            const bankMatch = (exam.question_banks ?? []).some((b) =>
+                b.name?.toLowerCase().includes(q),
+            );
             const matchesSearch = nameMatch || bankMatch;
 
             const matchesStatus =
@@ -376,13 +376,28 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
                                             </td>
 
                                             <td className="px-6 py-2">
-                                                {exam.question_bank ? (
-                                                    <Badge variant="outline">
-                                                        {
-                                                            exam.question_bank
-                                                                .name
-                                                        }
-                                                    </Badge>
+                                                {exam.question_banks?.length ? (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {exam.question_banks
+                                                            .slice(0, 2)
+                                                            .map((b) => (
+                                                                <Badge
+                                                                    key={b.id}
+                                                                    variant="outline"
+                                                                >
+                                                                    {b.name}
+                                                                </Badge>
+                                                            ))}
+                                                        {exam.question_banks
+                                                            .length > 2 && (
+                                                            <Badge variant="secondary">
+                                                                +
+                                                                {exam
+                                                                    .question_banks
+                                                                    .length - 2}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground">
                                                         -

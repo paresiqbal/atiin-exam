@@ -1,13 +1,12 @@
-// resources/js/pages/admin/exams/CreateExam.tsx
+'use client';
 
-// react / inertia
-import { Head, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 
-// layout
 import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
 
-// components
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,12 +20,16 @@ import {
 } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
 
-// utils / icons
 import { cn } from '@/lib/utils';
-import { Calendar as CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
 
-// types
-import { BreadcrumbItem } from '@/types';
+import {
+    ArrowDown,
+    ArrowUp,
+    CalendarIcon,
+    Check,
+    ChevronsUpDown,
+    GripVertical,
+} from 'lucide-react';
 
 interface QuestionBank {
     id: number;
@@ -44,6 +47,12 @@ interface Props {
     schools: School[];
     classes: string[];
 }
+
+type SelectedBank = {
+    id: number;
+    duration_minutes: number;
+    sort_order: number;
+};
 
 function combineDateTime(date: Date | undefined, time: string): string {
     if (!date || !time) return '';
@@ -64,14 +73,13 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         description: '',
-        question_bank_id: '',
         start_at: '',
         end_at: '',
-        time_limit_minutes: '90',
         shuffle_questions: true,
         allow_review: true,
         school_id: '',
         class: '',
+        question_banks: [] as SelectedBank[],
     });
 
     // Date/time state
@@ -90,11 +98,6 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
     const [classSearch, setClassSearch] = useState('');
     const [bankSearch, setBankSearch] = useState('');
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        post('/admin/exams');
-    };
-
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Admin Dashboard', href: '/admin/dashboard' },
         { title: 'Daftar Ujian', href: '/admin/exams' },
@@ -104,8 +107,19 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
     const selectedSchool = schools.find(
         (s) => s.id.toString() === data.school_id,
     );
-    const selectedBank = questionBanks.find(
-        (qb) => qb.id.toString() === data.question_bank_id,
+
+    const selectedBankIds = useMemo(
+        () => new Set(data.question_banks.map((b) => b.id)),
+        [data.question_banks],
+    );
+
+    const totalMinutes = useMemo(
+        () =>
+            data.question_banks.reduce(
+                (sum, b) => sum + (Number(b.duration_minutes) || 0),
+                0,
+            ),
+        [data.question_banks],
     );
 
     // Filtered lists (simple substring search)
@@ -117,18 +131,47 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
         c.toLowerCase().includes(classSearch.toLowerCase()),
     );
 
-    const filteredQuestionBanks = questionBanks.filter((qb) =>
-        qb.name.toLowerCase().includes(bankSearch.toLowerCase()),
-    );
+    const filteredQuestionBanks = questionBanks
+        .filter((qb) => !selectedBankIds.has(qb.id))
+        .filter((qb) =>
+            qb.name.toLowerCase().includes(bankSearch.toLowerCase()),
+        );
+
+    const normalizeSortOrder = (banks: SelectedBank[]) =>
+        banks.map((b, i) => ({ ...b, sort_order: i + 1 }));
+
+    const moveBank = (id: number, direction: 'up' | 'down') => {
+        const idx = data.question_banks.findIndex((b) => b.id === id);
+        if (idx === -1) return;
+
+        const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= data.question_banks.length) return;
+
+        const next = [...data.question_banks];
+        const temp = next[idx];
+        next[idx] = next[targetIdx];
+        next[targetIdx] = temp;
+
+        setData('question_banks', normalizeSortOrder(next));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        // Ensure sort_order always matches current UI order
+        setData('question_banks', normalizeSortOrder([...data.question_banks]));
+        post('/admin/exams');
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Buat Ujian" />
             <div className="p-4">
+                {/* keep original style: don't change width */}
                 <Card className="mx-auto max-w-screen">
                     <CardHeader>
                         <CardTitle>Buat Ujian Baru</CardTitle>
                     </CardHeader>
+
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Nama ujian */}
@@ -174,7 +217,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                 )}
                             </div>
 
-                            {/* Sekolah (custom searchable dropdown) */}
+                            {/* Sekolah */}
                             <div className="space-y-2">
                                 <Label htmlFor="school_id">Sekolah *</Label>
                                 <Popover
@@ -197,6 +240,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
+
                                     <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2">
                                         <div className="space-y-2">
                                             <Input
@@ -230,9 +274,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                                                         false,
                                                                     );
                                                                 }}
-                                                                className={cn(
-                                                                    'flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent',
-                                                                )}
+                                                                className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent"
                                                             >
                                                                 <Check
                                                                     className={cn(
@@ -256,6 +298,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                         </div>
                                     </PopoverContent>
                                 </Popover>
+
                                 {errors.school_id && (
                                     <p className="text-sm text-red-500">
                                         {errors.school_id}
@@ -263,7 +306,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                 )}
                             </div>
 
-                            {/* Kelas (custom searchable dropdown) */}
+                            {/* Kelas */}
                             <div className="space-y-2">
                                 <Label htmlFor="class">Kelas *</Label>
                                 <Popover
@@ -284,6 +327,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
+
                                     <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2">
                                         <div className="space-y-2">
                                             <Input
@@ -317,9 +361,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                                                         false,
                                                                     );
                                                                 }}
-                                                                className={cn(
-                                                                    'flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent',
-                                                                )}
+                                                                className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent"
                                                             >
                                                                 <Check
                                                                     className={cn(
@@ -341,6 +383,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                         </div>
                                     </PopoverContent>
                                 </Popover>
+
                                 {errors.class && (
                                     <p className="text-sm text-red-500">
                                         {errors.class}
@@ -348,11 +391,10 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                 )}
                             </div>
 
-                            {/* Bank soal (custom searchable dropdown + question count) */}
+                            {/* Bank Soal (multi-select + duration + reorder) */}
                             <div className="space-y-2">
-                                <Label htmlFor="question_bank_id">
-                                    Bank Soal *
-                                </Label>
+                                <Label>Bank Soal *</Label>
+
                                 <Popover
                                     open={bankOpen}
                                     onOpenChange={setBankOpen}
@@ -363,27 +405,15 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                             variant="outline"
                                             className={cn(
                                                 'w-full justify-between',
-                                                errors.question_bank_id &&
+                                                errors.question_banks &&
                                                     'border-red-500',
                                             )}
                                         >
-                                            {selectedBank ? (
-                                                <>
-                                                    {selectedBank.name}
-                                                    <span className="ml-2 text-xs text-muted-foreground">
-                                                        (
-                                                        {
-                                                            selectedBank.questions_count
-                                                        }{' '}
-                                                        soal)
-                                                    </span>
-                                                </>
-                                            ) : (
-                                                'Pilih bank soal'
-                                            )}
+                                            Tambah bank soal
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </PopoverTrigger>
+
                                     <PopoverContent
                                         align="start"
                                         className="w-[var(--radix-popover-trigger-width)] p-2"
@@ -403,8 +433,9 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                                 {filteredQuestionBanks.length ===
                                                 0 ? (
                                                     <p className="px-3 py-2 text-sm text-muted-foreground">
-                                                        Bank soal tidak
-                                                        ditemukan.
+                                                        Tidak ada bank soal
+                                                        (atau sudah dipilih
+                                                        semua).
                                                     </p>
                                                 ) : (
                                                     filteredQuestionBanks.map(
@@ -413,31 +444,39 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                                                 key={qb.id}
                                                                 type="button"
                                                                 onClick={() => {
+                                                                    const next =
+                                                                        normalizeSortOrder(
+                                                                            [
+                                                                                ...data.question_banks,
+                                                                                {
+                                                                                    id: qb.id,
+                                                                                    duration_minutes: 30,
+                                                                                    sort_order:
+                                                                                        data
+                                                                                            .question_banks
+                                                                                            .length +
+                                                                                        1,
+                                                                                },
+                                                                            ],
+                                                                        );
+
                                                                     setData(
-                                                                        'question_bank_id',
-                                                                        qb.id.toString(),
+                                                                        'question_banks',
+                                                                        next,
                                                                     );
                                                                     setBankOpen(
                                                                         false,
                                                                     );
+                                                                    setBankSearch(
+                                                                        '',
+                                                                    );
                                                                 }}
-                                                                className={cn(
-                                                                    'flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent',
-                                                                )}
+                                                                className="flex w-full items-center px-3 py-2 text-left text-sm hover:bg-accent"
                                                             >
-                                                                <Check
-                                                                    className={cn(
-                                                                        'mr-2 h-4 w-4',
-                                                                        data.question_bank_id ===
-                                                                            qb.id.toString()
-                                                                            ? 'opacity-100'
-                                                                            : 'opacity-0',
-                                                                    )}
-                                                                />
-                                                                <span>
+                                                                <span className="flex-1">
                                                                     {qb.name}
                                                                 </span>
-                                                                <span className="ml-2 text-xs text-muted-foreground">
+                                                                <span className="text-xs text-muted-foreground">
                                                                     (
                                                                     {
                                                                         qb.questions_count
@@ -452,14 +491,201 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                         </div>
                                     </PopoverContent>
                                 </Popover>
-                                {errors.question_bank_id && (
+
+                                {errors.question_banks && (
                                     <p className="text-sm text-red-500">
-                                        {errors.question_bank_id}
+                                        {errors.question_banks as any}
                                     </p>
                                 )}
+
+                                <div className="space-y-2">
+                                    {data.question_banks.length === 0 ? (
+                                        <div className="rounded-md border p-3 text-sm text-muted-foreground">
+                                            Belum ada bank soal dipilih.
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {data.question_banks.map(
+                                                (item, idx) => {
+                                                    const qb =
+                                                        questionBanks.find(
+                                                            (q) =>
+                                                                q.id ===
+                                                                item.id,
+                                                        );
+
+                                                    const isFirst = idx === 0;
+                                                    const isLast =
+                                                        idx ===
+                                                        data.question_banks
+                                                            .length -
+                                                            1;
+
+                                                    return (
+                                                        <div
+                                                            key={item.id}
+                                                            className="flex flex-col gap-2 rounded-md border p-3 md:flex-row md:items-center"
+                                                        >
+                                                            <div className="flex items-start gap-2">
+                                                                <GripVertical className="mt-0.5 h-4 w-4 text-muted-foreground" />
+                                                                <div>
+                                                                    <div className="font-medium">
+                                                                        {idx +
+                                                                            1}
+                                                                        .{' '}
+                                                                        {qb?.name ??
+                                                                            `Bank #${item.id}`}
+                                                                    </div>
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        {qb?.questions_count ??
+                                                                            0}{' '}
+                                                                        soal
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Reorder controls */}
+                                                            <div className="ml-auto flex items-center gap-1">
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="hover:bg-foreground/10"
+                                                                    disabled={
+                                                                        isFirst
+                                                                    }
+                                                                    onClick={() =>
+                                                                        moveBank(
+                                                                            item.id,
+                                                                            'up',
+                                                                        )
+                                                                    }
+                                                                    aria-label="Move up"
+                                                                >
+                                                                    <ArrowUp className="h-4 w-4" />
+                                                                </Button>
+
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="hover:bg-foreground/10"
+                                                                    disabled={
+                                                                        isLast
+                                                                    }
+                                                                    onClick={() =>
+                                                                        moveBank(
+                                                                            item.id,
+                                                                            'down',
+                                                                        )
+                                                                    }
+                                                                    aria-label="Move down"
+                                                                >
+                                                                    <ArrowDown className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+
+                                                            {/* Duration (primary background) */}
+                                                            <div className="flex items-center gap-2">
+                                                                <Label className="text-xs text-muted-foreground">
+                                                                    Durasi
+                                                                </Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    min={1}
+                                                                    max={300}
+                                                                    value={
+                                                                        item.duration_minutes
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) => {
+                                                                        const value =
+                                                                            Number(
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            ) ||
+                                                                            1;
+
+                                                                        const next =
+                                                                            data.question_banks.map(
+                                                                                (
+                                                                                    b,
+                                                                                ) =>
+                                                                                    b.id ===
+                                                                                    item.id
+                                                                                        ? {
+                                                                                              ...b,
+                                                                                              duration_minutes:
+                                                                                                  value,
+                                                                                          }
+                                                                                        : b,
+                                                                            );
+
+                                                                        setData(
+                                                                            'question_banks',
+                                                                            next,
+                                                                        );
+                                                                    }}
+                                                                    className={cn(
+                                                                        'w-[110px] bg-primary text-primary-foreground placeholder:text-primary-foreground/70',
+                                                                        'focus-visible:ring-primary/30',
+                                                                    )}
+                                                                />
+                                                                <span className="text-sm text-muted-foreground">
+                                                                    menit
+                                                                </span>
+
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => {
+                                                                        const next =
+                                                                            normalizeSortOrder(
+                                                                                data.question_banks.filter(
+                                                                                    (
+                                                                                        b,
+                                                                                    ) =>
+                                                                                        b.id !==
+                                                                                        item.id,
+                                                                                ),
+                                                                            );
+
+                                                                        setData(
+                                                                            'question_banks',
+                                                                            next,
+                                                                        );
+                                                                    }}
+                                                                    className="hover:bg-foreground/10"
+                                                                    aria-label="Remove bank"
+                                                                >
+                                                                    ✕
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                },
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Total duration (primary background) */}
+                                <div className="rounded-md border bg-primary/10 p-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-muted-foreground">
+                                            Total durasi ujian
+                                        </span>
+                                        <Badge className="bg-primary text-primary-foreground">
+                                            {totalMinutes} menit
+                                        </Badge>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Start / End with shadcn date picker + time */}
+                            {/* Start / End with date picker + time */}
                             <div className="grid gap-4 md:grid-cols-2">
                                 {/* Start */}
                                 <div className="space-y-2">
@@ -480,7 +706,9 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                                 >
                                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                                     {startDate ? (
-                                                        startDate.toLocaleDateString()
+                                                        startDate.toLocaleDateString(
+                                                            'id-ID',
+                                                        )
                                                     ) : (
                                                         <span>
                                                             Pilih tanggal
@@ -509,6 +737,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                                 />
                                             </PopoverContent>
                                         </Popover>
+
                                         <Input
                                             type="time"
                                             value={startTime}
@@ -546,15 +775,17 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                                     variant="outline"
                                                     className={cn(
                                                         'flex w-full justify-start text-left font-normal',
-                                                        !startDate &&
+                                                        !endDate &&
                                                             'text-muted-foreground',
-                                                        errors.start_at &&
+                                                        errors.end_at &&
                                                             'border-red-500',
                                                     )}
                                                 >
                                                     <CalendarIcon className="mr-2 h-4 w-4" />
                                                     {endDate ? (
-                                                        endDate.toLocaleDateString()
+                                                        endDate.toLocaleDateString(
+                                                            'id-ID',
+                                                        )
                                                     ) : (
                                                         <span>
                                                             Pilih tanggal
@@ -583,6 +814,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                                 />
                                             </PopoverContent>
                                         </Popover>
+
                                         <Input
                                             type="time"
                                             value={endTime}
@@ -608,36 +840,6 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                         </p>
                                     )}
                                 </div>
-                            </div>
-
-                            {/* Time limit */}
-                            <div className="space-y-2">
-                                <Label htmlFor="time_limit_minutes">
-                                    Batas Waktu (menit) *
-                                </Label>
-                                <Input
-                                    id="time_limit_minutes"
-                                    type="number"
-                                    min="1"
-                                    max="300"
-                                    value={data.time_limit_minutes}
-                                    onChange={(e) =>
-                                        setData(
-                                            'time_limit_minutes',
-                                            e.target.value,
-                                        )
-                                    }
-                                    className={cn(
-                                        errors.time_limit_minutes &&
-                                            'border-red-500',
-                                    )}
-                                />
-
-                                {errors.time_limit_minutes && (
-                                    <p className="text-sm text-red-500">
-                                        {errors.time_limit_minutes}
-                                    </p>
-                                )}
                             </div>
 
                             {/* Options */}
@@ -687,6 +889,15 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
                                 >
                                     Batal
                                 </Button>
+                            </div>
+
+                            <div className="pt-2">
+                                <Link
+                                    href="/admin/exams"
+                                    className="text-sm text-muted-foreground underline"
+                                >
+                                    Kembali ke daftar ujian
+                                </Link>
                             </div>
                         </form>
                     </CardContent>

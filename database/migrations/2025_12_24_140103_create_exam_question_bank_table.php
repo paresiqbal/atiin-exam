@@ -9,21 +9,13 @@ return new class extends Migration {
     {
         Schema::create('exam_question_bank', function (Blueprint $table) {
             $table->id();
-
-            $table->foreignId('exam_id')
-                ->constrained()
-                ->cascadeOnDelete();
-
-            $table->foreignId('question_bank_id')
-                ->constrained()
-                ->cascadeOnDelete();
+            $table->foreignId('exam_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('question_bank_id')->constrained()->cascadeOnDelete();
             $table->unsignedInteger('duration_minutes');
             $table->unsignedInteger('sort_order')->default(0);
-
             $table->timestamps();
 
             $table->unique(['exam_id', 'question_bank_id']);
-            $table->index(['exam_id', 'sort_order']);
         });
     }
 

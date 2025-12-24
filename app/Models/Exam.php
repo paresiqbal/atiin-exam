@@ -11,11 +11,9 @@ class Exam extends Model
 
     protected $fillable = [
         'admin_id',
-        'question_bank_id',
         'name',
         'description',
         'school_id',
-
         'start_at',
         'end_at',
         'is_published',
@@ -26,9 +24,16 @@ class Exam extends Model
         return $this->belongsTo(User::class, 'admin_id');
     }
 
-    public function questionBank()
+    public function questionBanks()
     {
-        return $this->belongsTo(QuestionBank::class);
+        return $this->belongsToMany(QuestionBank::class, 'exam_question_bank')
+            ->withPivot(['duration_minutes', 'sort_order'])
+            ->withTimestamps();
+    }
+
+    public function getTotalDurationMinutesAttribute(): int
+    {
+        return (int) $this->questionBanks->sum(fn($qb) => (int) $qb->pivot->duration_minutes);
     }
 
     public function settings()

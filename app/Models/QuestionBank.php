@@ -24,4 +24,11 @@ class QuestionBank extends Model
     {
         return $this->hasMany(Question::class);
     }
+
+    public function exams()
+    {
+        return $this->belongsToMany(Exam::class, 'exam_question_bank')
+            ->withPivot(['duration_minutes', 'sort_order'])
+            ->withTimestamps();
+    }
 }

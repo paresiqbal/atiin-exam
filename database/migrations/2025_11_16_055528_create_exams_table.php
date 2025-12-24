@@ -11,10 +11,10 @@ return new class extends Migration
         Schema::create('exams', function (Blueprint $table) {
             $table->id();
             $table->foreignId('admin_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('question_bank_id')->constrained()->onDelete('cascade');
             $table->foreignId('school_id')->nullable();
             $table->string('name');
             $table->text('description')->nullable();
+            $table->unsignedInteger('duration_minutes')->default(0);
             $table->boolean('is_published')->default(false);
             $table->timestamp('start_at')->nullable();
             $table->timestamp('end_at')->nullable();

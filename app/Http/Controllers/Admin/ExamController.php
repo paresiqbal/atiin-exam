@@ -22,15 +22,21 @@ class ExamController extends Controller
     {
         $perPage = (int) $request->input('per_page', 10);
 
-        $exams = Exam::with('questionBank', 'settings')
+        $exams = Exam::query()
+            ->with([
+                'questionBanks:id,name',
+                'settings',
+            ])
             ->withCount('attempts')
             ->orderByDesc('created_at')
-            ->paginate($perPage);
+            ->paginate($perPage)
+            ->withQueryString();
 
         return Inertia::render('admin/exams/IndexExam', [
             'exams' => $exams,
         ]);
     }
+
 
     public function create()
     {
@@ -59,32 +65,49 @@ class ExamController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'question_bank_id' => 'required|exists:question_banks,id',
             'start_at' => 'required|date',
             'end_at' => 'required|date|after_or_equal:start_at',
-            'time_limit_minutes' => 'required|integer|min:1|max:300',
             'shuffle_questions' => 'boolean',
             'allow_review' => 'boolean',
             'school_id' => 'required|exists:schools,id',
 
+            'question_banks' => 'required|array|min:1',
+            'question_banks.*.id' => 'required|integer|exists:question_banks,id',
+            'question_banks.*.duration_minutes' => 'required|integer|min:1|max:300',
+            'question_banks.*.sort_order' => 'nullable|integer|min:0',
         ]);
+
 
         $admin = auth()->user();
 
         $exam = Exam::create([
-            'admin_id'         => $admin->id,
-            'school_id'        => $validated['school_id'],
-            'question_bank_id' => $validated['question_bank_id'],
-            'name'             => $validated['name'],
-            'description'      => $validated['description'],
-            'start_at'         => $validated['start_at'],
-            'end_at'           => $validated['end_at'],
-            'is_published'     => false,
+            'admin_id'     => $admin->id,
+            'school_id'    => $validated['school_id'],
+            'name'         => $validated['name'],
+            'description'  => $validated['description'] ?? null,
+            'start_at'     => $validated['start_at'],
+            'end_at'       => $validated['end_at'],
+            'is_published' => false,
         ]);
+
+        $syncData = [];
+        $totalMinutes = 0;
+
+        foreach ($validated['question_banks'] as $i => $qb) {
+            $minutes = (int) $qb['duration_minutes'];
+            $totalMinutes += $minutes;
+
+            $syncData[$qb['id']] = [
+                'duration_minutes' => $minutes,
+                'sort_order' => (int) ($qb['sort_order'] ?? ($i + 1)),
+            ];
+        }
+
+        $exam->questionBanks()->sync($syncData);
 
         ExamSetting::create([
             'exam_id'            => $exam->id,
-            'time_limit_minutes' => $validated['time_limit_minutes'],
+            'time_limit_minutes' => $totalMinutes,
             'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
             'allow_review'       => $validated['allow_review'] ?? true,
             'max_attempts'       => 1,
@@ -99,6 +122,7 @@ class ExamController extends Controller
             ->route('admin.exams.index')
             ->with('success', 'Exam created successfully');
     }
+
 
 
     public function show(Exam $exam): Response
@@ -144,35 +168,51 @@ class ExamController extends Controller
 
     public function update(Request $request, Exam $exam)
     {
-
         if ($exam->admin_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'question_bank_id' => 'required|exists:question_banks,id',
-            'start_at' => 'required|date',
-            'end_at'   => 'required|date|after_or_equal:start_at',
-            'time_limit_minutes' => 'required|integer|min:1|max:300',
-            'shuffle_questions'  => 'boolean',
-            'allow_review'       => 'boolean',
-            'school_id'       => 'required|exists:schools,id',
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'start_at' => ['required', 'date'],
+            'end_at'   => ['required', 'date', 'after_or_equal:start_at'],
+            'shuffle_questions' => ['boolean'],
+            'allow_review' => ['boolean'],
+            'school_id' => ['required', 'exists:schools,id'],
+
+            // NEW:
+            'question_banks' => ['required', 'array', 'min:1'],
+            'question_banks.*.id' => ['required', 'integer', 'exists:question_banks,id'],
+            'question_banks.*.duration_minutes' => ['required', 'integer', 'min:1', 'max:300'],
+            'question_banks.*.sort_order' => ['nullable', 'integer', 'min:0'],
         ]);
 
         $exam->update([
-            'name'             => $validated['name'],
-            'description'      => $validated['description'],
-            'question_bank_id' => $validated['question_bank_id'],
-            'start_at'         => $validated['start_at'],
-            'end_at'           => $validated['end_at'],
-
-            'school_id'     => $validated['school_id'] ?? $exam->school_id,
+            'name'        => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'start_at'    => $validated['start_at'],
+            'end_at'      => $validated['end_at'],
+            'school_id'   => $validated['school_id'],
         ]);
 
+        $syncData = [];
+        $totalMinutes = 0;
+
+        foreach ($validated['question_banks'] as $i => $qb) {
+            $minutes = (int) $qb['duration_minutes'];
+            $totalMinutes += $minutes;
+
+            $syncData[$qb['id']] = [
+                'duration_minutes' => $minutes,
+                'sort_order' => (int) ($qb['sort_order'] ?? ($i + 1)),
+            ];
+        }
+
+        $exam->questionBanks()->sync($syncData);
+
         $exam->settings()->update([
-            'time_limit_minutes' => $validated['time_limit_minutes'],
+            'time_limit_minutes' => $totalMinutes, // <-- total from banks
             'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
             'allow_review'       => $validated['allow_review'] ?? true,
         ]);
@@ -181,6 +221,7 @@ class ExamController extends Controller
             ->route('admin.exams.index')
             ->with('success', 'Exam updated successfully');
     }
+
 
 
     public function destroy(Exam $exam)

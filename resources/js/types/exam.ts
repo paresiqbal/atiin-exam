@@ -1,12 +1,19 @@
-// ---------- TEACHER LIST TYPES (existing) ----------
+export interface ExamQuestionBankLite {
+    id: number;
+    name: string;
+    pivot?: {
+        duration_minutes: number;
+        sort_order: number;
+    };
+}
+
 export interface ExamData {
     id: number;
     name: string;
-    description: string;
+    description: string | null;
     is_published: boolean;
-    question_bank: {
-        name: string;
-    } | null;
+    question_banks: ExamQuestionBankLite[];
+
     attempts_count: number;
     created_at: string;
 }
@@ -30,7 +37,6 @@ export type ExamStatus = 'available' | 'coming_soon' | 'ended';
 export interface StudentExamData {
     id: number;
     name: string;
-    // description?: string; // add if you send it
     start_at: string;
     end_at: string;
     status: ExamStatus;
