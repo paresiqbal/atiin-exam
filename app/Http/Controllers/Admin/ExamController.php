@@ -24,13 +24,11 @@ class ExamController extends Controller
 
         $exams = Exam::query()
             ->with([
-                'questionBanks:id,name',
-                'settings',
+                'questionBanks:id,name', // ✅ ini
             ])
             ->withCount('attempts')
             ->orderByDesc('created_at')
-            ->paginate($perPage)
-            ->withQueryString();
+            ->paginate($perPage);
 
         return Inertia::render('admin/exams/IndexExam', [
             'exams' => $exams,
@@ -127,17 +125,23 @@ class ExamController extends Controller
 
     public function show(Exam $exam): Response
     {
-        $exam->load(
-            'questionBank.questions.options',
+        $exam->load([
+            'questionBanks' => function ($q) {
+                $q->withPivot(['duration_minutes', 'sort_order'])
+                    ->orderBy('exam_question_bank.sort_order');
+            },
+
+            'questionBanks.questions.options',
             'settings',
             'tokens',
-            'school'
-        )->loadCount('attempts');
+            'school',
+        ])->loadCount('attempts');
 
         return Inertia::render('admin/exams/ShowExam', [
             'exam' => $exam,
         ]);
     }
+
 
     public function regenerateToken(Exam $exam)
     {

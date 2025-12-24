@@ -21,7 +21,15 @@ interface ExamSettings {
     allow_review: boolean;
 }
 
+interface ExamQuestionBankPivot {
+    duration_minutes: number;
+    sort_order: number;
+}
+
 interface QuestionBank {
+    id: number;
+    name: string;
+    pivot: ExamQuestionBankPivot;
     questions: Question[];
 }
 
@@ -33,9 +41,14 @@ interface ExamData {
     start_at: string;
     end_at: string;
     attempts_count: number;
+    created_at?: string | null;
+
     school?: { id: number; name: string } | null;
     settings: ExamSettings | null;
-    question_bank: QuestionBank | null;
+
+    // ✅ NEW: array
+    question_banks: QuestionBank[];
+
     tokens: ExamToken[];
 }
 
@@ -47,14 +60,49 @@ function formatDateTime(value: string) {
     if (!value) return '-';
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return value;
-    return d.toLocaleString();
+    return d.toLocaleString('id-ID');
 }
 
 export default function ShowExam({ exam }: Props) {
     const [copiedToken, setCopiedToken] = useState(false);
     const [regenerating, setRegenerating] = useState(false);
 
-    const questions = exam.question_bank?.questions ?? [];
+    const sortedBanks = useMemo(() => {
+        const banks = exam.question_banks ?? [];
+        return [...banks].sort((a, b) => {
+            const ao = a.pivot?.sort_order ?? 999999;
+            const bo = b.pivot?.sort_order ?? 999999;
+            if (ao !== bo) return ao - bo;
+            return a.id - b.id;
+        });
+    }, [exam.question_banks]);
+
+    const questions = useMemo(() => {
+        // gabung semua question dari semua bank (urut mengikuti sort_order)
+        const all = sortedBanks.flatMap((b) => b.questions ?? []);
+
+        // dedupe kalau ada question yang kebetulan sama (safety)
+        const seen = new Set<number>();
+        const out: Question[] = [];
+
+        for (const q of all) {
+            const id = (q as unknown as { id?: number }).id;
+            if (typeof id === 'number') {
+                if (seen.has(id)) continue;
+                seen.add(id);
+            }
+            out.push(q);
+        }
+
+        return out;
+    }, [sortedBanks]);
+
+    const totalMinutesFromBanks = useMemo(() => {
+        return sortedBanks.reduce((sum, b) => {
+            const m = Number(b.pivot?.duration_minutes) || 0;
+            return sum + m;
+        }, 0);
+    }, [sortedBanks]);
 
     const statusInfo = useMemo(() => {
         const now = new Date();
@@ -95,10 +143,8 @@ export default function ShowExam({ exam }: Props) {
     const handlePublish = () => {
         router.post(
             `/admin/exams/${exam.id}/publish`,
-            {}, // <= data (empty)
-            {
-                preserveScroll: true,
-            },
+            {},
+            { preserveScroll: true },
         );
     };
 
@@ -106,7 +152,7 @@ export default function ShowExam({ exam }: Props) {
         setRegenerating(true);
         router.post(
             `/admin/exams/${exam.id}/regenerate-token`,
-            {}, // <= data (empty)
+            {},
             {
                 preserveScroll: true,
                 onFinish: () => setRegenerating(false),
@@ -226,13 +272,24 @@ export default function ShowExam({ exam }: Props) {
                                 <>
                                     <div>
                                         <p className="text-xs text-muted-foreground">
-                                            Batas Waktu
+                                            Batas Waktu (Total)
                                         </p>
                                         <p className="font-medium">
                                             {exam.settings.time_limit_minutes}{' '}
                                             menit
                                         </p>
+
+                                        {totalMinutesFromBanks > 0 &&
+                                            exam.settings.time_limit_minutes !==
+                                                totalMinutesFromBanks && (
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    Total dari bank soal:{' '}
+                                                    {totalMinutesFromBanks}{' '}
+                                                    menit
+                                                </p>
+                                            )}
                                     </div>
+
                                     <div className="flex gap-4 text-xs">
                                         <div>
                                             <p className="text-muted-foreground">
@@ -325,7 +382,53 @@ export default function ShowExam({ exam }: Props) {
                     </CardContent>
                 </Card>
 
-                {/* Questions Section */}
+                {/* NEW: Question Banks section */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Bank Soal ({sortedBanks.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                        {sortedBanks.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                                Tidak ada bank soal terhubung.
+                            </p>
+                        ) : (
+                            <div className="space-y-2">
+                                {sortedBanks.map((b, idx) => (
+                                    <div
+                                        key={b.id}
+                                        className="flex flex-col justify-between gap-2 rounded-md border p-3 md:flex-row md:items-center"
+                                    >
+                                        <div className="flex-1">
+                                            <div className="font-medium">
+                                                {idx + 1}. {b.name}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {b.questions?.length ?? 0} soal
+                                            </div>
+                                        </div>
+
+                                        <Badge className="bg-primary text-primary-foreground">
+                                            {b.pivot?.duration_minutes ?? 0}{' '}
+                                            menit
+                                        </Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-between rounded-md border bg-muted/40 p-3">
+                            <span className="text-xs text-muted-foreground">
+                                Total durasi dari bank soal
+                            </span>
+                            <Badge className="bg-primary text-primary-foreground">
+                                {totalMinutesFromBanks} menit
+                            </Badge>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Questions Section (flattened) */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Pertanyaan ({questions.length})</CardTitle>
