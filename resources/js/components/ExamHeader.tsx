@@ -5,6 +5,7 @@ import { Clock, Menu, X } from 'lucide-react';
 
 export function ExamHeader({
     title,
+    sectionLabel, // ✅ NEW
     currentIndex,
     total,
     answeredCount,
@@ -15,6 +16,7 @@ export function ExamHeader({
     onToggleNav,
 }: {
     title: string;
+    sectionLabel?: string; // ✅ NEW
     currentIndex: number;
     total: number;
     answeredCount: number;
@@ -32,6 +34,14 @@ export function ExamHeader({
                         <h1 className="truncate text-base font-bold md:text-lg">
                             {title}
                         </h1>
+
+                        {/* ✅ NEW: section info */}
+                        {sectionLabel ? (
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                                {sectionLabel}
+                            </p>
+                        ) : null}
+
                         <div className="mt-1 flex items-center gap-3">
                             <p className="text-xs text-muted-foreground md:text-sm">
                                 {currentIndex + 1}/{total}

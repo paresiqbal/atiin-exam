@@ -1,3 +1,7 @@
+import { Head, router } from '@inertiajs/react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useMemo, useState } from 'react';
+
 import { ExamHeader } from '@/components/ExamHeader';
 import { OptionList } from '@/components/OptionList';
 import { QuestionCard } from '@/components/QuestionCard';
@@ -15,9 +19,6 @@ import {
     normalizeImageSrc,
     resolveHtmlImages,
 } from '@/utils/htmlImages';
-import { Head, router } from '@inertiajs/react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useMemo, useState } from 'react';
 
 interface Option {
     id: number;
@@ -41,7 +42,8 @@ interface AttemptProps {
 }
 
 interface ExamSettings {
-    time_limit_minutes: number;
+    // keep what you use
+    time_limit_minutes?: number;
 }
 
 interface ExamProps {
@@ -50,13 +52,29 @@ interface ExamProps {
     settings: ExamSettings;
 }
 
+type Responses = Record<number, number>;
+
+interface SectionProps {
+    index: number;
+    total: number;
+    question_bank_id: number;
+    title: string;
+    timeLimit: number; // duration_minutes
+    elapsedMinutes: number;
+}
+
 interface Props {
     attempt: AttemptProps;
     exam: ExamProps;
     questions: Question[];
-    responses: Record<number, number>;
-    timeLimit: number;
-    elapsedMinutes: number;
+    responses: Responses;
+
+    // ✅ NEW
+    section: SectionProps;
+
+    // ⛔ REMOVE these old props (not needed anymore)
+    // timeLimit: number;
+    // elapsedMinutes: number;
 }
 
 export default function TakeExamPage({
@@ -64,8 +82,7 @@ export default function TakeExamPage({
     exam,
     questions,
     responses,
-    timeLimit,
-    elapsedMinutes,
+    section,
 }: Props) {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [flaggedQuestions, setFlaggedQuestions] = useState<Set<number>>(
@@ -93,11 +110,12 @@ export default function TakeExamPage({
         ? (answeredCount / questions.length) * 100
         : 0;
 
-    // timer
+    // ✅ TIMER PER SECTION
     const { timeLeft, formatted } = useExamTimer({
-        timeLimit,
-        elapsedMinutes,
-        onExpired: () => router.post(`/student/exams/${attempt.id}/submit`),
+        timeLimit: section.timeLimit,
+        elapsedMinutes: section.elapsedMinutes,
+        onExpired: () =>
+            router.post(`/student/exams/${attempt.id}/finish-section`),
         onWarn: showToast,
     });
 
@@ -154,7 +172,8 @@ export default function TakeExamPage({
         });
     };
 
-    const handleSubmit = () => {
+    // ✅ finish section instead of submit exam
+    const handleFinishSection = () => {
         if (!hasQuestions) return;
         const total = questions.length;
         const diff = total - Object.keys(answers).length;
@@ -162,8 +181,8 @@ export default function TakeExamPage({
         setConfirmOpen(true);
     };
 
-    const confirmSubmit = () => {
-        router.post(`/student/exams/${attempt.id}/submit`);
+    const confirmFinishSection = () => {
+        router.post(`/student/exams/${attempt.id}/finish-section`);
     };
 
     const jumpToQuestion = (index: number) => {
@@ -174,12 +193,17 @@ export default function TakeExamPage({
     const isAnswered = (questionId: number) => questionId in answers;
     const isFlagged = (questionId: number) => flaggedQuestions.has(questionId);
 
+    const isLastQuestion = currentQuestionIndex === questions.length - 1;
+    const isLastSection = section.index === section.total;
+
     return (
         <div className="flex min-h-screen flex-col bg-background">
             <Head title={`Taking Exam: ${exam.title}`} />
 
             <ExamHeader
                 title={exam.title}
+                // ✅ show section info
+                sectionLabel={`Sesi ${section.index}/${section.total} • ${section.title}`}
                 currentIndex={currentQuestionIndex}
                 total={questions.length}
                 answeredCount={answeredCount}
@@ -202,8 +226,8 @@ export default function TakeExamPage({
                                 </CardHeader>
                                 <CardContent>
                                     <p className="text-muted-foreground">
-                                        Ujian ini belum memiliki soal yang
-                                        aktif. Silakan hubungi pengawas.
+                                        Sesi ini belum memiliki soal aktif.
+                                        Silakan hubungi pengawas.
                                     </p>
                                 </CardContent>
                             </Card>
@@ -246,14 +270,15 @@ export default function TakeExamPage({
                                             Sebelumnya
                                         </Button>
 
-                                        {currentQuestionIndex ===
-                                        questions.length - 1 ? (
+                                        {isLastQuestion ? (
                                             <Button
-                                                onClick={handleSubmit}
+                                                onClick={handleFinishSection}
                                                 size="lg"
                                                 className="bg-green-600 text-white hover:bg-green-700"
                                             >
-                                                Kirim Ujian
+                                                {section.index === section.total
+                                                    ? 'Kirim Ujian'
+                                                    : 'Selesai Sesi'}
                                             </Button>
                                         ) : (
                                             <Button
@@ -307,12 +332,12 @@ export default function TakeExamPage({
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
 
-                    {currentQuestionIndex === questions.length - 1 ? (
+                    {isLastQuestion ? (
                         <Button
-                            onClick={handleSubmit}
+                            onClick={handleFinishSection}
                             className="flex-1 bg-green-600 text-white hover:bg-green-700"
                         >
-                            Kirim Ujian
+                            {isLastSection ? 'Kirim Ujian' : 'Selesai Sesi'}
                         </Button>
                     ) : (
                         <Button
@@ -349,7 +374,7 @@ export default function TakeExamPage({
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
                 unansweredCount={unansweredCount}
-                onConfirm={confirmSubmit}
+                onConfirm={confirmFinishSection}
             />
         </div>
     );

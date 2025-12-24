@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Student;
 
+use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamToken;
@@ -10,7 +11,6 @@ use App\Models\Major;
 use App\Models\University;
 use App\Services\ExamResultsPdfService;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,9 +20,14 @@ class ExamController extends Controller
     {
         $student = auth()->user();
 
-        $exams = Exam::where('school_id', $student->school_id)
+        $exams = Exam::query()
+            ->where('school_id', $student->school_id)
             ->where('is_published', true)
-            ->with('questionBank.questions', 'settings')
+            ->with([
+                'settings',
+                // NEW: multiple banks
+                'questionBanks:id,name',
+            ])
             ->orderBy('start_at')
             ->paginate(15);
 
@@ -40,10 +45,11 @@ class ExamController extends Controller
         ]);
     }
 
-
     public function joinForm(): Response
     {
-        $exam = request()->query('exam_id') ? Exam::find(request()->query('exam_id')) : null;
+        $exam = request()->query('exam_id')
+            ? Exam::with(['settings', 'questionBanks:id,name'])->find(request()->query('exam_id'))
+            : null;
 
         return Inertia::render('student/exams/JoinExam', [
             'universities' => University::with('majors')->get(),
@@ -51,10 +57,25 @@ class ExamController extends Controller
         ]);
     }
 
+    private function orderedBanks(ExamAttempt $attempt)
+    {
+        $attempt->loadMissing('exam.questionBanks');
+        return $attempt->exam->questionBanks->values();
+    }
+
+    private function currentBank(ExamAttempt $attempt)
+    {
+        $banks = $this->orderedBanks($attempt);
+        $index = max(0, $attempt->current_section - 1);
+        return $banks->get($index);
+    }
+
     public function startExam(Request $request)
     {
         $validated = $request->validate([
             'token' => 'required|string|exists:exam_tokens,token',
+
+            // your placement selections (keep as-is)
             'selections' => 'required|array|max:2',
             'selections.*.university_id' => 'required|exists:universities,id',
             'selections.*.majors' => 'required|array|max:4',
@@ -70,10 +91,13 @@ class ExamController extends Controller
             ]);
         }
 
-        $token = ExamToken::where('token', $validated['token'])->firstOrFail();
-        $exam  = $token->exam;
+        $token = ExamToken::where('token', $validated['token'])
+            ->with(['exam.settings', 'exam.questionBanks'])
+            ->firstOrFail();
 
-        if (! $exam->is_published) {
+        $exam = $token->exam;
+
+        if (! $exam || ! $exam->is_published) {
             return back()->withErrors(['token' => 'This exam is not available yet']);
         }
 
@@ -83,6 +107,11 @@ class ExamController extends Controller
 
         if (now() > $exam->end_at) {
             return back()->withErrors(['token' => 'This exam has ended']);
+        }
+
+        // NEW: make sure exam actually has banks selected (matches your admin update)
+        if ($exam->questionBanks->isEmpty()) {
+            return back()->withErrors(['token' => 'This exam has no question banks assigned']);
         }
 
         $student = auth()->user();
@@ -113,16 +142,22 @@ class ExamController extends Controller
             'exam_id'    => $exam->id,
             'started_at' => now(),
             'status'     => 'in_progress',
+            'current_section' => 1,
+            'section_started_at' => now(),
         ]);
 
         return redirect()->route('student.exams.take', $attempt->id);
     }
+
+
 
     public function take(ExamAttempt $attempt)
     {
         if ($attempt->student_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }
+
+        $attempt->load(['exam.settings', 'exam.questionBanks']);
 
         if ($attempt->is_frozen) {
             return Inertia::render('student/exams/FrozenExam', [
@@ -134,43 +169,59 @@ class ExamController extends Controller
         if ($attempt->status === 'submitted') {
             return redirect()->route('student.exams.results', $attempt->id);
         }
+        $bank = $this->currentBank($attempt);
 
-        if ($attempt->student_id !== auth()->id()) {
-            abort(403, 'Unauthorized');
+        if (! $bank) {
+            return $this->submitExam($attempt);
         }
 
-        if ($attempt->status === 'submitted') {
-            return redirect()->route('student.exams.results', $attempt->id);
+
+        if (! $attempt->section_started_at) {
+            $attempt->update(['section_started_at' => now()]);
+            $attempt->refresh();
         }
 
-        $questions = $attempt->exam->questionBank->questions()
+
+        $questions = $bank->questions()
             ->with('options')
             ->get();
 
-        if ($attempt->exam->settings->shuffle_questions) {
-            $questions = $questions->shuffle();
+        if (optional($attempt->exam->settings)->shuffle_questions) {
+            $questions = $questions->shuffle()->values();
         }
 
+        // ✅ only responses for these questions
         $responses = $attempt->responses()
+            ->whereIn('question_id', $questions->pluck('id'))
             ->pluck('selected_option_id', 'question_id')
             ->toArray();
 
-        $timeLimit = $attempt->exam->settings->time_limit_minutes;
-        $elapsedMinutes = now()->diffInMinutes($attempt->started_at);
+        $sectionTimeLimit = (int) ($bank->pivot->duration_minutes ?? 0);
+        $elapsedMinutes = now()->diffInMinutes($attempt->section_started_at);
 
-        if ($elapsedMinutes > $timeLimit) {
-            return $this->submitExam($attempt);
+        // auto-advance if expired
+        if ($sectionTimeLimit > 0 && $elapsedMinutes >= $sectionTimeLimit) {
+            return $this->finishSection($attempt);
         }
 
         return Inertia::render('student/exams/TakeExam', [
             'attempt' => $attempt,
-            'exam' => $attempt->exam->load('settings'),
+            'exam' => $attempt->exam->load('settings', 'questionBanks:id,name'),
             'questions' => $questions,
             'responses' => $responses,
-            'timeLimit' => $timeLimit,
-            'elapsedMinutes' => $elapsedMinutes,
+
+            // ✅ NEW: section data
+            'section' => [
+                'index' => (int) $attempt->current_section,
+                'total' => (int) $attempt->exam->questionBanks->count(),
+                'question_bank_id' => (int) $bank->id,
+                'title' => (string) ($bank->name ?? 'Sesi'),
+                'timeLimit' => $sectionTimeLimit,
+                'elapsedMinutes' => $elapsedMinutes,
+            ],
         ]);
     }
+
 
     public function saveAnswer(Request $request, ExamAttempt $attempt)
     {
@@ -178,19 +229,24 @@ class ExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $attempt->load(['exam.settings']);
+
         if ($attempt->is_frozen) {
             return response()->json([
                 'error' => 'Ujian dibekukan. Hubungi admin.'
             ], 403);
         }
 
-        if ($attempt->student_id !== auth()->id()) {
-            abort(403, 'Unauthorized');
-        }
+        $attempt->loadMissing(['exam.questionBanks']);
 
-        $timeLimit = $attempt->exam->settings->time_limit_minutes;
-        if (now()->diffInMinutes($attempt->started_at) > $timeLimit) {
-            return response()->json(['error' => 'Time expired'], 403);
+        $bank = $this->currentBank($attempt);
+        $sectionLimit = (int) ($bank?->pivot?->duration_minutes ?? 0);
+
+        if ($sectionLimit > 0 && $attempt->section_started_at) {
+            $elapsed = now()->diffInMinutes($attempt->section_started_at);
+            if ($elapsed >= $sectionLimit) {
+                return response()->json(['error' => 'Section time expired'], 403);
+            }
         }
 
         $validated = $request->validate([
@@ -211,6 +267,40 @@ class ExamController extends Controller
         return response()->json(['success' => true]);
     }
 
+    public function finishSection(ExamAttempt $attempt)
+    {
+        if ($attempt->student_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        if ($attempt->is_frozen) {
+            return redirect()->route('student.exams.take', $attempt->id);
+        }
+
+        if ($attempt->status === 'submitted') {
+            return redirect()->route('student.exams.results', $attempt->id);
+        }
+
+        $attempt->load(['exam.questionBanks']);
+
+        $totalSections = $attempt->exam->questionBanks->count();
+        $nextSection = (int) $attempt->current_section + 1;
+
+        // last section -> submit
+        if ($nextSection > $totalSections) {
+            return $this->submitExam($attempt);
+        }
+
+        $attempt->update([
+            'current_section' => $nextSection,
+            'section_started_at' => now(),
+        ]);
+
+        return redirect()->route('student.exams.take', $attempt->id)
+            ->with('info', 'Berlanjut ke sesi berikutnya.');
+    }
+
+
     public function submitExam(ExamAttempt $attempt)
     {
         if ($attempt->student_id !== auth()->id()) {
@@ -221,18 +311,23 @@ class ExamController extends Controller
             return redirect()->route('student.exams.results', $attempt->id);
         }
 
+        $attempt->load(['exam.settings', 'exam.questionBanks']);
+
+        $questions = $this->getExamQuestions($attempt->exam);
+
         $totalScore = 0;
         $maxScore = 0;
 
-        foreach ($attempt->exam->questionBank->questions as $question) {
-            $maxScore += $question->points;
+        foreach ($questions as $question) {
+            $maxScore += (int) $question->points;
 
             $response = $attempt->responses()
                 ->where('question_id', $question->id)
                 ->first();
 
+            // same logic as your current version
             if ($response && $response->selectedOption && $response->selectedOption->is_correct) {
-                $totalScore += $question->points;
+                $totalScore += (int) $question->points;
             }
         }
 
@@ -252,10 +347,11 @@ class ExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $attempt->load(['exam.settings', 'exam.questionBanks', 'student']);
+
         $student = $attempt->student;
 
         $rawSelections = $student->university_selections ?? [];
-
         if (!is_array($rawSelections)) {
             $rawSelections = [];
         }
@@ -272,37 +368,33 @@ class ExamController extends Controller
             }
 
             $university = University::find($selection['university_id']);
-            if (!$university) {
-                continue;
-            }
+            if (!$university) continue;
 
             $majors = Major::whereIn('id', $selection['majors'])->get();
 
             $universitySelections[] = [
                 'university' => [
-                    'id'   => $university->id,
+                    'id' => $university->id,
                     'name' => $university->name,
                     'city' => $university->city,
                 ],
-                'majors' => $majors->map(function (Major $major) {
-                    return [
-                        'id'                    => $major->id,
-                        'name'                  => $major->name,
-                        'minimum_passing_grade' => $major->minimum_passing_grade,
-                    ];
-                })->values()->all(),
+                'majors' => $majors->map(fn(Major $major) => [
+                    'id' => $major->id,
+                    'name' => $major->name,
+                    'minimum_passing_grade' => $major->minimum_passing_grade,
+                ])->values()->all(),
             ];
 
             foreach ($majors as $major) {
                 $studentSelections[] = [
                     'university' => [
-                        'id'   => $university->id,
+                        'id' => $university->id,
                         'name' => $university->name,
                         'city' => $university->city,
                     ],
                     'major' => [
-                        'id'                    => $major->id,
-                        'name'                  => $major->name,
+                        'id' => $major->id,
+                        'name' => $major->name,
                         'minimum_passing_grade' => $major->minimum_passing_grade,
                     ],
                 ];
@@ -315,13 +407,13 @@ class ExamController extends Controller
         if (empty($studentSelections) && ($fallbackMajor || $fallbackUniversity)) {
             $studentSelections[] = [
                 'university' => $fallbackUniversity ? [
-                    'id'   => $fallbackUniversity->id,
+                    'id' => $fallbackUniversity->id,
                     'name' => $fallbackUniversity->name,
                     'city' => $fallbackUniversity->city,
                 ] : null,
                 'major' => $fallbackMajor ? [
-                    'id'                    => $fallbackMajor->id,
-                    'name'                  => $fallbackMajor->name,
+                    'id' => $fallbackMajor->id,
+                    'name' => $fallbackMajor->name,
                     'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
                 ] : null,
             ];
@@ -329,60 +421,58 @@ class ExamController extends Controller
             if ($fallbackUniversity && $fallbackMajor) {
                 $universitySelections[] = [
                     'university' => [
-                        'id'   => $fallbackUniversity->id,
+                        'id' => $fallbackUniversity->id,
                         'name' => $fallbackUniversity->name,
                         'city' => $fallbackUniversity->city,
                     ],
                     'majors' => [[
-                        'id'                    => $fallbackMajor->id,
-                        'name'                  => $fallbackMajor->name,
+                        'id' => $fallbackMajor->id,
+                        'name' => $fallbackMajor->name,
                         'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
                     ]],
                 ];
             }
         }
 
-        $firstSelectionMajorGrade =
-            $studentSelections[0]['major']['minimum_passing_grade'] ?? null;
-
-        $passingScore = $firstSelectionMajorGrade
-            ?? ($fallbackMajor->minimum_passing_grade ?? 0);
+        $firstSelectionMajorGrade = $studentSelections[0]['major']['minimum_passing_grade'] ?? null;
+        $passingScore = $firstSelectionMajorGrade ?? ($fallbackMajor->minimum_passing_grade ?? 0);
 
         $isPassed = $attempt->score >= $passingScore;
 
-        $questionDetails = $attempt->exam->questionBank->questions
-            ->map(function ($question) use ($attempt) {
-                $response = $attempt->responses()
-                    ->where('question_id', $question->id)
-                    ->first();
+        $questions = $this->getExamQuestions($attempt->exam);
 
-                $correctOption = $question->options()
-                    ->where('is_correct', true)
-                    ->first();
+        $questionDetails = $questions->map(function ($question) use ($attempt) {
+            $response = $attempt->responses()
+                ->where('question_id', $question->id)
+                ->first();
 
-                return [
-                    'id' => $question->id,
-                    'question_text' => $question->question_text,
-                    'question_type' => $question->question_type,
-                    'points' => $question->points,
-                    'student_answer' => $response?->selectedOption?->option_text,
-                    'correct_answer' => $correctOption?->option_text,
-                    'is_correct' => $response?->selectedOption?->is_correct ?? false,
-                    'points_earned' => $response
-                        ? ($response->selectedOption?->is_correct ? $question->points : 0)
-                        : 0,
-                ];
-            });
+            $correctOption = $question->options()
+                ->where('is_correct', true)
+                ->first();
+
+            return [
+                'id' => $question->id,
+                'question_text' => $question->question_text,
+                'question_type' => $question->question_type,
+                'points' => $question->points,
+                'student_answer' => $response?->selectedOption?->option_text,
+                'correct_answer' => $correctOption?->option_text,
+                'is_correct' => $response?->selectedOption?->is_correct ?? false,
+                'points_earned' => $response
+                    ? ($response->selectedOption?->is_correct ? $question->points : 0)
+                    : 0,
+            ];
+        });
 
         $primaryPlacement = $studentSelections[0] ?? [
             'university' => $fallbackUniversity ? [
-                'id'   => $fallbackUniversity->id,
+                'id' => $fallbackUniversity->id,
                 'name' => $fallbackUniversity->name,
                 'city' => $fallbackUniversity->city,
             ] : null,
             'major' => $fallbackMajor ? [
-                'id'                    => $fallbackMajor->id,
-                'name'                  => $fallbackMajor->name,
+                'id' => $fallbackMajor->id,
+                'name' => $fallbackMajor->name,
                 'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
             ] : null,
         ];
@@ -478,5 +568,15 @@ class ExamController extends Controller
             'max_violations' => $MAX_VIOLATIONS,
             'remaining' => $MAX_VIOLATIONS - $violation->count,
         ]);
+    }
+
+    private function getExamQuestions(Exam $exam)
+    {
+        $exam->loadMissing(['questionBanks.questions.options']);
+
+        return $exam->questionBanks
+            ->flatMap(fn($bank) => $bank->questions)
+            ->unique('id')
+            ->values();
     }
 }

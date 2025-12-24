@@ -11,8 +11,10 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('exam_id')->constrained()->cascadeOnDelete();
             $table->foreignId('question_bank_id')->constrained()->cascadeOnDelete();
+
             $table->unsignedInteger('duration_minutes');
             $table->unsignedInteger('sort_order')->default(0);
+
             $table->timestamps();
 
             $table->unique(['exam_id', 'question_bank_id']);

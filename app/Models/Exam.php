@@ -28,7 +28,8 @@ class Exam extends Model
     {
         return $this->belongsToMany(QuestionBank::class, 'exam_question_bank')
             ->withPivot(['duration_minutes', 'sort_order'])
-            ->withTimestamps();
+            ->withTimestamps()
+            ->orderBy('exam_question_bank.sort_order');
     }
 
     public function getTotalDurationMinutesAttribute(): int

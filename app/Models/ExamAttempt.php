@@ -11,8 +11,8 @@ class ExamAttempt extends Model
     use HasFactory;
 
     protected $fillable = [
-        'exam_id',
         'student_id',
+        'exam_id',
         'started_at',
         'completed_at',
         'score',
@@ -21,13 +21,16 @@ class ExamAttempt extends Model
         'is_frozen',
         'frozen_at',
         'frozen_reason',
+        'current_section',
+        'section_started_at',
     ];
 
     protected $casts = [
-        'started_at'   => 'datetime',
+        'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'section_started_at' => 'datetime',
         'is_frozen' => 'boolean',
-        'frozen_at' => 'datetime',
+        'current_section' => 'integer',
     ];
 
 

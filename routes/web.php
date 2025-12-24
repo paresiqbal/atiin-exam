@@ -160,6 +160,7 @@ Route::middleware(['auth', 'role:student',])->prefix('student')->name('student.'
     Route::post('/exams/start', [ExamController::class, 'startExam'])->name('exams.start');
     Route::get('/exams/{attempt}/take', [ExamController::class, 'take'])->name('exams.take');
     Route::post('/exams/{attempt}/save-answer', [ExamController::class, 'saveAnswer'])->name('exams.saveAnswer');
+    Route::post('/exams/{attempt}/finish-section', [ExamController::class, 'finishSection'])->name('exams.finishSection');
     Route::post('/exams/{attempt}/submit', [ExamController::class, 'submitExam'])->name('exams.submit');
     Route::get('/exams/{attempt}/results', [ExamController::class, 'results'])->name('exams.results');
     Route::get('/exams/{attempt}/download-pdf', [ExamController::class, 'downloadResults'])->name('exams.downloadPdf');

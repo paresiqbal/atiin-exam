@@ -1,12 +1,13 @@
+'use client';
+
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
-
-import { Search } from 'lucide-react';
 
 type ExamStatus = 'available' | 'coming_soon' | 'ended';
 
@@ -17,14 +18,15 @@ type ExamItem = {
     start_at: string;
     end_at: string;
     status: ExamStatus;
+
     settings: {
-        time_limit_minutes?: number; // your other method uses this
-        time_limit?: number; // just in case
+        time_limit_minutes?: number;
+        time_limit?: number;
     };
-    question_bank: {
-        id: number;
-        questions_count: number;
-    };
+
+    // ✅ NEW (multi question banks)
+    question_banks_count: number;
+    questions_count: number;
 };
 
 type PaginationLink = {
@@ -93,7 +95,6 @@ function Pagination({
     links: PaginationLink[];
     onNavigate: (url: string) => void;
 }) {
-    // Laravel links include "Previous" and "Next" plus page numbers.
     return (
         <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
             {links.map((link, idx) => {
@@ -109,10 +110,7 @@ function Pagination({
                         disabled={!link.url}
                         onClick={() => link.url && onNavigate(link.url)}
                     >
-                        <span
-                            // Laravel labels can include HTML entities for pagination
-                            dangerouslySetInnerHTML={{ __html: label }}
-                        />
+                        <span dangerouslySetInnerHTML={{ __html: label }} />
                     </Button>
                 );
             })}
@@ -203,11 +201,17 @@ export default function IndexExam() {
 
                                                 <div className="mt-1 text-sm text-muted-foreground">
                                                     <span>
-                                                        Soal:{' '}
+                                                        Bank:{' '}
                                                         {
-                                                            exam.question_bank
-                                                                .questions_count
+                                                            exam.question_banks_count
                                                         }
+                                                    </span>
+                                                    <span className="mx-2">
+                                                        •
+                                                    </span>
+                                                    <span>
+                                                        Soal:{' '}
+                                                        {exam.questions_count}
                                                     </span>
                                                     <span className="mx-2">
                                                         •
