@@ -99,17 +99,33 @@ export default function TakeExamPage({
         ? questions[currentQuestionIndex]
         : null;
 
-    const answeredCount = Object.keys(answers).length;
+    // NOTE: for now answers is Record<number, number>
+    const isAnswered = (questionId: number) => questionId in answers;
+    const isFlagged = (questionId: number) => flaggedQuestions.has(questionId);
+
+    const answeredCount = useMemo(() => {
+        if (!hasQuestions) return 0;
+        return questions.reduce(
+            (acc, q) => acc + (isAnswered(q.id) ? 1 : 0),
+            0,
+        );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [hasQuestions, questions, answers]);
+
     const progress = hasQuestions
         ? (answeredCount / questions.length) * 100
         : 0;
 
-    // ✅ TIMER PER SECTION
     const { timeLeft, formatted } = useExamTimer({
         timeLimit: section.timeLimit,
         elapsedMinutes: section.elapsedMinutes,
-        onExpired: () =>
-            router.post(`/student/exams/${attempt.id}/finish-section`),
+        onExpired: () => {
+            // ✅ reset BEFORE navigating
+            setCurrentQuestionIndex(0);
+            setShowQuestionNav(false);
+
+            router.post(`/student/exams/${attempt.id}/finish-section`);
+        },
         onWarn: showToast,
     });
 
@@ -168,15 +184,23 @@ export default function TakeExamPage({
 
     const handleFinishSection = () => {
         if (!hasQuestions) return;
-        const total = questions.length;
-        const diff = total - Object.keys(answers).length;
 
-        setUnansweredCount(diff);
+        // ✅ unanswered count should be based on per-question answered
+        const unanswered = questions.reduce(
+            (acc, q) => acc + (isAnswered(q.id) ? 0 : 1),
+            0,
+        );
+
+        setUnansweredCount(unanswered);
         setConfirmMode(isLastSection ? 'submit_exam' : 'next_section');
         setConfirmOpen(true);
     };
 
     const confirmFinishSection = () => {
+        // ✅ reset BEFORE navigating to next section
+        setCurrentQuestionIndex(0);
+        setShowQuestionNav(false);
+
         setConfirmOpen(false);
 
         router.post(
@@ -184,6 +208,8 @@ export default function TakeExamPage({
             {},
             {
                 preserveScroll: true,
+                // optional but recommended:
+                // preserveState: false,
                 onFinish: () => {
                     setConfirmOpen(false);
                 },
@@ -196,16 +222,16 @@ export default function TakeExamPage({
         setShowQuestionNav(false);
     };
 
-    const isAnswered = (questionId: number) => questionId in answers;
-    const isFlagged = (questionId: number) => flaggedQuestions.has(questionId);
-
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
     const isLastSection = section.index === section.total;
 
     const [confirmMode, setConfirmMode] = useState<ConfirmMode>('next_section');
 
     return (
-        <div className="flex min-h-screen flex-col bg-background">
+        <div
+            key={`section-${section.question_bank_id}-${section.index}`}
+            className="flex min-h-screen flex-col bg-background"
+        >
             <Head title={`Taking Exam: ${exam.title}`} />
 
             <ExamHeader
@@ -246,7 +272,6 @@ export default function TakeExamPage({
                                     <QuestionCard
                                         questionHtml={currentQuestionHtml}
                                         questionImage={currentQuestionImage}
-                                        points={currentQuestion.points}
                                         flagged={isFlagged(currentQuestion.id)}
                                         onToggleFlag={toggleFlag}
                                         saveStatus={saveStatus}
