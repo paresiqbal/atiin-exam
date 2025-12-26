@@ -55,12 +55,10 @@ interface School {
     id: number;
     name: string;
 }
-
 interface University {
     id: number;
     name: string;
 }
-
 interface Major {
     id: number;
     name: string;
@@ -95,10 +93,11 @@ interface AccountsPageProps extends InertiaPageProps {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard Admin', href: '/admin/dashboard' },
-    { title: 'Akun Siswa', href: '/admin/students/accounts' },
+    { title: 'Akun Siswa', href: '/admin/payments' },
 ];
 
-const baseUrl = '/admin/students/accounts';
+// IMPORTANT: match your GET route
+const baseUrl = '/admin/payments';
 
 function formatDate(dateStr?: string | null) {
     if (!dateStr) return '-';
@@ -141,7 +140,6 @@ export default function PaymentIndex() {
     const { students, filters, stats } = usePage<AccountsPageProps>().props;
     const data = useMemo(() => students.data ?? [], [students.data]);
 
-    // server-driven filters (live search)
     const [search, setSearch] = useState(filters?.search ?? '');
     const [accountType, setAccountType] = useState<string>(
         filters?.account_type ?? 'all',
@@ -150,7 +148,7 @@ export default function PaymentIndex() {
         (filters?.per_page ?? students.per_page ?? 20) as number,
     );
 
-    // live-search debounce
+    // Live search without Enter (debounced)
     const firstRun = useRef(true);
     useEffect(() => {
         if (firstRun.current) {
@@ -242,7 +240,7 @@ export default function PaymentIndex() {
                     </div>
                 </div>
 
-                {/* Filters (match UserIndex style) */}
+                {/* Filters (match UserIndex search UI) */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
                         <InputGroup className="flex-1">
@@ -281,7 +279,7 @@ export default function PaymentIndex() {
                     </div>
                 </div>
 
-                {/* Stats (updated: no "halaman ini") */}
+                {/* Stats: Total + Pro + Regular (no "(Halaman Ini)") */}
                 <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader>
@@ -352,10 +350,18 @@ export default function PaymentIndex() {
                                         );
                                         const isPro = s.account_type === 'pro';
 
+                                        // row hint colors (subtle)
+                                        const rowClass =
+                                            isPro && expired
+                                                ? 'bg-destructive/5 hover:bg-destructive/10'
+                                                : isPro
+                                                  ? 'bg-primary/5 hover:bg-primary/10'
+                                                  : 'hover:bg-accent';
+
                                         return (
                                             <tr
                                                 key={s.id}
-                                                className="transition-colors hover:bg-accent"
+                                                className={`transition-colors ${rowClass}`}
                                             >
                                                 <td className="px-6 py-2">
                                                     <div className="font-medium">
@@ -507,11 +513,10 @@ export default function PaymentIndex() {
                     </TooltipProvider>
                 </div>
 
-                {/* Footer nav (match UserIndex style) */}
+                {/* Footer nav (like UserIndex) */}
                 <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
                     <div className="text-sm text-muted-foreground">
-                        Menampilkan {data.length} dari {students.total} baris
-                        (halaman ini).
+                        Menampilkan {data.length} baris • Total {students.total}
                     </div>
 
                     <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
@@ -605,7 +610,7 @@ export default function PaymentIndex() {
     );
 }
 
-/** Dialogs (unchanged, just kept here for full file) */
+/* Dialogs (same as yours, included for completeness) */
 
 function ExtendDialog({
     disabled,
