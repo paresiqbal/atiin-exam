@@ -190,17 +190,15 @@ class ExamController extends Controller
             $questions = $questions->shuffle()->values();
         }
 
-        // ✅ only responses for these questions
         $responses = $attempt->responses()
             ->whereIn('question_id', $questions->pluck('id'))
             ->pluck('selected_option_id', 'question_id')
             ->toArray();
 
         $sectionTimeLimit = (int) ($bank->pivot->duration_minutes ?? 0);
-        $elapsedMinutes = now()->diffInMinutes($attempt->section_started_at);
+        $elapsedSeconds = now()->diffInSeconds($attempt->section_started_at);
 
-        // auto-advance if expired
-        if ($sectionTimeLimit > 0 && $elapsedMinutes >= $sectionTimeLimit) {
+        if ($sectionTimeLimit > 0 && $elapsedSeconds >= ($sectionTimeLimit * 60)) {
             return $this->finishSection($attempt);
         }
 
@@ -209,15 +207,15 @@ class ExamController extends Controller
             'exam' => $attempt->exam->load('settings', 'questionBanks:id,name'),
             'questions' => $questions,
             'responses' => $responses,
-
-            // ✅ NEW: section data
             'section' => [
                 'index' => (int) $attempt->current_section,
                 'total' => (int) $attempt->exam->questionBanks->count(),
                 'question_bank_id' => (int) $bank->id,
                 'title' => (string) ($bank->name ?? 'Sesi'),
                 'timeLimit' => $sectionTimeLimit,
-                'elapsedMinutes' => $elapsedMinutes,
+                'elapsedSeconds' => $elapsedSeconds,
+                'serverNow' => now()->toIso8601String(),
+                'sectionStartedAt' => optional($attempt->section_started_at)->toIso8601String(),
             ],
         ]);
     }
