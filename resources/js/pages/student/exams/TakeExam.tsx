@@ -60,7 +60,10 @@ interface SectionProps {
     question_bank_id: number;
     title: string;
     timeLimit: number;
-    elapsedMinutes: number;
+
+    // ✅ add these
+    serverNow: string;
+    sectionStartedAt: string | null; // because backend can send null
 }
 
 interface Props {
@@ -118,12 +121,11 @@ export default function TakeExamPage({
 
     const { timeLeft, formatted } = useExamTimer({
         timeLimit: section.timeLimit,
-        elapsedMinutes: section.elapsedMinutes,
+        sectionStartedAt: section.sectionStartedAt ?? section.serverNow,
+        serverNow: section.serverNow,
         onExpired: () => {
-            // ✅ reset BEFORE navigating
             setCurrentQuestionIndex(0);
             setShowQuestionNav(false);
-
             router.post(`/student/exams/${attempt.id}/finish-section`);
         },
         onWarn: showToast,

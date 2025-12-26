@@ -3,36 +3,51 @@ import type { ToastType } from './useToasts';
 
 interface Params {
     timeLimit: number; // minutes
-    elapsedMinutes: number;
+    sectionStartedAt: string; // ISO
+    serverNow: string; // ISO (from backend)
     onExpired: () => void;
     onWarn?: (message: string, type: ToastType) => void;
 }
 
 export function useExamTimer({
     timeLimit,
-    elapsedMinutes,
+    sectionStartedAt,
+    serverNow,
     onExpired,
     onWarn,
 }: Params) {
-    const [timeLeft, setTimeLeft] = useState(
-        Math.max(0, timeLimit * 60 - Math.floor(elapsedMinutes) * 60),
-    );
-
+    const offsetRef = useRef(0);
     const expiredRef = useRef(false);
 
     useEffect(() => {
-        if (timeLeft <= 0 && !expiredRef.current) {
-            expiredRef.current = true;
-            onExpired();
-            return;
-        }
+        offsetRef.current = Date.parse(serverNow) - Date.now();
+        expiredRef.current = false;
+    }, [serverNow, sectionStartedAt, timeLimit]);
 
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => Math.max(0, prev - 1));
+    const computeLeft = () => {
+        const startMs = Date.parse(sectionStartedAt);
+        const nowServerMs = Date.now() + offsetRef.current;
+        const elapsedSec = Math.floor((nowServerMs - startMs) / 1000);
+        return Math.max(0, timeLimit * 60 - elapsedSec);
+    };
+
+    const [timeLeft, setTimeLeft] = useState(() => computeLeft());
+
+    useEffect(() => {
+        setTimeLeft(computeLeft());
+        const t = setInterval(() => {
+            const left = computeLeft();
+            setTimeLeft(left);
+
+            if (left <= 0 && !expiredRef.current) {
+                expiredRef.current = true;
+                onExpired();
+            }
         }, 1000);
 
-        return () => clearInterval(timer);
-    }, [timeLeft, onExpired]);
+        return () => clearInterval(t);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [timeLimit, sectionStartedAt, onExpired]);
 
     useEffect(() => {
         if (!onWarn) return;
