@@ -4,7 +4,6 @@ import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -150,12 +149,9 @@ export default function UnivShow() {
                         </CardHeader>
                         <CardContent className="text-xl font-semibold">
                             {university.code ? (
-                                <Badge
-                                    variant="secondary"
-                                    className="font-mono uppercase"
-                                >
+                                <div className="text-4xl font-extrabold">
                                     {university.code}
-                                </Badge>
+                                </div>
                             ) : (
                                 <span className="text-sm text-muted-foreground">
                                     Tidak ada kode
@@ -265,7 +261,7 @@ export default function UnivShow() {
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="border-b bg-muted/50">
+                                <thead className="border-b bg-primary/10 dark:bg-primary/60">
                                     <tr>
                                         <th className="px-4 py-2 text-left">
                                             Nama Program Studi
