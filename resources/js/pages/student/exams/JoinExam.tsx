@@ -7,6 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -91,7 +92,8 @@ export default function JoinExam({ universities, exam }: Props) {
         0,
     );
 
-    const canAddUniversity = selections.length < 2;
+    // Max 3 universities
+    const canAddUniversity = selections.length < 3;
 
     const getUniversityById = (id: string) =>
         universities.find((u) => u.id === Number(id));
@@ -137,9 +139,8 @@ export default function JoinExam({ universities, exam }: Props) {
             return;
         }
 
-        if (totalMajorsSelected >= 4) {
-            return;
-        }
+        // Max 4 majors overall
+        if (totalMajorsSelected >= 4) return;
 
         next[index].majors = [...majors, majorId];
         updateSelections(next);
@@ -179,12 +180,14 @@ export default function JoinExam({ universities, exam }: Props) {
     return (
         <AppLayout breadcrumbs={[]}>
             <Head title="Masuk Ujian" />
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-4 md:p-8 dark:from-gray-900 dark:to-gray-800">
-                <div className="mx-auto max-w-3xl space-y-6">
+
+            {/* Neutral background + tighter padding */}
+            <div className="min-h-screen bg-background p-4 md:p-6">
+                <div className="mx-auto max-w-3xl space-y-4">
                     {/* Header */}
                     <div className="space-y-2 text-center">
-                        <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                            <GraduationCap className="h-8 w-8 text-primary" />
+                        <div className="mb-2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+                            <GraduationCap className="h-7 w-7 text-primary" />
                         </div>
                         <h1 className="text-3xl font-bold text-foreground md:text-4xl">
                             Masuk Ujian
@@ -192,7 +195,7 @@ export default function JoinExam({ universities, exam }: Props) {
                         <p className="mx-auto max-w-xl text-muted-foreground">
                             Masukkan token ujian dan pilih hingga{' '}
                             <span className="font-semibold text-foreground">
-                                2 universitas
+                                3 universitas
                             </span>{' '}
                             dengan maksimal{' '}
                             <span className="font-semibold text-foreground">
@@ -202,44 +205,50 @@ export default function JoinExam({ universities, exam }: Props) {
                         </p>
                     </div>
 
-                    {/* Exam Info */}
+                    {/* Exam Info - clearer + neutral (no blue-ish bg) */}
                     {exam && (
-                        <Alert className="rounded-2xl border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-                            <AlertDescription className="space-y-2 text-sm">
-                                <div className="flex items-start gap-2">
-                                    <span className="min-w-[80px] font-semibold">
-                                        Ujian:
-                                    </span>
-                                    <span>{exam.name}</span>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                    <span className="min-w-[80px] font-semibold">
-                                        Durasi:
-                                    </span>
-                                    <span>
-                                        {exam.settings?.time_limit_minutes ||
-                                            90}{' '}
-                                        menit
-                                    </span>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                    <span className="min-w-[80px] font-semibold">
-                                        Dimulai:
-                                    </span>
-                                    <span>
-                                        {new Date(exam.start_at).toLocaleString(
-                                            'id-ID',
-                                        )}
-                                    </span>
+                        <Alert className="rounded-2xl border-border bg-card">
+                            <AlertDescription className="text-sm">
+                                <div className="grid gap-2 md:grid-cols-3">
+                                    <div className="space-y-0.5">
+                                        <div className="text-xs text-muted-foreground">
+                                            Ujian
+                                        </div>
+                                        <div className="font-medium text-foreground">
+                                            {exam.name}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-0.5">
+                                        <div className="text-xs text-muted-foreground">
+                                            Durasi
+                                        </div>
+                                        <div className="font-medium text-foreground">
+                                            {exam.settings
+                                                ?.time_limit_minutes || 90}{' '}
+                                            menit
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-0.5">
+                                        <div className="text-xs text-muted-foreground">
+                                            Mulai
+                                        </div>
+                                        <div className="font-medium text-foreground">
+                                            {new Date(
+                                                exam.start_at,
+                                            ).toLocaleString('id-ID')}
+                                        </div>
+                                    </div>
                                 </div>
                             </AlertDescription>
                         </Alert>
                     )}
 
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {/* Token Input Card */}
-                        <Card className="rounded-2xl border-2">
-                            <CardContent className="pt-6">
+                        <Card className="rounded-2xl border">
+                            <CardContent className="pt-5">
                                 <div className="space-y-2">
                                     <Label
                                         htmlFor="token"
@@ -256,7 +265,7 @@ export default function JoinExam({ universities, exam }: Props) {
                                             onChange={(e) =>
                                                 setData('token', e.target.value)
                                             }
-                                            className={`h-12 rounded-xl pr-24 text-base ${
+                                            className={`h-11 rounded-xl pr-24 text-base ${
                                                 errors.token
                                                     ? 'border-red-500'
                                                     : ''
@@ -294,11 +303,11 @@ export default function JoinExam({ universities, exam }: Props) {
                         </Card>
 
                         {/* University & Major Selections Card */}
-                        <Card className="rounded-2xl border-2">
-                            <CardHeader>
+                        <Card className="rounded-2xl border">
+                            <CardHeader className="pb-3">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <CardTitle className="text-xl">
+                                        <CardTitle className="text-lg">
                                             Pilih Universitas & Jurusan
                                         </CardTitle>
                                         <CardDescription className="mt-1">
@@ -316,7 +325,8 @@ export default function JoinExam({ universities, exam }: Props) {
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+
+                            <CardContent className="space-y-3">
                                 {selections.map((selection, index) => {
                                     const selectedUni = getUniversityById(
                                         selection.university_id,
@@ -332,20 +342,22 @@ export default function JoinExam({ universities, exam }: Props) {
                                         ] as string) || '';
 
                                     return (
+                                        // Not a "card in card": flatter section
                                         <div
                                             key={index}
-                                            className="space-y-4 rounded-2xl border-2 bg-card p-4 md:p-6"
+                                            className="space-y-4 rounded-xl border p-4"
                                         >
                                             {/* Header */}
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                                                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
                                                         {index + 1}
                                                     </div>
-                                                    <h3 className="text-lg font-semibold">
+                                                    <h3 className="text-base font-semibold">
                                                         Pilihan {index + 1}
                                                     </h3>
                                                 </div>
+
                                                 {selections.length > 1 && (
                                                     <Button
                                                         type="button"
@@ -376,7 +388,7 @@ export default function JoinExam({ universities, exam }: Props) {
                                                             index,
                                                         )
                                                     }
-                                                    className={`h-12 w-full justify-start rounded-xl text-left font-normal ${
+                                                    className={`h-11 w-full justify-start rounded-xl text-left font-normal ${
                                                         universityError
                                                             ? 'border-red-500'
                                                             : ''
@@ -403,6 +415,7 @@ export default function JoinExam({ universities, exam }: Props) {
                                                         Jurusan (Pilih minimal
                                                         1)
                                                     </Label>
+
                                                     {selectedUni.majors.length >
                                                     0 ? (
                                                         <div className="max-h-60 space-y-2 overflow-y-auto pr-2">
@@ -424,29 +437,27 @@ export default function JoinExam({ universities, exam }: Props) {
                                                                             key={
                                                                                 major.id
                                                                             }
-                                                                            className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 p-3 transition-all ${
+                                                                            className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-all ${
                                                                                 isChecked
                                                                                     ? 'border-primary bg-primary/5'
                                                                                     : disabled
-                                                                                      ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-50'
-                                                                                      : 'border-gray-200 hover:border-primary/50 hover:bg-gray-50'
+                                                                                      ? 'cursor-not-allowed border-border bg-muted/30 opacity-60'
+                                                                                      : 'border-border hover:border-primary/50 hover:bg-muted/30'
                                                                             }`}
                                                                         >
-                                                                            <input
-                                                                                type="checkbox"
+                                                                            <Checkbox
                                                                                 checked={
                                                                                     isChecked
                                                                                 }
                                                                                 disabled={
                                                                                     disabled
                                                                                 }
-                                                                                onChange={() =>
+                                                                                onCheckedChange={() =>
                                                                                     handleMajorToggle(
                                                                                         index,
                                                                                         majorId,
                                                                                     )
                                                                                 }
-                                                                                className="h-4 w-4 rounded border-gray-300"
                                                                             />
                                                                             <span className="flex-1 text-sm font-medium">
                                                                                 {
@@ -467,6 +478,7 @@ export default function JoinExam({ universities, exam }: Props) {
                                                             tersedia
                                                         </p>
                                                     )}
+
                                                     {majorsError && (
                                                         <p className="text-sm text-red-500">
                                                             {majorsError}
@@ -484,10 +496,11 @@ export default function JoinExam({ universities, exam }: Props) {
                                         type="button"
                                         variant="outline"
                                         onClick={handleAddUniversity}
-                                        className="h-12 w-full gap-2 rounded-xl border-2 border-dashed"
+                                        className="h-11 w-full gap-2 rounded-xl border border-dashed"
                                     >
                                         <Plus className="h-4 w-4" />
-                                        Tambah Universitas Kedua
+                                        Tambah Universitas (Pilihan{' '}
+                                        {selections.length + 1})
                                     </Button>
                                 )}
 
@@ -504,7 +517,7 @@ export default function JoinExam({ universities, exam }: Props) {
                         <Button
                             onClick={handleSubmit}
                             disabled={processing}
-                            className="h-14 w-full rounded-xl text-lg"
+                            className="h-12 w-full rounded-xl text-base"
                             size="lg"
                         >
                             {processing ? 'Memulai Ujian...' : 'Mulai Ujian'}
@@ -554,7 +567,7 @@ export default function JoinExam({ universities, exam }: Props) {
                                                 uni.id.toString(),
                                             )
                                         }
-                                        className="w-full rounded-xl border-2 p-4 text-left transition-all hover:border-primary hover:bg-primary/5"
+                                        className="w-full rounded-xl border p-4 text-left transition-all hover:border-primary hover:bg-primary/5"
                                     >
                                         <div className="flex items-start gap-3">
                                             <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />

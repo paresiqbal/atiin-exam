@@ -75,7 +75,7 @@ class ExamController extends Controller
             'token' => 'required|string|exists:exam_tokens,token',
 
             // your placement selections (keep as-is)
-            'selections' => 'required|array|max:2',
+            'selections' => 'required|array|max:3',
             'selections.*.university_id' => 'required|exists:universities,id',
             'selections.*.majors' => 'required|array|max:4',
             'selections.*.majors.*' => 'required|exists:majors,id',
@@ -514,11 +514,12 @@ class ExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        // If already frozen, return a clear message
         if ($attempt->is_frozen) {
             return response()->json([
                 'success' => false,
                 'is_frozen' => true,
-                'message' => 'Ujian Anda dibekukan. Hubungi admin untuk membuka kembali.'
+                'message' => 'Ujian Anda sedang dibekukan. Silakan hubungi admin/pengawas untuk membukanya kembali.',
             ], 403);
         }
 
@@ -526,10 +527,16 @@ class ExamController extends Controller
             'violation_type' => 'required|string|in:tab_switch,copy_attempt,paste_attempt',
         ]);
 
+        $MAX_VIOLATIONS = 3;
+
+        $type = $validated['violation_type'];
+        $label = $this->violationLabel($type);
+
+        // Create / update violation counter
         $violation = ExamViolation::firstOrCreate(
             [
                 'attempt_id' => $attempt->id,
-                'violation_type' => $validated['violation_type'],
+                'violation_type' => $type,
             ],
             [
                 'count' => 0,
@@ -540,13 +547,13 @@ class ExamController extends Controller
         $violation->increment('count');
         $violation->update(['last_occurred_at' => now()]);
 
-        $MAX_VIOLATIONS = 3;
-
+        // Freeze if exceeded
         if ($violation->count >= $MAX_VIOLATIONS) {
             $attempt->update([
                 'is_frozen' => true,
                 'frozen_at' => now(),
-                'frozen_reason' => "Terlalu banyak {$validated['violation_type']} ({$violation->count}x)",
+                'frozen_reason' =>
+                "Ujian dibekukan karena {$label} sebanyak {$violation->count} kali, melebihi batas yang diizinkan.",
             ]);
 
             return response()->json([
@@ -554,17 +561,35 @@ class ExamController extends Controller
                 'is_frozen' => true,
                 'violation_count' => $violation->count,
                 'max_violations' => $MAX_VIOLATIONS,
-                'message' => 'Ujian dibekukan karena terlalu banyak pelanggaran. Hubungi admin.'
+                'message' =>
+                "Ujian dibekukan karena {$label} terlalu sering. Silakan hubungi admin/pengawas untuk melanjutkan ujian.",
             ]);
         }
+
+        // Not frozen yet: return a warning (optional but nice UX)
+        $remaining = max(0, $MAX_VIOLATIONS - $violation->count);
 
         return response()->json([
             'success' => true,
             'is_frozen' => false,
             'violation_count' => $violation->count,
             'max_violations' => $MAX_VIOLATIONS,
-            'remaining' => $MAX_VIOLATIONS - $violation->count,
+            'remaining' => $remaining,
+            'message' =>
+            "Terdeteksi pelanggaran: {$label}. "
+                . "Peringatan {$violation->count}/{$MAX_VIOLATIONS}. "
+                . ($remaining > 0 ? "Sisa {$remaining} sebelum ujian dibekukan." : ''),
         ]);
+    }
+
+    private function violationLabel(string $type): string
+    {
+        return match ($type) {
+            'tab_switch' => 'berpindah tab / aplikasi',
+            'copy_attempt' => 'mencoba menyalin teks',
+            'paste_attempt' => 'mencoba menempelkan teks',
+            default => 'pelanggaran',
+        };
     }
 
     private function getExamQuestions(Exam $exam)

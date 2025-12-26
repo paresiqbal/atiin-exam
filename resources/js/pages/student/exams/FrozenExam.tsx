@@ -15,6 +15,12 @@ interface Props {
     frozen_reason: string;
 }
 
+const VIOLATION_LABELS: Record<string, string> = {
+    tab_switch: 'Berpindah tab / aplikasi',
+    copy_attempt: 'Mencoba menyalin teks',
+    paste_attempt: 'Mencoba menempelkan teks',
+};
+
 export default function FrozenExam({ attempt, frozen_reason }: Props) {
     return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -31,14 +37,17 @@ export default function FrozenExam({ attempt, frozen_reason }: Props) {
                     <div className="space-y-2">
                         <h1 className="text-2xl font-bold">Ujian Dibekukan</h1>
                         <p className="text-muted-foreground">
-                            Ujian Anda telah dibekukan karena aktivitas
-                            mencurigakan.
+                            Ujian Anda dihentikan sementara karena terdeteksi
+                            pelanggaran aturan.
                         </p>
                     </div>
 
                     <div className="rounded-lg bg-muted p-4 text-left">
-                        <div className="mb-2 text-sm font-medium">Alasan:</div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="mb-2 text-sm font-medium">
+                            Alasan Pembekuan
+                        </div>
+
+                        <div className="text-sm leading-relaxed text-muted-foreground">
                             {frozen_reason}
                         </div>
 
@@ -46,14 +55,19 @@ export default function FrozenExam({ attempt, frozen_reason }: Props) {
                             attempt.violations.length > 0 && (
                                 <div className="mt-4 space-y-2">
                                     <div className="text-sm font-medium">
-                                        Detail Pelanggaran:
+                                        Detail Pelanggaran
                                     </div>
+
                                     {attempt.violations.map((v, i) => (
                                         <div
                                             key={i}
                                             className="text-sm text-muted-foreground"
                                         >
-                                            • {v.violation_type}: {v.count}x
+                                            •{' '}
+                                            {VIOLATION_LABELS[
+                                                v.violation_type
+                                            ] ?? 'Pelanggaran'}{' '}
+                                            — {v.count} kali
                                         </div>
                                     ))}
                                 </div>
@@ -62,8 +76,8 @@ export default function FrozenExam({ attempt, frozen_reason }: Props) {
 
                     <div className="space-y-3">
                         <p className="text-sm text-muted-foreground">
-                            Silakan hubungi admin untuk membuka kembali ujian
-                            Anda.
+                            Jika Anda merasa ini adalah kesalahan, silakan
+                            hubungi admin atau pengawas ujian.
                         </p>
                     </div>
                 </CardContent>
