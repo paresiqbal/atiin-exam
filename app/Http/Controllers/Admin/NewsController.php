@@ -13,11 +13,12 @@ class NewsController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
+        $perPage = (int) $request->input('per_page', 10);
 
         $news = News::query()
             ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%"))
             ->latest()
-            ->paginate(10)
+            ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('admin/news/NewsIndex', [
@@ -33,12 +34,12 @@ class NewsController extends Controller
         return Inertia::render('admin/news/NewsCreate');
     }
 
+    // Draft removed: always publish on create
     public function store(Request $request)
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'body' => ['nullable', 'string'],
-            'status' => ['required', 'in:draft,published'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
@@ -47,17 +48,17 @@ class NewsController extends Controller
             $imagePath = $request->file('image')->store('news', 'public');
         }
 
-        $publishedAt = $validated['status'] === 'published' ? now() : null;
-
         News::create([
             'title' => $validated['title'],
             'body' => $validated['body'] ?? null,
-            'status' => $validated['status'],
-            'published_at' => $publishedAt,
+            'status' => 'published',
+            'published_at' => now(),
             'image_path' => $imagePath,
         ]);
 
-        return redirect()->route('admin.news.index')->with('success', 'Berita berhasil dibuat.');
+        return redirect()
+            ->route('admin.news.index')
+            ->with('success', 'Berita berhasil dibuat & dipublikasikan.');
     }
 
     public function edit(News $news)
@@ -68,12 +69,12 @@ class NewsController extends Controller
         ]);
     }
 
+    // Draft removed: always keep published on update
     public function update(Request $request, News $news)
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'body' => ['nullable', 'string'],
-            'status' => ['required', 'in:draft,published'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'remove_image' => ['nullable', 'boolean'],
         ]);
@@ -92,22 +93,18 @@ class NewsController extends Controller
             $news->image_path = $request->file('image')->store('news', 'public');
         }
 
-        // publish date handling
-        $newStatus = $validated['status'];
-        if ($newStatus === 'published' && !$news->published_at) {
-            $news->published_at = now();
-        }
-        if ($newStatus === 'draft') {
-            $news->published_at = null;
-        }
-
         $news->title = $validated['title'];
         $news->body = $validated['body'] ?? null;
-        $news->status = $newStatus;
+
+        // always published
+        $news->status = 'published';
+        $news->published_at = $news->published_at ?? now();
 
         $news->save();
 
-        return redirect()->route('admin.news.index')->with('success', 'Berita berhasil diperbarui.');
+        return redirect()
+            ->route('admin.news.index')
+            ->with('success', 'Berita berhasil diperbarui.');
     }
 
     public function destroy(News $news)
@@ -119,5 +116,29 @@ class NewsController extends Controller
         $news->delete();
 
         return back()->with('success', 'Berita berhasil dihapus.');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return redirect()
+                ->route('admin.news.index')
+                ->with('info', 'Tidak ada berita yang dipilih untuk dihapus.');
+        }
+
+        $items = News::whereIn('id', $ids)->get(['id', 'image_path']);
+        foreach ($items as $item) {
+            if ($item->image_path) {
+                Storage::disk('public')->delete($item->image_path);
+            }
+        }
+
+        News::whereIn('id', $ids)->delete();
+
+        return redirect()
+            ->route('admin.news.index')
+            ->with('success', 'Berita terpilih berhasil dihapus.');
     }
 }
