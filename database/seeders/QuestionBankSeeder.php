@@ -19,7 +19,6 @@ class QuestionBankSeeder extends Seeder
             return;
         }
 
-        // 👉 These MUST match your validation rule
         $questionTypes = [
             'multiple_choice',
             'multiple_select',
@@ -84,24 +83,18 @@ class QuestionBankSeeder extends Seeder
         }
     }
 
-    /**
-     * Create 4 options (A–D).
-     *
-     * @param bool $multipleSelect if true, mark 2–3 options as correct
-     */
     protected function createMultipleChoiceOptions(Question $question, int $index, bool $multipleSelect = false): void
     {
         $labels = ['A', 'B', 'C', 'D'];
 
         if ($multipleSelect) {
-            // choose 2–3 correct answers
+
             $numCorrect = rand(2, 3);
             $correctKeys = array_rand($labels, $numCorrect);
             if (! is_array($correctKeys)) {
                 $correctKeys = [$correctKeys];
             }
         } else {
-            // exactly one correct
             $correctKey = array_rand($labels);
             $correctKeys = [$correctKey];
         }
@@ -111,7 +104,7 @@ class QuestionBankSeeder extends Seeder
                 'question_id'  => $question->id,
                 'option_text'  => "Pilihan $label untuk soal ke-{$index}",
                 'is_correct'   => in_array($i, $correctKeys, true),
-                'option_order' => $i, // 0-based like your controller
+                'option_order' => $i,
             ]);
         }
     }
