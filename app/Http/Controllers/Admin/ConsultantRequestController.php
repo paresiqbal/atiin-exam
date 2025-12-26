@@ -12,19 +12,39 @@ class ConsultantRequestController extends Controller
     public function index(Request $request)
     {
         $status = $request->query('status');
+        $search = $request->query('search');
+        $perPage = (int) $request->input('per_page', 15);
 
-        $requests = ConsultantRequest::with([
-            'student:id,name,email',
-            'consultant:id,name,email',
-        ])
+        $requests = ConsultantRequest::query()
+            ->with([
+                'student:id,name,email',
+                'consultant:id,name,email',
+            ])
             ->when($status, fn($q) => $q->where('status', $status))
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($qq) use ($search) {
+                    $qq->where('topic', 'like', "%{$search}%")
+                        ->orWhereHas('student', function ($s) use ($search) {
+                            $s->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('consultant', function ($c) use ($search) {
+                            $c->where('name', 'like', "%{$search}%")
+                                ->orWhere('email', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->latest()
-            ->paginate(15)
+            ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('admin/consultants/ConsultIndex', [
             'requests' => $requests,
-            'filters' => ['status' => $status],
+            'filters' => [
+                'status' => $status,
+                'search' => $search,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 
@@ -52,5 +72,22 @@ class ConsultantRequestController extends Controller
         return view('admin.consultant-requests.print', [
             'request' => $consultantRequest,
         ]);
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return redirect()
+                ->route('admin.consultant-requests.index')
+                ->with('info', 'Tidak ada data yang dipilih untuk dihapus.');
+        }
+
+        ConsultantRequest::whereIn('id', $ids)->delete();
+
+        return redirect()
+            ->route('admin.consultant-requests.index')
+            ->with('success', 'Data terpilih berhasil dihapus.');
     }
 }

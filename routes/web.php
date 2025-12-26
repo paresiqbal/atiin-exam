@@ -114,6 +114,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('questions/upload-image', [AdminQuestionController::class, 'uploadImage'])->name('questions.uploadImage');
 
         // Consultant Request management routes
+        Route::delete('/consultant-requests/bulk-delete', [AdminConsultantRequestController::class, 'bulkDelete'])->name('consultant-requests.bulk-delete');
         Route::get('/consultant-requests', [AdminConsultantRequestController::class, 'index'])->name('consultant-requests.index');
         Route::get('/consultant-requests/{consultantRequest}', [AdminConsultantRequestController::class, 'show'])->name('consultant-requests.show');
         Route::get('/consultant-requests/{consultantRequest}/print', [AdminConsultantRequestController::class, 'print'])->name('consultant-requests.print');
