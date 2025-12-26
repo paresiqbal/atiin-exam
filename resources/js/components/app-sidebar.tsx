@@ -179,6 +179,11 @@ export function AppSidebar() {
                 icon: Book,
             },
             {
+                title: 'Berita',
+                href: '/student/news',
+                icon: Newspaper,
+            },
+            {
                 title: 'Konsultan',
                 href: '/student/consultant-requests',
                 icon: FileUser,
@@ -187,11 +192,6 @@ export function AppSidebar() {
                 title: 'Pembayaran',
                 href: '/student/account',
                 icon: Book,
-            },
-            {
-                title: 'Berita',
-                href: '/student/news',
-                icon: Newspaper,
             },
         ];
     }

@@ -4,29 +4,32 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\News;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class StudentNewsController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         $news = News::query()
+            ->select(['id', 'title', 'body', 'published_at', 'status', 'image_path'])
             ->where('status', 'published')
             ->orderByDesc('published_at')
             ->paginate(10)
-            ->through(function ($item) {
+            ->withQueryString()
+            ->through(function (News $item) {
+                $plain = trim(\Illuminate\Support\Str::of($item->body ?? '')->stripTags()->toString());
+
                 return [
-                    'id' => $item->id,
-                    'title' => $item->title,
-                    'body' => $item->body,
-                    'published_at' => optional($item->published_at)->toDateTimeString(),
-                    'image_url' => $item->image_path ? Storage::url($item->image_path) : null,
+                    'id'           => $item->id,
+                    'title'        => $item->title,
+                    'excerpt'      => \Illuminate\Support\Str::limit($plain, 160),
+                    'published_at' => optional($item->published_at)->toIso8601String(),
+                    'image_url' => $item->image_path ? \Illuminate\Support\Facades\Storage::url($item->image_path) : null,
                 ];
             });
 
-        return Inertia::render('student/news/NewsIndex', [
+        return \Inertia\Inertia::render('student/news/NewsIndex', [
             'news' => $news,
         ]);
     }
@@ -37,11 +40,12 @@ class StudentNewsController extends Controller
 
         return Inertia::render('student/news/NewsShow', [
             'newsItem' => [
-                'id' => $news->id,
-                'title' => $news->title,
-                'body' => $news->body,
-                'published_at' => optional($news->published_at)->toDateTimeString(),
-                'image_url' => $news->image_path ? Storage::url($news->image_path) : null,
+                'id'           => $news->id,
+                'title'        => $news->title,
+                // ✅ send rich HTML for rendering
+                'body_html'    => $news->body,
+                'published_at' => optional($news->published_at)->toIso8601String(),
+                'image_url'    => $news->image_path ? Storage::url($news->image_path) : null,
             ],
         ]);
     }

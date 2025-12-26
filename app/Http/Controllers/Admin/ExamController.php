@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\ExamResultsPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,7 +25,7 @@ class ExamController extends Controller
 
         $exams = Exam::query()
             ->with([
-                'questionBanks:id,name', // ✅ ini
+                'questionBanks:id,name',
             ])
             ->withCount('attempts')
             ->orderByDesc('created_at')
@@ -34,7 +35,6 @@ class ExamController extends Controller
             'exams' => $exams,
         ]);
     }
-
 
     public function create()
     {
@@ -74,7 +74,6 @@ class ExamController extends Controller
             'question_banks.*.duration_minutes' => 'required|integer|min:1|max:300',
             'question_banks.*.sort_order' => 'nullable|integer|min:0',
         ]);
-
 
         $admin = auth()->user();
 
@@ -121,8 +120,6 @@ class ExamController extends Controller
             ->with('success', 'Exam created successfully');
     }
 
-
-
     public function show(Exam $exam): Response
     {
         $exam->load([
@@ -130,7 +127,6 @@ class ExamController extends Controller
                 $q->withPivot(['duration_minutes', 'sort_order'])
                     ->orderBy('exam_question_bank.sort_order');
             },
-
             'questionBanks.questions.options',
             'settings',
             'tokens',
@@ -142,7 +138,6 @@ class ExamController extends Controller
         ]);
     }
 
-
     public function regenerateToken(Exam $exam)
     {
         if ($exam->admin_id !== auth()->id()) {
@@ -151,14 +146,13 @@ class ExamController extends Controller
 
         $exam->tokens()->delete();
 
-        $newToken = ExamToken::create([
+        ExamToken::create([
             'exam_id' => $exam->id,
             'token'   => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
         ]);
 
         return back()->with('success', 'Token regenerated successfully');
     }
-
 
     public function edit(Exam $exam): Response
     {
@@ -176,12 +170,11 @@ class ExamController extends Controller
             },
         ]);
 
-        // list dropdown
-        $questionBanks = \App\Models\QuestionBank::query()
+        $questionBanks = QuestionBank::query()
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $schools = \App\Models\School::query()
+        $schools = School::query()
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -191,7 +184,6 @@ class ExamController extends Controller
             'schools' => $schools,
         ]);
     }
-
 
     public function update(Request $request, Exam $exam)
     {
@@ -208,7 +200,6 @@ class ExamController extends Controller
             'allow_review' => ['boolean'],
             'school_id' => ['required', 'exists:schools,id'],
 
-            // NEW:
             'question_banks' => ['required', 'array', 'min:1'],
             'question_banks.*.id' => ['required', 'integer', 'exists:question_banks,id'],
             'question_banks.*.duration_minutes' => ['required', 'integer', 'min:1', 'max:300'],
@@ -249,8 +240,6 @@ class ExamController extends Controller
             ->with('success', 'Exam updated successfully');
     }
 
-
-
     public function destroy(Exam $exam)
     {
         if ($exam->attempts()->exists()) {
@@ -274,12 +263,10 @@ class ExamController extends Controller
                 ->with('info', 'Tidak ada ujian yang dipilih untuk dihapus.');
         }
 
-        // Exams that have attempts (cannot be deleted)
         $examsWithAttempts = Exam::whereIn('id', $ids)
             ->whereHas('attempts')
             ->get();
 
-        // Exams that are safe to delete (no attempts)
         $deletableIds = Exam::whereIn('id', $ids)
             ->whereDoesntHave('attempts')
             ->pluck('id')
@@ -289,17 +276,13 @@ class ExamController extends Controller
             Exam::whereIn('id', $deletableIds)->delete();
         }
 
-        // Build flash message
         $deletedCount = count($deletableIds);
         $blockedCount = $examsWithAttempts->count();
 
         if ($deletedCount === 0 && $blockedCount > 0) {
             return redirect()
                 ->route('admin.exams.index')
-                ->with(
-                    'warning',
-                    'Tidak ada ujian yang dihapus karena semua ujian sudah pernah dikerjakan siswa.'
-                );
+                ->with('warning', 'Tidak ada ujian yang dihapus karena semua ujian sudah pernah dikerjakan siswa.');
         }
 
         if ($blockedCount > 0) {
@@ -330,7 +313,7 @@ class ExamController extends Controller
     {
         $attemptsQuery = $exam->attempts()
             ->with(['student.university', 'student.major'])
-            ->orderByDesc('started_at'); // 👈 better: show latest started first
+            ->orderByDesc('started_at');
 
         $attempts = $attemptsQuery->paginate(15);
 
@@ -338,12 +321,12 @@ class ExamController extends Controller
             $score      = (float) ($attempt->score ?? 0);
             $totalScore = (float) ($attempt->total_score ?? 0);
 
-            // Only calculate percentage for submitted attempts
             $percentage = ($totalScore > 0 && $attempt->status === 'submitted')
                 ? round(($score / $totalScore) * 100, 2)
                 : 0;
 
             $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
+
             $isPassed   = $attempt->status === 'submitted'
                 ? $score >= $minPassing
                 : false;
@@ -354,8 +337,8 @@ class ExamController extends Controller
                 'total_score'  => $totalScore,
                 'percentage'   => $percentage,
                 'is_passed'    => $isPassed,
-                'status'       => $attempt->status,             // 👈 add this
-                'is_frozen'    => (bool) $attempt->is_frozen,   // 👈 add this
+                'status'       => $attempt->status,
+                'is_frozen'    => (bool) $attempt->is_frozen,
                 'started_at'   => optional($attempt->started_at)->toIso8601String(),
                 'completed_at' => optional($attempt->completed_at)->toIso8601String(),
                 'student'      => [
@@ -373,7 +356,6 @@ class ExamController extends Controller
             ];
         });
 
-        // Analytics on submitted attempts only
         $submittedAttempts = $exam->attempts()
             ->where('status', 'submitted')
             ->get();
@@ -406,53 +388,85 @@ class ExamController extends Controller
         ]);
     }
 
+    /**
+     * ✅ FIX: Exam has MANY question banks (questionBanks), not single questionBank
+     * This helper flattens all questions across banks in pivot sort_order order.
+     */
+    private function getExamQuestions(Exam $exam): Collection
+    {
+        $exam->loadMissing([
+            'questionBanks' => function ($q) {
+                $q->withPivot(['sort_order'])->orderBy('exam_question_bank.sort_order');
+            },
+            'questionBanks.questions.options',
+        ]);
+
+        return $exam->questionBanks
+            ->flatMap(fn($qb) => $qb->questions->sortBy('id'))
+            ->unique('id')
+            ->values();
+    }
+
     public function attemptDetail(ExamAttempt $attempt)
     {
-        $passingScore = $attempt->student->major->minimum_passing_grade ?? 0;
-        $isPassed = $attempt->score >= $passingScore;
+        $attempt->load([
+            'student.university',
+            'student.major',
+            'exam.questionBanks' => function ($q) {
+                $q->withPivot(['sort_order'])->orderBy('exam_question_bank.sort_order');
+            },
+            'exam.questionBanks.questions.options',
+            'responses.selectedOption',
+        ]);
 
-        $questionDetails = $attempt->exam->questionBank->questions
-            ->map(function ($question) use ($attempt) {
-                $response = $attempt->responses()
-                    ->where('question_id', $question->id)
-                    ->first();
+        $passingScore = $attempt->student?->major?->minimum_passing_grade ?? 0;
+        $isPassed = (float)($attempt->score ?? 0) >= (float)$passingScore;
 
-                $correctOption = $question->options()
-                    ->where('is_correct', true)
-                    ->first();
+        $questions = $this->getExamQuestions($attempt->exam);
 
-                return [
-                    'id' => $question->id,
-                    'question_text' => $question->question_text,
-                    'question_type' => $question->question_type,
-                    'points' => $question->points,
-                    'student_answer' => $response?->selectedOption?->option_text,
-                    'correct_answer' => $correctOption?->option_text,
-                    'is_correct' => $response?->selectedOption?->is_correct ?? false,
-                    'points_earned' => $response ? ($response->selectedOption?->is_correct ? $question->points : 0) : 0,
-                ];
-            });
+        $questionDetails = $questions->map(function ($question) use ($attempt) {
+            $response = $attempt->responses->firstWhere('question_id', $question->id);
+            $selected = $response?->selectedOption;
 
-        $questionPerformance = $attempt->exam->attempts()
-            ->with('responses')
-            ->get()
-            ->flatMap(function ($att) {
-                return $att->responses;
-            })
+            // single-correct assumption
+            $correctOption = $question->options->firstWhere('is_correct', true);
+
+            return [
+                'id'            => $question->id,
+                'question_text' => $question->question_text,
+                'question_type' => $question->question_type,
+                'points'        => $question->points,
+                'student_answer' => $selected?->option_text,
+                'correct_answer' => $correctOption?->option_text,
+                'is_correct'    => (bool)($selected?->is_correct ?? false),
+                'points_earned' => $response
+                    ? ((bool)($selected?->is_correct ?? false) ? $question->points : 0)
+                    : 0,
+            ];
+        });
+
+        $allAttempts = $attempt->exam->attempts()
+            ->with(['responses.selectedOption'])
+            ->get();
+
+        $questionPerformance = $allAttempts
+            ->flatMap(fn($att) => $att->responses)
             ->groupBy('question_id')
             ->map(function ($responses) {
-                $correct = $responses->filter(fn($r) => $r->selectedOption?->is_correct)->count();
+                $total = $responses->count();
+                $correct = $responses->filter(fn($r) => (bool)($r->selectedOption?->is_correct ?? false))->count();
+
                 return [
-                    'total' => $responses->count(),
-                    'correct' => $correct,
-                    'percentage' => $responses->count() > 0 ? ($correct / $responses->count()) * 100 : 0,
+                    'total'      => $total,
+                    'correct'    => $correct,
+                    'percentage' => $total > 0 ? ($correct / $total) * 100 : 0,
                 ];
             });
 
         return Inertia::render('admin/exams/AttemptDetail', [
             'attempt' => $attempt,
             'exam' => $attempt->exam,
-            'student' => $attempt->student->load('university', 'major'),
+            'student' => $attempt->student,
             'passingScore' => $passingScore,
             'isPassed' => $isPassed,
             'questionDetails' => $questionDetails,
@@ -463,12 +477,16 @@ class ExamController extends Controller
     public function exportResults(Exam $exam)
     {
         $attempts = $exam->attempts()
-            ->with('student.university', 'student.major', 'student.school', 'responses.question')
+            ->with([
+                'student.university',
+                'student.major',
+                'student.school',
+                'responses.selectedOption',
+            ])
             ->get();
 
-        $questions = $exam->questionBank->questions()->orderBy('id')->get();
+        $questions = $this->getExamQuestions($exam);
 
-        // Create CSV data
         $headers = ['Name', 'Email', 'School', 'Class', 'University', 'Major'];
 
         foreach ($questions as $question) {
@@ -485,31 +503,30 @@ class ExamController extends Controller
             $student = $attempt->student;
 
             $row = [
-                $student->name,
-                $student->email,
-                $student->school?->name ?? 'N/A',
-                $student->class ?? 'N/A',
-                $student->university?->name ?? 'N/A',
-                $student->major?->name ?? 'N/A',
+                $student?->name ?? 'N/A',
+                $student?->email ?? 'N/A',
+                $student?->school?->name ?? 'N/A',
+                $student?->class ?? 'N/A',
+                $student?->university?->name ?? 'N/A',
+                $student?->major?->name ?? 'N/A',
             ];
 
-            foreach ($questions as $question) {
-                $response = $attempt->responses()
-                    ->where('question_id', $question->id)
-                    ->first();
+            $byQuestion = $attempt->responses->keyBy('question_id');
 
-                $isCorrect = $response && $response->selectedOption && $response->selectedOption->is_correct;
+            foreach ($questions as $question) {
+                $response = $byQuestion->get($question->id);
+                $isCorrect = (bool)($response?->selectedOption?->is_correct ?? false);
+
                 $row[] = $isCorrect ? 'Correct' : 'Wrong';
             }
 
             $row[] = "{$attempt->score}/{$attempt->total_score}";
-            $passingScore = $student->major?->minimum_passing_grade ?? 0;
-            $row[] = $attempt->score >= $passingScore ? 'PASSED' : 'FAILED';
+            $passingScore = $student?->major?->minimum_passing_grade ?? 0;
+            $row[] = ((float)($attempt->score ?? 0) >= (float)$passingScore) ? 'PASSED' : 'FAILED';
 
             $rows[] = $row;
         }
 
-        // Generate CSV
         $filename = 'exam-results-' . $exam->id . '-' . now()->format('Y-m-d') . '.csv';
         $handle = fopen('php://memory', 'w');
 
@@ -528,7 +545,6 @@ class ExamController extends Controller
 
     public function downloadAttemptPdf(ExamAttempt $attempt)
     {
-
         $pdfService = new ExamResultsPdfService();
         $pdf = $pdfService->generate($attempt);
 
@@ -537,14 +553,12 @@ class ExamController extends Controller
 
     public function unfreezeAttempt(ExamAttempt $attempt)
     {
-        // Reset freeze state
         $attempt->update([
             'is_frozen' => false,
             'frozen_at' => null,
             'frozen_reason' => null,
         ]);
 
-        // Optionally reset violations
         $attempt->violations()->delete();
 
         return back()->with('success', 'Ujian berhasil dibuka kembali untuk siswa.');

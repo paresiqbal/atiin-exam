@@ -10,6 +10,7 @@ import {
     ClipboardList,
     CreditCard,
     FileText,
+    FileUser,
     IdCard,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -224,9 +225,21 @@ export default function StudentDashboard() {
                             bgClass="bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-200"
                         />
                         <MenuItem
+                            icon={BookOpen}
+                            label="Berita"
+                            href="/student/news"
+                            bgClass="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200"
+                        />
+                        <MenuItem
+                            icon={FileUser}
+                            label="Konsultasi"
+                            href="/student/consultant-requests"
+                            bgClass="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-200"
+                        />
+                        <MenuItem
                             icon={CreditCard}
                             label="Pembayaran"
-                            href="#"
+                            href="/student/account"
                             bgClass="bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-200"
                         />
                         <MenuItem
@@ -234,12 +247,6 @@ export default function StudentDashboard() {
                             label="Kartu"
                             href="#"
                             bgClass="bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-200"
-                        />
-                        <MenuItem
-                            icon={BookOpen}
-                            label="Berita"
-                            href="/student/news"
-                            bgClass="bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200"
                         />
                     </div>
                 </div>
