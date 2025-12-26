@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\QuestionImportController as AdminQuestionImportCo
 use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\ConsultantRequestController as AdminConsultantRequestController;
 use App\Http\Controllers\Admin\NewsController;
+use App\Http\Controllers\Admin\NewsImageController;
 use App\Http\Controllers\Admin\StudentAccountController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UniversityController;
@@ -121,6 +122,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 
         // news
         Route::delete('news/bulk-delete', [NewsController::class, 'bulkDelete'])->name('news.bulk-delete');
+        Route::post('news/images', [NewsImageController::class, 'store'])->name('news.images.store');
         Route::resource('news', NewsController::class);
     });
 

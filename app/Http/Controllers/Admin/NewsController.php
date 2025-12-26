@@ -34,7 +34,7 @@ class NewsController extends Controller
         return Inertia::render('admin/news/NewsCreate');
     }
 
-    // Draft removed: always publish on create
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -69,7 +69,6 @@ class NewsController extends Controller
         ]);
     }
 
-    // Draft removed: always keep published on update
     public function update(Request $request, News $news)
     {
         $validated = $request->validate([
@@ -79,13 +78,11 @@ class NewsController extends Controller
             'remove_image' => ['nullable', 'boolean'],
         ]);
 
-        // remove image
         if (!empty($validated['remove_image']) && $news->image_path) {
             Storage::disk('public')->delete($news->image_path);
             $news->image_path = null;
         }
 
-        // replace image
         if ($request->hasFile('image')) {
             if ($news->image_path) {
                 Storage::disk('public')->delete($news->image_path);
@@ -96,7 +93,6 @@ class NewsController extends Controller
         $news->title = $validated['title'];
         $news->body = $validated['body'] ?? null;
 
-        // always published
         $news->status = 'published';
         $news->published_at = $news->published_at ?? now();
 
