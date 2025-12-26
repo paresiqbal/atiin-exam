@@ -1,4 +1,3 @@
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -15,7 +14,6 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Backpack,
     Book,
-    BookOpen,
     FileUser,
     Folder,
     LayoutGrid,
@@ -26,19 +24,6 @@ import {
     Wallet,
 } from 'lucide-react';
 import AppLogo from './app-logo';
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/paresiqbal/atiin-exam',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
 
 export function AppSidebar() {
     const page = usePage<{ auth: { user: { role: string } | null } }>();
@@ -58,8 +43,8 @@ export function AppSidebar() {
                 href: '#',
                 icon: Book,
                 items: [
-                    { title: 'Semua Exam', href: '/admin/exams' },
-                    { title: 'Buat Exam', href: '/admin/exams/create' },
+                    { title: 'Semua Ujian', href: '/admin/exams' },
+                    { title: 'Buat Ujian', href: '/admin/exams/create' },
                 ],
             },
             {
@@ -230,7 +215,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

@@ -46,7 +46,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                 <SidebarMenuButton
                                     asChild
                                     isActive={groupActive}
-                                    className="hover:bg-primary/60 data-[active=true]:bg-primary/70 data-[active=true]:text-accent-foreground"
+                                    className="hover:bg-primary/50 data-[active=true]:bg-primary/60 data-[active=true]:text-accent-foreground"
                                     tooltip={{ children: item.title }}
                                 >
                                     <Link
@@ -69,7 +69,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                     <SidebarMenuButton
                                         className={cn(
                                             'group',
-                                            'hover:bg-primary/60',
+                                            'hover:bg-primary/50',
                                             'data-[active=true]:bg-primary/60 data-[active=true]:text-accent-foreground',
                                             'data-[state=open]:bg-accent/60',
                                             'py-5',
@@ -98,7 +98,7 @@ export function NavMain({ items = [] }: { items: NavItem[] }) {
                                                         sub.href,
                                                         'exact',
                                                     )}
-                                                    className="hover:bg-primary/60 data-[active=true]:bg-primary/70 data-[active=true]:text-accent-foreground"
+                                                    className="hover:bg-primary/50 data-[active=true]:bg-primary/70 data-[active=true]:text-accent-foreground"
                                                 >
                                                     <Link
                                                         href={resolveUrl(
