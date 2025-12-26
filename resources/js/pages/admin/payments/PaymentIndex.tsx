@@ -1,6 +1,6 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import { ClockArrowUp, Gem, Hourglass, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
@@ -10,13 +10,19 @@ import type { PageProps as InertiaPageProps } from '@inertiajs/core';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
 import {
     InputGroup,
     InputGroupAddon,
     InputGroupInput,
 } from '@/components/ui/input-group';
-
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from '@/components/ui/pagination';
 import {
     Select,
     SelectContent,
@@ -24,6 +30,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 import {
     Dialog,
@@ -37,13 +50,6 @@ import {
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface School {
     id: number;
@@ -78,6 +84,12 @@ interface AccountsPageProps extends InertiaPageProps {
     filters?: {
         search?: string | null;
         account_type?: string | null;
+        per_page?: number | null;
+    };
+    stats?: {
+        total: number;
+        pro: number;
+        regular: number;
     };
 }
 
@@ -106,45 +118,70 @@ function isExpired(dateStr?: string | null) {
     return d.getTime() < Date.now();
 }
 
+function makeQuery({
+    page,
+    perPage,
+    search,
+    accountType,
+}: {
+    page: number;
+    perPage: number;
+    search: string;
+    accountType: string; // 'all' | 'regular' | 'pro'
+}) {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('per_page', String(perPage));
+    if (search.trim() !== '') params.set('search', search.trim());
+    if (accountType !== 'all') params.set('account_type', accountType);
+    return `${baseUrl}?${params.toString()}`;
+}
+
 export default function PaymentIndex() {
-    const { students, filters } = usePage<AccountsPageProps>().props;
+    const { students, filters, stats } = usePage<AccountsPageProps>().props;
     const data = useMemo(() => students.data ?? [], [students.data]);
 
-    // server-driven filters
+    // server-driven filters (live search)
     const [search, setSearch] = useState(filters?.search ?? '');
     const [accountType, setAccountType] = useState<string>(
         filters?.account_type ?? 'all',
     );
-
-    const applyFilters = (
-        next?: Partial<{ search: string; account_type: string }>,
-    ) => {
-        const nextSearch = next?.search ?? search;
-        const nextAccountType = next?.account_type ?? accountType;
-
-        router.get(
-            baseUrl,
-            {
-                search: nextSearch,
-                account_type: nextAccountType === 'all' ? '' : nextAccountType,
-                page: 1,
-            },
-            { preserveScroll: true, preserveState: true },
-        );
-    };
-
-    // stats
-    const total = students.total ?? data.length;
-    const totalPage = data.length;
-
-    const totalPro = useMemo(
-        () => data.filter((s) => s.account_type === 'pro').length,
-        [data],
+    const [rowsPerPage, setRowsPerPage] = useState<number>(
+        (filters?.per_page ?? students.per_page ?? 20) as number,
     );
-    const totalRegular = useMemo(
-        () => data.filter((s) => s.account_type === 'regular').length,
-        [data],
-    );
+
+    // live-search debounce
+    const firstRun = useRef(true);
+    useEffect(() => {
+        if (firstRun.current) {
+            firstRun.current = false;
+            return;
+        }
+
+        const t = setTimeout(() => {
+            router.get(
+                baseUrl,
+                {
+                    search: search.trim() || undefined,
+                    account_type:
+                        accountType === 'all' ? undefined : accountType,
+                    page: 1,
+                    per_page: rowsPerPage,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 350);
+
+        return () => clearTimeout(t);
+    }, [search, accountType, rowsPerPage]);
+
+    const total = stats?.total ?? students.total ?? data.length;
+    const totalPro = stats?.pro ?? 0;
+    const totalRegular = stats?.regular ?? 0;
 
     const handleTogglePro = (id: number) => {
         router.post(
@@ -171,24 +208,43 @@ export default function PaymentIndex() {
         });
     };
 
+    const handleChangeRowsPerPage = (value: string) => {
+        const perPage = Number(value) || 20;
+        setRowsPerPage(perPage);
+
+        router.get(
+            baseUrl,
+            {
+                search: search.trim() || undefined,
+                account_type: accountType === 'all' ? undefined : accountType,
+                page: 1,
+                per_page: perPage,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Akun Siswa" />
 
-            <div className="space-y-6 p-4">
-                <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h1 className="text-3xl font-bold">Akun Siswa</h1>
-                        <p className="text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">
                             Kelola status Regular / Pro, masa aktif, dan
                             perpanjangan.
                         </p>
                     </div>
                 </div>
 
-                {/* Filters */}
+                {/* Filters (match UserIndex style) */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-1 items-center gap-2 rounded-lg px-0 py-0">
+                    <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
                         <InputGroup className="flex-1">
                             <InputGroupAddon>
                                 <Search className="h-4 w-4 text-slate-500" />
@@ -198,31 +254,20 @@ export default function PaymentIndex() {
                                 placeholder="Cari nama atau email..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter')
-                                        applyFilters({ search });
-                                }}
                             />
 
-                            <InputGroupAddon align="inline-end">
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => applyFilters({ search })}
-                                >
-                                    Cari
-                                </Button>
-                            </InputGroupAddon>
+                            {search !== '' && (
+                                <InputGroupAddon align="inline-end">
+                                    {total} hasil
+                                </InputGroupAddon>
+                            )}
                         </InputGroup>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <Select
                             value={accountType}
-                            onValueChange={(value) => {
-                                setAccountType(value);
-                                applyFilters({ account_type: value });
-                            }}
+                            onValueChange={setAccountType}
                         >
                             <SelectTrigger className="w-[220px]">
                                 <SelectValue placeholder="Semua akun" />
@@ -236,8 +281,8 @@ export default function PaymentIndex() {
                     </div>
                 </div>
 
-                {/* Stats */}
-                <div className="grid gap-4 md:grid-cols-4">
+                {/* Stats (updated: no "halaman ini") */}
+                <div className="grid gap-4 md:grid-cols-3">
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-sm font-medium">
@@ -247,29 +292,12 @@ export default function PaymentIndex() {
                         <CardContent className="text-3xl font-bold">
                             {total}
                         </CardContent>
-                        <p className="px-6 pb-4 text-xs text-muted-foreground">
-                            Total semua siswa (paginate)
-                        </p>
                     </Card>
 
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-sm font-medium">
-                                Siswa (Halaman Ini)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-3xl font-bold">
-                            {totalPage}
-                        </CardContent>
-                        <p className="px-6 pb-4 text-xs text-muted-foreground">
-                            Jumlah yang tampil saat ini
-                        </p>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium">
-                                Pro (Halaman Ini)
+                                Siswa Pro
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="text-3xl font-bold">
@@ -280,7 +308,7 @@ export default function PaymentIndex() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-sm font-medium">
-                                Regular (Halaman Ini)
+                                Siswa Reguler
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="text-3xl font-bold">
@@ -293,7 +321,7 @@ export default function PaymentIndex() {
                 <div className="overflow-x-auto rounded-lg border shadow-sm">
                     <TooltipProvider delayDuration={150}>
                         <table className="w-full text-sm">
-                            <thead className="border-b bg-accent">
+                            <thead className="border-b bg-primary/10 dark:bg-primary/60">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                         Nama
@@ -394,7 +422,6 @@ export default function PaymentIndex() {
 
                                                 <td className="px-6 py-2">
                                                     <div className="flex flex-wrap gap-2">
-                                                        {/* Toggle Pro */}
                                                         <Tooltip>
                                                             <TooltipTrigger
                                                                 asChild
@@ -433,7 +460,6 @@ export default function PaymentIndex() {
                                                             </TooltipContent>
                                                         </Tooltip>
 
-                                                        {/* Extend */}
                                                         <ExtendDialog
                                                             disabled={!isPro}
                                                             onExtend={(
@@ -446,7 +472,6 @@ export default function PaymentIndex() {
                                                             }
                                                         />
 
-                                                        {/* Set Plan */}
                                                         <SetPlanDialog
                                                             currentType={
                                                                 s.account_type
@@ -473,7 +498,7 @@ export default function PaymentIndex() {
                                             colSpan={6}
                                             className="px-6 py-8 text-center text-slate-500"
                                         >
-                                            -
+                                            Tidak ada data.
                                         </td>
                                     </tr>
                                 )}
@@ -482,14 +507,105 @@ export default function PaymentIndex() {
                     </TooltipProvider>
                 </div>
 
-                {/* Footer info */}
-                <div className="text-sm text-muted-foreground">
-                    Menampilkan {data.length} dari total {total} siswa.
+                {/* Footer nav (match UserIndex style) */}
+                <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+                    <div className="text-sm text-muted-foreground">
+                        Menampilkan {data.length} dari {students.total} baris
+                        (halaman ini).
+                    </div>
+
+                    <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                                Baris per halaman:
+                            </span>
+                            <Select
+                                value={String(rowsPerPage)}
+                                onValueChange={handleChangeRowsPerPage}
+                            >
+                                <SelectTrigger className="w-[80px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="20">20</SelectItem>
+                                    <SelectItem value="30">30</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    {students.current_page > 1 ? (
+                                        <a
+                                            href={makeQuery({
+                                                page: students.current_page - 1,
+                                                perPage: rowsPerPage,
+                                                search,
+                                                accountType,
+                                            })}
+                                        >
+                                            <PaginationPrevious />
+                                        </a>
+                                    ) : (
+                                        <PaginationPrevious className="pointer-events-none opacity-50" />
+                                    )}
+                                </PaginationItem>
+
+                                {Array.from(
+                                    { length: students.last_page },
+                                    (_, i) => i + 1,
+                                ).map((page) => (
+                                    <PaginationItem key={page}>
+                                        <a
+                                            href={makeQuery({
+                                                page,
+                                                perPage: rowsPerPage,
+                                                search,
+                                                accountType,
+                                            })}
+                                        >
+                                            <PaginationLink
+                                                isActive={
+                                                    page ===
+                                                    students.current_page
+                                                }
+                                            >
+                                                {page}
+                                            </PaginationLink>
+                                        </a>
+                                    </PaginationItem>
+                                ))}
+
+                                <PaginationItem>
+                                    {students.current_page <
+                                    students.last_page ? (
+                                        <a
+                                            href={makeQuery({
+                                                page: students.current_page + 1,
+                                                perPage: rowsPerPage,
+                                                search,
+                                                accountType,
+                                            })}
+                                        >
+                                            <PaginationNext />
+                                        </a>
+                                    ) : (
+                                        <PaginationNext className="pointer-events-none opacity-50" />
+                                    )}
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </div>
                 </div>
             </div>
         </AppLayout>
     );
 }
+
+/** Dialogs (unchanged, just kept here for full file) */
 
 function ExtendDialog({
     disabled,

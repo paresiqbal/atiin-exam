@@ -11,28 +11,46 @@ class StudentAccountController extends Controller
 {
     public function accounts(Request $request)
     {
-        $query = User::where('role', 'student')
+        $perPage = (int) $request->input('per_page', 20);
+
+        $baseQuery = User::query()
+            ->where('role', 'student')
             ->with(['school:id,name', 'university:id,name', 'major:id,name'])
             ->select('id', 'name', 'email', 'school_id', 'university_id', 'major_id', 'account_type', 'pro_expires_at', 'created_at');
 
         if ($request->filled('account_type')) {
-            $query->where('account_type', $request->account_type);
+            $baseQuery->where('account_type', $request->account_type);
         }
 
         if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                    ->orWhere('email', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $baseQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('email', 'like', '%' . $search . '%');
             });
         }
 
-        $students = $query->latest()->paginate(20)->withQueryString();
+        $statsQuery = clone $baseQuery;
+        $total = (clone $statsQuery)->count();
+        $totalPro = (clone $statsQuery)->where('account_type', 'pro')->count();
+        $totalRegular = $total - $totalPro;
+
+        $students = $baseQuery
+            ->latest()
+            ->paginate($perPage)
+            ->withQueryString();
 
         return Inertia::render('admin/payments/PaymentIndex', [
             'students' => $students,
             'filters' => [
                 'search' => $request->search,
                 'account_type' => $request->account_type,
+                'per_page' => $perPage,
+            ],
+            'stats' => [
+                'total' => $total,
+                'pro' => $totalPro,
+                'regular' => $totalRegular,
             ],
         ]);
     }
@@ -47,9 +65,7 @@ class StudentAccountController extends Controller
         $data = ['account_type' => $request->account_type];
 
         if ($request->account_type === 'pro') {
-            $data['pro_expires_at'] = $request->pro_expires_at
-                ? $request->pro_expires_at
-                : null;
+            $data['pro_expires_at'] = $request->pro_expires_at ? $request->pro_expires_at : null;
         } else {
             $data['pro_expires_at'] = null;
         }
