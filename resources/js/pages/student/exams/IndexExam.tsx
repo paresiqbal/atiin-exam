@@ -1,13 +1,10 @@
-'use client';
-
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Search } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Calendar, Clock, Hourglass, Play, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 type ExamStatus = 'available' | 'coming_soon' | 'ended';
 
@@ -18,13 +15,10 @@ type ExamItem = {
     start_at: string;
     end_at: string;
     status: ExamStatus;
-
     settings: {
         time_limit_minutes?: number;
         time_limit?: number;
     };
-
-    // ✅ NEW (multi question banks)
     question_banks_count: number;
     questions_count: number;
 };
@@ -78,14 +72,31 @@ function StatusBadge({ status }: { status: ExamStatus }) {
     );
 }
 
-function formatDateTime(date: string) {
-    return new Date(date).toLocaleString('id-ID', {
+function formatDateTime(value?: string | null) {
+    if (!value) return '-';
+
+    // Convert "YYYY-MM-DD HH:mm:ss.000000" -> "YYYY-MM-DDTHH:mm:ss"
+    const normalized = value.replace(' ', 'T').replace(/\.\d+$/, '');
+    const d = new Date(normalized);
+
+    if (Number.isNaN(d.getTime())) {
+        return value.replace(/\.\d+$/, '');
+    }
+
+    return new Intl.DateTimeFormat('id-ID', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-    });
+    }).format(d);
+}
+
+function getTimeLimit(exam: ExamItem) {
+    const v =
+        exam.settings.time_limit_minutes ?? exam.settings.time_limit ?? null;
+    if (!v || v <= 0) return null;
+    return v;
 }
 
 function Pagination({
@@ -122,7 +133,6 @@ export default function IndexExam() {
     const { props } = usePage<PageProps>();
     const exams = props.exams;
     const initialQ = props.filters?.q ?? '';
-
     const [q, setQ] = useState(initialQ);
 
     // Debounced search
@@ -143,9 +153,6 @@ export default function IndexExam() {
             return 'Pilih ujian untuk melihat jadwal dan mulai mengerjakan.';
         return `Menampilkan hasil untuk: “${q.trim()}”`;
     }, [q]);
-
-    const getTimeLimit = (exam: ExamItem) =>
-        exam.settings.time_limit_minutes ?? exam.settings.time_limit ?? 0;
 
     const handlePageNavigate = (url: string) => {
         router.visit(url, { preserveScroll: true, preserveState: true });
@@ -187,91 +194,111 @@ export default function IndexExam() {
                         </Card>
                     ) : (
                         <div className="space-y-3">
-                            {exams.data.map((exam) => (
-                                <Card
-                                    key={exam.id}
-                                    className="rounded-2xl transition-shadow hover:shadow-lg"
-                                >
-                                    <CardHeader className="pb-2">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <div className="min-w-0">
-                                                <CardTitle className="text-base">
-                                                    {exam.title ?? exam.name}
-                                                </CardTitle>
+                            {exams.data.map((exam) => {
+                                const limit = getTimeLimit(exam);
 
-                                                <div className="mt-1 text-sm text-muted-foreground">
-                                                    <span>
-                                                        Bank:{' '}
-                                                        {
-                                                            exam.question_banks_count
-                                                        }
-                                                    </span>
-                                                    <span className="mx-2">
-                                                        •
-                                                    </span>
-                                                    <span>
-                                                        Soal:{' '}
-                                                        {exam.questions_count}
-                                                    </span>
-                                                    <span className="mx-2">
-                                                        •
-                                                    </span>
-                                                    <span>
-                                                        Waktu:{' '}
-                                                        {getTimeLimit(exam)}{' '}
-                                                        menit
-                                                    </span>
+                                return (
+                                    <Card
+                                        key={exam.id}
+                                        className="rounded-2xl border transition hover:shadow-lg"
+                                    >
+                                        <CardHeader className="pb-3">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="min-w-0">
+                                                    <CardTitle className="truncate text-base md:text-lg">
+                                                        {exam.title ??
+                                                            exam.name}
+                                                    </CardTitle>
+                                                    <div className="mt-1 text-xs text-muted-foreground md:text-sm">
+                                                        {exam.questions_count}{' '}
+                                                        soal
+                                                        {exam.question_banks_count
+                                                            ? ` • ${exam.question_banks_count} bank soal`
+                                                            : ''}
+                                                    </div>
+                                                </div>
+
+                                                <StatusBadge
+                                                    status={exam.status}
+                                                />
+                                            </div>
+                                        </CardHeader>
+
+                                        <CardContent className="space-y-4 pt-0">
+                                            {/* Meta info */}
+                                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                                <div className="rounded-xl bg-muted/50 p-3">
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <Clock className="h-4 w-4" />
+                                                        Durasi
+                                                    </div>
+                                                    <div className="mt-1 text-sm font-semibold">
+                                                        {limit
+                                                            ? `${limit} menit`
+                                                            : '-'}
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-xl bg-muted/50 p-3">
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <Calendar className="h-4 w-4" />
+                                                        Mulai
+                                                    </div>
+                                                    <div className="mt-1 text-sm font-semibold">
+                                                        {formatDateTime(
+                                                            exam.start_at,
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-xl bg-muted/50 p-3">
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <Hourglass className="h-4 w-4" />
+                                                        Berakhir
+                                                    </div>
+                                                    <div className="mt-1 text-sm font-semibold">
+                                                        {formatDateTime(
+                                                            exam.end_at,
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <StatusBadge status={exam.status} />
-                                        </div>
-                                    </CardHeader>
+                                            {/* Action */}
+                                            {exam.status === 'available' && (
+                                                <Link
+                                                    href={`/student/exams/join?exam_id=${exam.id}`}
+                                                >
+                                                    <Button className="w-full gap-2">
+                                                        <Play className="h-4 w-4" />
+                                                        Mulai Ujian
+                                                    </Button>
+                                                </Link>
+                                            )}
 
-                                    <CardContent className="space-y-3 pt-0">
-                                        <div className="text-sm text-muted-foreground">
-                                            <div>
-                                                Mulai:{' '}
-                                                {formatDateTime(exam.start_at)}
-                                            </div>
-                                            <div>
-                                                Berakhir:{' '}
-                                                {formatDateTime(exam.end_at)}
-                                            </div>
-                                        </div>
-
-                                        {exam.status === 'available' && (
-                                            <Link
-                                                href={`/student/exams/join?exam_id=${exam.id}`}
-                                            >
-                                                <Button className="w-full">
-                                                    Mulai Ujian
+                                            {exam.status === 'coming_soon' && (
+                                                <Button
+                                                    className="w-full"
+                                                    variant="outline"
+                                                    disabled
+                                                >
+                                                    Akan Datang
                                                 </Button>
-                                            </Link>
-                                        )}
+                                            )}
 
-                                        {exam.status === 'coming_soon' && (
-                                            <Button
-                                                className="w-full"
-                                                variant="outline"
-                                                disabled
-                                            >
-                                                Akan Datang
-                                            </Button>
-                                        )}
-
-                                        {exam.status === 'ended' && (
-                                            <Button
-                                                className="w-full"
-                                                variant="outline"
-                                                disabled
-                                            >
-                                                Ujian Telah Berakhir
-                                            </Button>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            ))}
+                                            {exam.status === 'ended' && (
+                                                <Button
+                                                    className="w-full"
+                                                    variant="outline"
+                                                    disabled
+                                                >
+                                                    Ujian Telah Berakhir
+                                                </Button>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
 
                             {/* Pagination */}
                             {exams.links?.length > 0 && (

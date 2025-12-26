@@ -25,7 +25,6 @@ class ExamController extends Controller
             ->where('is_published', true)
             ->with([
                 'settings',
-                // NEW: multiple banks
                 'questionBanks:id,name',
             ])
             ->orderBy('start_at')
