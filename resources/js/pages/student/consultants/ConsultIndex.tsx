@@ -2,52 +2,59 @@ import { Head, Link } from '@inertiajs/react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 
-type Consultant = { id: number; name: string; email?: string };
+type Consultant = {
+    id: number;
+    name: string;
+    email?: string;
+};
 
 type ConsultantRequest = {
     id: number;
     topic: string;
-    status: string;
+    status: 'pending' | 'approved' | 'rejected' | 'done';
     preferred_date: string | null;
     created_at: string;
-    consultant: Consultant;
+    consultant: Consultant | null;
 };
 
 type Paginated<T> = {
     data: T[];
-    links?: any;
 };
+
+const statusLabel: Record<ConsultantRequest['status'], string> = {
+    pending: 'Menunggu',
+    approved: 'Disetujui',
+    rejected: 'Ditolak',
+    done: 'Selesai',
+};
+
+const statusVariant: Record<
+    ConsultantRequest['status'],
+    'secondary' | 'default' | 'destructive' | 'outline'
+> = {
+    pending: 'secondary',
+    approved: 'default',
+    rejected: 'destructive',
+    done: 'outline',
+};
+
+function formatDate(date: string) {
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    });
+}
 
 export default function Index({
     requests,
 }: {
     requests: Paginated<ConsultantRequest>;
 }) {
-    const statusColor = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return 'secondary';
-            case 'approved':
-                return 'default';
-            case 'rejected':
-                return 'destructive';
-            case 'done':
-                return 'outline';
-            default:
-                return 'secondary';
-        }
-    };
-
     return (
         <AppLayout
             breadcrumbs={[
@@ -57,12 +64,15 @@ export default function Index({
         >
             <Head title="Konsultasi" />
 
-            <div className="p-4 md:p-6">
-                <div className="mb-4 flex items-center justify-between gap-2">
+            <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-6">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3">
                     <div>
-                        <h1 className="text-xl font-semibold">Konsultasi</h1>
+                        <h1 className="text-xl font-semibold md:text-2xl">
+                            Konsultasi
+                        </h1>
                         <p className="text-sm text-muted-foreground">
-                            List request konsultasi kamu.
+                            Daftar permintaan konsultasi kamu.
                         </p>
                     </div>
 
@@ -73,55 +83,63 @@ export default function Index({
                     </Button>
                 </div>
 
-                <div className="rounded-lg border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Topik</TableHead>
-                                <TableHead>Konsultan</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">
-                                    Tgl Request
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {requests.data.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={4}>
-                                        <div className="py-6 text-center text-sm text-muted-foreground">
-                                            Belum ada request. Klik “Buat
-                                            Request”.
+                {/* List */}
+                {requests.data.length === 0 ? (
+                    <div className="rounded-lg border py-12 text-center text-sm text-muted-foreground">
+                        Belum ada request konsultasi.
+                        <br />
+                        Klik <span className="font-medium">
+                            “Buat Request”
+                        </span>{' '}
+                        untuk memulai.
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {requests.data.map((r) => (
+                            <div
+                                key={r.id}
+                                className="rounded-lg border p-4 transition hover:bg-muted/30"
+                            >
+                                {/* Top row */}
+                                <div className="flex items-start justify-between gap-2">
+                                    <h2 className="text-sm leading-snug font-semibold md:text-base">
+                                        {r.topic}
+                                    </h2>
+
+                                    <Badge variant={statusVariant[r.status]}>
+                                        {statusLabel[r.status]}
+                                    </Badge>
+                                </div>
+
+                                {/* Meta */}
+                                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                                    <div>
+                                        <span className="font-medium text-foreground">
+                                            Konsultan:
+                                        </span>{' '}
+                                        {r.consultant?.name ?? '-'}
+                                    </div>
+
+                                    <div>
+                                        <span className="font-medium text-foreground">
+                                            Tanggal request:
+                                        </span>{' '}
+                                        {formatDate(r.created_at)}
+                                    </div>
+
+                                    {r.preferred_date && (
+                                        <div>
+                                            <span className="font-medium text-foreground">
+                                                Tanggal diinginkan:
+                                            </span>{' '}
+                                            {formatDate(r.preferred_date)}
                                         </div>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                requests.data.map((r) => (
-                                    <TableRow key={r.id}>
-                                        <TableCell className="font-medium">
-                                            {r.topic}
-                                        </TableCell>
-                                        <TableCell>
-                                            {r.consultant?.name ?? '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={
-                                                    statusColor(r.status) as any
-                                                }
-                                            >
-                                                {r.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {r.created_at}
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </AppLayout>
     );
