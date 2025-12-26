@@ -1,20 +1,13 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { ClockArrowUp, Gem, Hourglass, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import type { Paginated } from '@/types/pagination';
 import type { PageProps as InertiaPageProps } from '@inertiajs/core';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    InputGroup,
-    InputGroupAddon,
-    InputGroupInput,
-} from '@/components/ui/input-group';
 import {
     Pagination,
     PaginationContent,
@@ -30,7 +23,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-
 import {
     Tooltip,
     TooltipContent,
@@ -38,18 +30,14 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 
+import ExtendProDialog from '@/components/ExtendProDialog';
+import SetPlanDialog from '@/components/SetPlanDialog';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
-
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+} from '@/components/ui/input-group';
+import { Gem, Search } from 'lucide-react';
 
 interface School {
     id: number;
@@ -75,6 +63,14 @@ interface StudentAccountRow {
     school?: School | null;
     university?: University | null;
     major?: Major | null;
+}
+
+interface Paginated<T> {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
 }
 
 interface AccountsPageProps extends InertiaPageProps {
@@ -148,7 +144,7 @@ export default function PaymentIndex() {
         (filters?.per_page ?? students.per_page ?? 20) as number,
     );
 
-    // Live search without Enter (debounced)
+    // Live search (debounced)
     const firstRun = useRef(true);
     useEffect(() => {
         if (firstRun.current) {
@@ -218,10 +214,7 @@ export default function PaymentIndex() {
                 page: 1,
                 per_page: perPage,
             },
-            {
-                preserveScroll: true,
-                preserveState: true,
-            },
+            { preserveScroll: true, preserveState: true },
         );
     };
 
@@ -229,95 +222,97 @@ export default function PaymentIndex() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Akun Siswa" />
 
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">Akun Siswa</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Kelola status Regular / Pro, masa aktif, dan
-                            perpanjangan.
-                        </p>
+            <TooltipProvider delayDuration={150}>
+                <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <h1 className="text-3xl font-bold">Akun Siswa</h1>
+                            <p className="text-sm text-muted-foreground">
+                                Kelola status Regular / Pro, masa aktif, dan
+                                perpanjangan.
+                            </p>
+                        </div>
                     </div>
-                </div>
 
-                {/* Filters (match UserIndex search UI) */}
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
-                        <InputGroup className="flex-1">
-                            <InputGroupAddon>
-                                <Search className="h-4 w-4 text-slate-500" />
-                            </InputGroupAddon>
-
-                            <InputGroupInput
-                                placeholder="Cari nama atau email..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-
-                            {search !== '' && (
-                                <InputGroupAddon align="inline-end">
-                                    {total} hasil
+                    {/* Filters */}
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
+                            <InputGroup className="flex-1">
+                                <InputGroupAddon>
+                                    <Search className="h-4 w-4 text-slate-500" />
                                 </InputGroupAddon>
-                            )}
-                        </InputGroup>
+
+                                <InputGroupInput
+                                    placeholder="Cari nama atau email..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+
+                                {search !== '' && (
+                                    <InputGroupAddon align="inline-end">
+                                        {total} hasil
+                                    </InputGroupAddon>
+                                )}
+                            </InputGroup>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Select
+                                value={accountType}
+                                onValueChange={setAccountType}
+                            >
+                                <SelectTrigger className="w-[220px]">
+                                    <SelectValue placeholder="Semua akun" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Semua</SelectItem>
+                                    <SelectItem value="regular">
+                                        Regular
+                                    </SelectItem>
+                                    <SelectItem value="pro">Pro</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <Select
-                            value={accountType}
-                            onValueChange={setAccountType}
-                        >
-                            <SelectTrigger className="w-[220px]">
-                                <SelectValue placeholder="Semua akun" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Semua</SelectItem>
-                                <SelectItem value="regular">Regular</SelectItem>
-                                <SelectItem value="pro">Pro</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    {/* Stats */}
+                    <div className="grid gap-4 md:grid-cols-3">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">
+                                    Total Siswa
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-3xl font-bold">
+                                {total}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">
+                                    Siswa Pro
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-3xl font-bold">
+                                {totalPro}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">
+                                    Siswa Reguler
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-3xl font-bold">
+                                {totalRegular}
+                            </CardContent>
+                        </Card>
                     </div>
-                </div>
 
-                {/* Stats: Total + Pro + Regular (no "(Halaman Ini)") */}
-                <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium">
-                                Total Siswa
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-3xl font-bold">
-                            {total}
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium">
-                                Siswa Pro
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-3xl font-bold">
-                            {totalPro}
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium">
-                                Siswa Reguler
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-3xl font-bold">
-                            {totalRegular}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Table */}
-                <div className="overflow-x-auto rounded-lg border shadow-sm">
-                    <TooltipProvider delayDuration={150}>
+                    {/* Table */}
+                    <div className="overflow-x-auto rounded-lg border shadow-sm">
                         <table className="w-full text-sm">
                             <thead className="border-b bg-primary/10 dark:bg-primary/60">
                                 <tr>
@@ -350,7 +345,6 @@ export default function PaymentIndex() {
                                         );
                                         const isPro = s.account_type === 'pro';
 
-                                        // row hint colors (subtle)
                                         const rowClass =
                                             isPro && expired
                                                 ? 'bg-destructive/5 hover:bg-destructive/10'
@@ -450,13 +444,7 @@ export default function PaymentIndex() {
                                                                             : 'Ubah ke Pro'
                                                                     }
                                                                 >
-                                                                    <Gem
-                                                                        className={
-                                                                            isPro
-                                                                                ? 'h-4 w-4 text-white'
-                                                                                : 'h-4 w-4 text-slate-700'
-                                                                        }
-                                                                    />
+                                                                    <Gem className="h-4 w-4" />
                                                                 </Button>
                                                             </TooltipTrigger>
                                                             <TooltipContent side="top">
@@ -466,7 +454,7 @@ export default function PaymentIndex() {
                                                             </TooltipContent>
                                                         </Tooltip>
 
-                                                        <ExtendDialog
+                                                        <ExtendProDialog
                                                             disabled={!isPro}
                                                             onExtend={(
                                                                 months,
@@ -510,303 +498,107 @@ export default function PaymentIndex() {
                                 )}
                             </tbody>
                         </table>
-                    </TooltipProvider>
-                </div>
-
-                {/* Footer nav (like UserIndex) */}
-                <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
-                    <div className="text-sm text-muted-foreground">
-                        Menampilkan {data.length} baris • Total {students.total}
                     </div>
 
-                    <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">
-                                Baris per halaman:
-                            </span>
-                            <Select
-                                value={String(rowsPerPage)}
-                                onValueChange={handleChangeRowsPerPage}
-                            >
-                                <SelectTrigger className="w-[80px]">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="20">20</SelectItem>
-                                    <SelectItem value="30">30</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                </SelectContent>
-                            </Select>
+                    {/* Footer nav */}
+                    <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
+                        <div className="text-sm text-muted-foreground">
+                            Menampilkan {data.length} baris • Total{' '}
+                            {students.total}
                         </div>
 
-                        <Pagination>
-                            <PaginationContent>
-                                <PaginationItem>
-                                    {students.current_page > 1 ? (
-                                        <a
-                                            href={makeQuery({
-                                                page: students.current_page - 1,
-                                                perPage: rowsPerPage,
-                                                search,
-                                                accountType,
-                                            })}
-                                        >
-                                            <PaginationPrevious />
-                                        </a>
-                                    ) : (
-                                        <PaginationPrevious className="pointer-events-none opacity-50" />
-                                    )}
-                                </PaginationItem>
+                        <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground">
+                                    Baris per halaman:
+                                </span>
+                                <Select
+                                    value={String(rowsPerPage)}
+                                    onValueChange={handleChangeRowsPerPage}
+                                >
+                                    <SelectTrigger className="w-[80px]">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="20">20</SelectItem>
+                                        <SelectItem value="30">30</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                                {Array.from(
-                                    { length: students.last_page },
-                                    (_, i) => i + 1,
-                                ).map((page) => (
-                                    <PaginationItem key={page}>
-                                        <a
-                                            href={makeQuery({
-                                                page,
-                                                perPage: rowsPerPage,
-                                                search,
-                                                accountType,
-                                            })}
-                                        >
-                                            <PaginationLink
-                                                isActive={
-                                                    page ===
-                                                    students.current_page
-                                                }
+                            <Pagination>
+                                <PaginationContent>
+                                    <PaginationItem>
+                                        {students.current_page > 1 ? (
+                                            <a
+                                                href={makeQuery({
+                                                    page:
+                                                        students.current_page -
+                                                        1,
+                                                    perPage: rowsPerPage,
+                                                    search,
+                                                    accountType,
+                                                })}
                                             >
-                                                {page}
-                                            </PaginationLink>
-                                        </a>
+                                                <PaginationPrevious />
+                                            </a>
+                                        ) : (
+                                            <PaginationPrevious className="pointer-events-none opacity-50" />
+                                        )}
                                     </PaginationItem>
-                                ))}
 
-                                <PaginationItem>
-                                    {students.current_page <
-                                    students.last_page ? (
-                                        <a
-                                            href={makeQuery({
-                                                page: students.current_page + 1,
-                                                perPage: rowsPerPage,
-                                                search,
-                                                accountType,
-                                            })}
-                                        >
-                                            <PaginationNext />
-                                        </a>
-                                    ) : (
-                                        <PaginationNext className="pointer-events-none opacity-50" />
-                                    )}
-                                </PaginationItem>
-                            </PaginationContent>
-                        </Pagination>
+                                    {Array.from(
+                                        { length: students.last_page },
+                                        (_, i) => i + 1,
+                                    ).map((page) => (
+                                        <PaginationItem key={page}>
+                                            <a
+                                                href={makeQuery({
+                                                    page,
+                                                    perPage: rowsPerPage,
+                                                    search,
+                                                    accountType,
+                                                })}
+                                            >
+                                                <PaginationLink
+                                                    isActive={
+                                                        page ===
+                                                        students.current_page
+                                                    }
+                                                >
+                                                    {page}
+                                                </PaginationLink>
+                                            </a>
+                                        </PaginationItem>
+                                    ))}
+
+                                    <PaginationItem>
+                                        {students.current_page <
+                                        students.last_page ? (
+                                            <a
+                                                href={makeQuery({
+                                                    page:
+                                                        students.current_page +
+                                                        1,
+                                                    perPage: rowsPerPage,
+                                                    search,
+                                                    accountType,
+                                                })}
+                                            >
+                                                <PaginationNext />
+                                            </a>
+                                        ) : (
+                                            <PaginationNext className="pointer-events-none opacity-50" />
+                                        )}
+                                    </PaginationItem>
+                                </PaginationContent>
+                            </Pagination>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </TooltipProvider>
         </AppLayout>
-    );
-}
-
-/* Dialogs (same as yours, included for completeness) */
-
-function ExtendDialog({
-    disabled,
-    onExtend,
-}: {
-    disabled?: boolean;
-    onExtend: (months: number) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const [months, setMonths] = useState('1');
-
-    return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <TooltipProvider delayDuration={150}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                size="icon"
-                                variant="outline"
-                                disabled={disabled}
-                                aria-label="Perpanjang Pro"
-                            >
-                                <ClockArrowUp className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                            Perpanjang Pro
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </DialogTrigger>
-
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Perpanjang Pro</DialogTitle>
-                    <DialogDescription>
-                        Tambah masa aktif Pro (dalam bulan).
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-2">
-                    <Label>Bulan</Label>
-                    <Select value={months} onValueChange={setMonths}>
-                        <SelectTrigger>
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(
-                                (m) => (
-                                    <SelectItem key={m} value={String(m)}>
-                                        {m} bulan
-                                    </SelectItem>
-                                ),
-                            )}
-                            <SelectItem value="24">24 bulan</SelectItem>
-                            <SelectItem value="36">36 bulan</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <DialogFooter>
-                    <Button variant="secondary" onClick={() => setOpen(false)}>
-                        Batal
-                    </Button>
-                    <Button
-                        onClick={() => {
-                            onExtend(Number(months));
-                            setOpen(false);
-                        }}
-                    >
-                        Perpanjang
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function SetPlanDialog({
-    currentType,
-    currentExpiry,
-    onSave,
-}: {
-    currentType: AccountType;
-    currentExpiry: string | null;
-    onSave: (payload: {
-        account_type: AccountType;
-        pro_expires_at?: string | null;
-    }) => void;
-}) {
-    const [open, setOpen] = useState(false);
-    const [type, setType] = useState<AccountType>(currentType);
-    const [expiry, setExpiry] = useState<string>(currentExpiry ?? '');
-
-    const dateValue = useMemo(() => {
-        if (!expiry) return '';
-        const d = new Date(expiry);
-        if (Number.isNaN(d.getTime())) return '';
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    }, [expiry]);
-
-    return (
-        <Dialog
-            open={open}
-            onOpenChange={(v) => {
-                setOpen(v);
-                if (v) {
-                    setType(currentType);
-                    setExpiry(currentExpiry ?? '');
-                }
-            }}
-        >
-            <DialogTrigger asChild>
-                <TooltipProvider delayDuration={150}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button
-                                size="icon"
-                                variant="outline"
-                                aria-label="Atur tipe akun"
-                            >
-                                <Hourglass className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                            Atur Tipe Akun
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </DialogTrigger>
-
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Atur Tipe Akun</DialogTitle>
-                    <DialogDescription>
-                        Ubah manual Regular / Pro dan tanggal berakhir
-                        (opsional).
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Tipe Akun</Label>
-                        <Select
-                            value={type}
-                            onValueChange={(v) => setType(v as AccountType)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="regular">Regular</SelectItem>
-                                <SelectItem value="pro">Pro</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>
-                            Tanggal Berakhir Pro (opsional)
-                            <span className="ml-2 text-xs text-muted-foreground">
-                                (kosongkan untuk tanpa batas)
-                            </span>
-                        </Label>
-
-                        <Input
-                            type="date"
-                            value={type === 'pro' ? dateValue : ''}
-                            disabled={type !== 'pro'}
-                            onChange={(e) => setExpiry(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                <DialogFooter>
-                    <Button variant="secondary" onClick={() => setOpen(false)}>
-                        Batal
-                    </Button>
-                    <Button
-                        onClick={() => {
-                            onSave({
-                                account_type: type,
-                                pro_expires_at:
-                                    type === 'pro' ? expiry || null : null,
-                            });
-                            setOpen(false);
-                        }}
-                    >
-                        Simpan
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     );
 }
