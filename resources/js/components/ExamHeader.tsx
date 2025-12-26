@@ -5,7 +5,9 @@ import { Clock, Menu, X } from 'lucide-react';
 
 export function ExamHeader({
     title,
-    sectionLabel, // ✅ NEW
+    sectionIndex,
+    sectionTotal,
+    sectionTitle,
     currentIndex,
     total,
     answeredCount,
@@ -16,7 +18,9 @@ export function ExamHeader({
     onToggleNav,
 }: {
     title: string;
-    sectionLabel?: string; // ✅ NEW
+    sectionIndex: number; // ✅ NEW
+    sectionTotal: number; // ✅ NEW
+    sectionTitle: string; // ✅ NEW
     currentIndex: number;
     total: number;
     answeredCount: number;
@@ -31,16 +35,19 @@ export function ExamHeader({
             <div className="mx-auto w-full max-w-5xl px-4 py-3">
                 <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                        <h1 className="truncate text-base font-bold md:text-lg">
-                            {title}
-                        </h1>
+                        <div className="flex items-center gap-2">
+                            <span className="inline-flex shrink-0 items-center rounded-full border bg-secondary px-2.5 py-1 text-[11px] font-semibold">
+                                Sesi {sectionIndex}/{sectionTotal}
+                            </span>
 
-                        {/* ✅ NEW: section info */}
-                        {sectionLabel ? (
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                                {sectionLabel}
-                            </p>
-                        ) : null}
+                            <h1 className="min-w-0 truncate text-base font-bold md:text-lg">
+                                {title}
+                            </h1>
+                        </div>
+
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                            {sectionTitle}
+                        </p>
 
                         <div className="mt-1 flex items-center gap-3">
                             <p className="text-xs text-muted-foreground md:text-sm">

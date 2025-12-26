@@ -20,6 +20,9 @@ import {
     resolveHtmlImages,
 } from '@/utils/htmlImages';
 
+type Responses = Record<number, number>;
+type ConfirmMode = 'next_section' | 'submit_exam';
+
 interface Option {
     id: number;
     option_text: string;
@@ -42,7 +45,6 @@ interface AttemptProps {
 }
 
 interface ExamSettings {
-    // keep what you use
     time_limit_minutes?: number;
 }
 
@@ -52,14 +54,12 @@ interface ExamProps {
     settings: ExamSettings;
 }
 
-type Responses = Record<number, number>;
-
 interface SectionProps {
     index: number;
     total: number;
     question_bank_id: number;
     title: string;
-    timeLimit: number; // duration_minutes
+    timeLimit: number;
     elapsedMinutes: number;
 }
 
@@ -68,13 +68,7 @@ interface Props {
     exam: ExamProps;
     questions: Question[];
     responses: Responses;
-
-    // ✅ NEW
     section: SectionProps;
-
-    // ⛔ REMOVE these old props (not needed anymore)
-    // timeLimit: number;
-    // elapsedMinutes: number;
 }
 
 export default function TakeExamPage({
@@ -172,17 +166,29 @@ export default function TakeExamPage({
         });
     };
 
-    // ✅ finish section instead of submit exam
     const handleFinishSection = () => {
         if (!hasQuestions) return;
         const total = questions.length;
         const diff = total - Object.keys(answers).length;
+
         setUnansweredCount(diff);
+        setConfirmMode(isLastSection ? 'submit_exam' : 'next_section');
         setConfirmOpen(true);
     };
 
     const confirmFinishSection = () => {
-        router.post(`/student/exams/${attempt.id}/finish-section`);
+        setConfirmOpen(false);
+
+        router.post(
+            `/student/exams/${attempt.id}/finish-section`,
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setConfirmOpen(false);
+                },
+            },
+        );
     };
 
     const jumpToQuestion = (index: number) => {
@@ -196,14 +202,17 @@ export default function TakeExamPage({
     const isLastQuestion = currentQuestionIndex === questions.length - 1;
     const isLastSection = section.index === section.total;
 
+    const [confirmMode, setConfirmMode] = useState<ConfirmMode>('next_section');
+
     return (
         <div className="flex min-h-screen flex-col bg-background">
             <Head title={`Taking Exam: ${exam.title}`} />
 
             <ExamHeader
                 title={exam.title}
-                // ✅ show section info
-                sectionLabel={`Sesi ${section.index}/${section.total} • ${section.title}`}
+                sectionIndex={section.index}
+                sectionTotal={section.total}
+                sectionTitle={section.title}
                 currentIndex={currentQuestionIndex}
                 total={questions.length}
                 answeredCount={answeredCount}
@@ -374,6 +383,7 @@ export default function TakeExamPage({
                 open={confirmOpen}
                 onOpenChange={setConfirmOpen}
                 unansweredCount={unansweredCount}
+                mode={confirmMode}
                 onConfirm={confirmFinishSection}
             />
         </div>
