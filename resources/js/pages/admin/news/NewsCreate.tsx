@@ -1,11 +1,3 @@
-'use client';
-
-import { Head, Link, useForm } from '@inertiajs/react';
-import { useMemo } from 'react';
-
-import AppLayout from '@/layouts/app-layout';
-import type { BreadcrumbItem } from '@/types';
-
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,11 +10,15 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import AppLayout from '@/layouts/app-layout';
+import type { BreadcrumbItem } from '@/types';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { useMemo } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard Admin', href: '/admin/dashboard' },
-    { title: 'Berita', href: '/admin/news' },
-    { title: 'Buat', href: '/admin/news/create' },
+    { title: 'Daftar Berita', href: '/admin/news' },
+    { title: 'Buat Berita', href: '/admin/news/create' },
 ];
 
 export default function NewsCreate() {
@@ -46,7 +42,7 @@ export default function NewsCreate() {
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         post('/admin/news', {
-            forceFormData: true, // penting untuk upload file
+            forceFormData: true,
             preserveScroll: true,
         });
     };
@@ -55,10 +51,10 @@ export default function NewsCreate() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Buat Berita" />
 
-            <div className="mx-auto w-full max-w-3xl space-y-4 p-4">
-                <div>
-                    <h1 className="text-2xl font-bold">Buat Berita</h1>
-                    <p className="text-muted-foreground">
+            <div className="flex h-full flex-1 flex-col gap-6 p-4">
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-3xl font-bold">Buat Berita</h1>
+                    <p className="text-sm text-muted-foreground">
                         Berita sederhana dengan 1 gambar.
                     </p>
                 </div>
@@ -155,13 +151,19 @@ export default function NewsCreate() {
                             )}
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <Button variant="ghost" asChild>
+                        <div className="flex flex-col gap-3 pt-4 sm:flex-row">
+                            <Button variant="ghost" className="flex-1" asChild>
                                 <Link href="/admin/news">Kembali</Link>
                             </Button>
 
-                            <Button type="submit" disabled={processing}>
-                                {processing ? 'Menyimpan...' : 'Simpan'}
+                            <Button
+                                type="submit"
+                                className="flex-1"
+                                disabled={processing}
+                            >
+                                {processing
+                                    ? 'Membuat Berita...'
+                                    : 'Buat Berita'}
                             </Button>
                         </div>
                     </form>
