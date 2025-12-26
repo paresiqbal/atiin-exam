@@ -248,14 +248,6 @@ export default function UserCreate() {
 
                                 <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                     <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleCancel}
-                                        className="flex-1"
-                                    >
-                                        Batal
-                                    </Button>
-                                    <Button
                                         type="submit"
                                         disabled={processing}
                                         className="flex-1"
@@ -263,6 +255,14 @@ export default function UserCreate() {
                                         {processing
                                             ? 'Membuat...'
                                             : 'Buat Pengguna'}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleCancel}
+                                        className="flex-1"
+                                    >
+                                        Batal
                                     </Button>
                                 </div>
                             </form>

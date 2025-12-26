@@ -187,7 +187,7 @@ export default function StudentCreate({ schools }: StudentCreateProps) {
             href: '/admin/dashboard',
         },
         {
-            title: 'Manajemen Siswa',
+            title: 'Daftar Siswa',
             href: '/admin/students',
         },
         {
@@ -203,9 +203,7 @@ export default function StudentCreate({ schools }: StudentCreateProps) {
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 {/* Header */}
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-bold">
-                        Manajemen Siswa – Buat
-                    </h1>
+                    <h1 className="text-3xl font-bold">Manajemen Siswa</h1>
                     <p className="text-sm text-muted-foreground">
                         Buat satu siswa atau impor beberapa siswa secara massal
                         dari file.

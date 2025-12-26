@@ -152,10 +152,6 @@ export default function NewsCreate() {
                         </div>
 
                         <div className="flex flex-col gap-3 pt-4 sm:flex-row">
-                            <Button variant="ghost" className="flex-1" asChild>
-                                <Link href="/admin/news">Kembali</Link>
-                            </Button>
-
                             <Button
                                 type="submit"
                                 className="flex-1"
@@ -164,6 +160,9 @@ export default function NewsCreate() {
                                 {processing
                                     ? 'Membuat Berita...'
                                     : 'Buat Berita'}
+                            </Button>
+                            <Button variant="ghost" className="flex-1" asChild>
+                                <Link href="/admin/news">Kembali</Link>
                             </Button>
                         </div>
                     </form>

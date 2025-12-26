@@ -229,6 +229,7 @@ export default function UserIndex() {
                                                 value === true,
                                             )
                                         }
+                                        className="border-gray-900"
                                     />
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">

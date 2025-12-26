@@ -40,7 +40,7 @@ interface StudentCardsProps {
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Admin Dashboard', href: '/admin/dashboard' },
-    { title: 'Manajemen Siswa', href: '/admin/students' },
+    { title: 'Daftar Siswa', href: '/admin/students' },
     { title: 'Kartu Siswa', href: '/admin/students/cards' },
 ];
 
