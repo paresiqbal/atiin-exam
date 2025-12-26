@@ -62,7 +62,7 @@ export function ConfirmBulkDeleteButton({
                     </AlertDialogTitle>
                     <AlertDialogDescription>
                         Anda akan menghapus{' '}
-                        <span className="font-semibold text-green-500">
+                        <span className="font-extrabold text-primary">
                             {count} {resourceLabelPlural} terpilih
                         </span>
                         . Tindakan ini tidak dapat dibatalkan dan dapat
@@ -80,6 +80,7 @@ export function ConfirmBulkDeleteButton({
                             onClick={handleConfirmClick}
                             disabled={loading}
                             variant="destructive"
+                            className="cursor-pointer"
                         >
                             {loading ? 'Menghapus...' : 'Ya, hapus semua'}
                         </Button>

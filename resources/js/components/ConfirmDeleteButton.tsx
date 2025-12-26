@@ -57,7 +57,7 @@ export function ConfirmDeleteButton({
                     <AlertDialogTitle>Hapus {resourceLabel}?</AlertDialogTitle>
                     <AlertDialogDescription>
                         Anda akan menghapus{' '}
-                        <span className="font-semibold text-green-500">
+                        <span className="font-extrabold text-primary">
                             {displayName}
                         </span>
                         . Tindakan ini tidak dapat dibatalkan dan dapat
@@ -73,6 +73,7 @@ export function ConfirmDeleteButton({
                         onClick={handleDelete}
                         disabled={loading}
                         variant="destructive"
+                        className="cursor-pointer"
                     >
                         {loading ? 'Menghapus...' : 'Hapus'}
                     </Button>

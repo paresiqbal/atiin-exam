@@ -219,7 +219,7 @@ export default function UserIndex() {
                 {/* Table */}
                 <div className="overflow-x-auto rounded-lg border shadow-sm">
                     <table className="w-full text-sm">
-                        <thead className="border-b bg-accent">
+                        <thead className="border-b bg-primary/10 dark:bg-primary/60">
                             <tr>
                                 <th className="w-10 px-4 py-2">
                                     <Checkbox
