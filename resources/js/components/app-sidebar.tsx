@@ -26,8 +26,12 @@ import {
 import AppLogo from './app-logo';
 
 export function AppSidebar() {
-    const page = usePage<{ auth: { user: { role: string } | null } }>();
+    const page = usePage<{
+        auth: { user: { role: string; is_pro?: boolean } | null };
+    }>();
+
     const role = page.props.auth.user?.role;
+    const isPro = !!page.props.auth.user?.is_pro;
 
     let mainNavItems: NavItem[] = [];
 
@@ -52,10 +56,7 @@ export function AppSidebar() {
                 href: '#',
                 icon: Folder,
                 items: [
-                    {
-                        title: 'Semua Bank Soal',
-                        href: '/admin/question-banks',
-                    },
+                    { title: 'Semua Bank Soal', href: '/admin/question-banks' },
                     {
                         title: 'Buat Bank Soal',
                         href: '/admin/question-banks/create',
@@ -89,14 +90,8 @@ export function AppSidebar() {
                 icon: PersonStanding,
                 items: [
                     { title: 'Semua Siswa', href: '/admin/students' },
-                    {
-                        title: 'Buat Siswa',
-                        href: '/admin/students/create',
-                    },
-                    {
-                        title: 'Buat Kartu',
-                        href: '/admin/students/cards',
-                    },
+                    { title: 'Buat Siswa', href: '/admin/students/create' },
+                    { title: 'Buat Kartu', href: '/admin/students/cards' },
                 ],
             },
             {
@@ -115,10 +110,7 @@ export function AppSidebar() {
                 icon: Newspaper,
                 items: [
                     { title: 'Semua Berita', href: '/admin/news' },
-                    {
-                        title: 'Buat Berita',
-                        href: '/admin/news/create',
-                    },
+                    { title: 'Buat Berita', href: '/admin/news/create' },
                 ],
             },
             {
@@ -127,10 +119,7 @@ export function AppSidebar() {
                 icon: UsersRound,
                 items: [
                     { title: 'Semua Pengguna', href: '/admin/users' },
-                    {
-                        title: 'Buat Pengguna',
-                        href: '/admin/users/create',
-                    },
+                    { title: 'Buat Pengguna', href: '/admin/users/create' },
                 ],
             },
         ];
@@ -158,7 +147,7 @@ export function AppSidebar() {
             },
         ];
     } else {
-        mainNavItems = [
+        const studentItems: NavItem[] = [
             {
                 title: 'Dashboard',
                 href: '/student/dashboard',
@@ -170,30 +159,47 @@ export function AppSidebar() {
                 icon: Folder,
                 items: [
                     { title: 'Daftar Ujian', href: '/student/exams' },
-                    { title: 'Ujian Saya', href: '/student/exams/history' },
+                    ...(isPro
+                        ? [
+                              {
+                                  title: 'Ujian Saya',
+                                  href: '/student/exams/history',
+                              },
+                          ]
+                        : []),
                 ],
             },
-            {
-                title: 'Universitas',
-                href: '/student/universities',
-                icon: Book,
-            },
+            ...(isPro
+                ? [
+                      {
+                          title: 'Universitas',
+                          href: '/student/universities',
+                          icon: Book,
+                      } as NavItem,
+                  ]
+                : []),
             {
                 title: 'Berita',
                 href: '/student/news',
                 icon: Newspaper,
             },
-            {
-                title: 'Konsultan',
-                href: '/student/consultant-requests',
-                icon: FileUser,
-            },
+            ...(isPro
+                ? [
+                      {
+                          title: 'Konsultan',
+                          href: '/student/consultant-requests',
+                          icon: FileUser,
+                      } as NavItem,
+                  ]
+                : []),
             {
                 title: 'Pembayaran',
                 href: '/student/account',
                 icon: Book,
             },
         ];
+
+        mainNavItems = studentItems;
     }
 
     return (

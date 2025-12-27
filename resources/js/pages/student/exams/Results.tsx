@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import {
     AlertTriangle,
     ArrowLeft,
@@ -80,6 +80,9 @@ export default function Results({
     studentSelections,
     universitySelections = [],
 }: Props) {
+    const page = usePage<{ auth: { user: { is_pro?: boolean } | null } }>();
+    const isPro = !!page.props.auth.user?.is_pro;
+
     const percentage = Math.round((attempt.score / attempt.total_score) * 100);
 
     // Fallback untuk kompatibilitas
@@ -97,8 +100,84 @@ export default function Results({
     const mainMessage = isPassed
         ? 'Selamat! Kamu mencapai nilai minimal untuk jurusan yang dipilih.'
         : 'Kamu belum mencapai nilai minimal untuk jurusan yang dipilih.';
-    console.log('universitySelections', universitySelections);
 
+    // =========================
+    // REGULAR VIEW (LOCKED)
+    // =========================
+    if (!isPro) {
+        return (
+            <div className="min-h-screen bg-background px-4 py-8 text-foreground">
+                <Head title="Ujian selesai" />
+
+                <div className="container mx-auto max-w-3xl space-y-6">
+                    <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+                        <Link href="/student/dashboard">
+                            <Button
+                                variant="ghost"
+                                className="pl-0 transition-all hover:pl-2"
+                            >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Kembali ke Dashboard
+                            </Button>
+                        </Link>
+
+                        <Link href="/student/account">
+                            <Button>Upgrade ke Pro</Button>
+                        </Link>
+                    </div>
+
+                    <Card className="border-2">
+                        <CardContent className="space-y-3 p-8">
+                            <h1 className="text-2xl font-bold tracking-tight">
+                                Ujian telah selesai
+                            </h1>
+
+                            <p className="text-sm text-muted-foreground">
+                                Terima kasih, jawaban kamu sudah berhasil
+                                disimpan.
+                            </p>
+
+                            <div className="rounded-lg border bg-muted/30 p-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                                    <div className="space-y-1">
+                                        <div className="text-sm font-semibold">
+                                            Hasil lengkap tersedia untuk akun
+                                            Pro
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Upgrade untuk melihat detail nilai,
+                                            status lulus/tidak, rincian jawaban
+                                            per soal, rekomendasi universitas &
+                                            jurusan, serta unduh PDF hasil.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                <Link href="/student/account">
+                                    <Button>Upgrade ke Pro</Button>
+                                </Link>
+                                <Link href="/student/dashboard">
+                                    <Button variant="outline">Kembali</Button>
+                                </Link>
+                            </div>
+
+                            <p className="text-xs text-muted-foreground">
+                                Jika kamu merasa ini keliru, silakan hubungi
+                                admin atau coba refresh halaman.
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        );
+    }
+
+    // =========================
+    // PRO VIEW (FULL RESULTS)
+    // =========================
     return (
         <div className="min-h-screen bg-background px-4 py-8 text-foreground">
             <Head title={`Hasil: ${exam.title}`} />
@@ -246,7 +325,6 @@ export default function Results({
                                     className="border-2"
                                 >
                                     <CardContent className="p-6">
-                                        {/* University Header */}
                                         <div className="mb-4 border-b pb-4">
                                             <div className="flex items-start justify-between">
                                                 <div>
@@ -269,7 +347,6 @@ export default function Results({
                                             </div>
                                         </div>
 
-                                        {/* Majors List */}
                                         <div className="space-y-3">
                                             <div className="text-sm font-medium text-muted-foreground">
                                                 Jurusan yang dipilih (
@@ -281,6 +358,7 @@ export default function Results({
                                                     const passedForThisMajor =
                                                         attempt.score >=
                                                         major.minimum_passing_grade;
+
                                                     const globalIndex =
                                                         universitySelections
                                                             .slice(0, uniIndex)
@@ -378,7 +456,7 @@ export default function Results({
                     </div>
                 )}
 
-                {/* Fallback - Old Format (if no universitySelections) */}
+                {/* Fallback - Old Format */}
                 {universitySelections.length === 0 && hasPlacementInfo && (
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold">
@@ -500,7 +578,6 @@ export default function Results({
                                                     </Badge>
                                                 </div>
 
-                                                {/* Preview (small + no images) */}
                                                 <div
                                                     className="prose prose-sm dark:prose-invert mt-1 line-clamp-2 max-w-none text-xs text-muted-foreground [&_img]:hidden [&_p]:my-1"
                                                     dangerouslySetInnerHTML={{
@@ -513,11 +590,7 @@ export default function Results({
 
                                     <AccordionContent className="pb-3">
                                         <div className="space-y-3">
-                                            {/* Full question */}
-
-                                            {/* Answers */}
                                             <div className="grid gap-2 md:grid-cols-2">
-                                                {/* Student answer */}
                                                 <div
                                                     className={cn(
                                                         'rounded-md border p-3',
@@ -544,7 +617,6 @@ export default function Results({
                                                     )}
                                                 </div>
 
-                                                {/* Correct answer */}
                                                 <div className="rounded-md border border-green-500/25 bg-green-500/5 p-3">
                                                     <div className="mb-1 text-[11px] font-medium text-muted-foreground">
                                                         Jawaban Benar

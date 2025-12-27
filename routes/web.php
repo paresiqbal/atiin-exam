@@ -149,36 +149,48 @@ Route::middleware(['auth', 'role:teacher'])
     });
 
 // Route Student
-Route::middleware(['auth', 'role:student',])->prefix('student')->name('student.')->group(function () {
-    Route::get('/dashboard', [StudentDashboardController::class, '__invoke'])->name('dashboard');
+Route::middleware(['auth', 'role:student'])
+    ->prefix('student')
+    ->name('student.')
+    ->group(function () {
 
-    Route::get('account', [StudentStudentAccountController::class, 'index'])->name('account');
+        Route::get('/dashboard', [StudentDashboardController::class, '__invoke'])->name('dashboard');
+        Route::get('account', [StudentStudentAccountController::class, 'index'])->name('account');
 
-    Route::get('/universities', [StudentUniversityController::class, 'index'])->name('universities.index');
+        // public/basic for all students
+        Route::get('/news', [StudentNewsController::class, 'index'])->name('news.index');
+        Route::get('/news/{news}', [StudentNewsController::class, 'show'])->name('news.show');
 
-    // exams
-    Route::get('/exams', [ExamController::class, 'index'])->name('exams.index');
-    Route::get('/exams/join', [ExamController::class, 'joinForm'])->name('exams.join');
-    Route::post('/exams/start', [ExamController::class, 'startExam'])->name('exams.start');
-    Route::get('/exams/{attempt}/take', [ExamController::class, 'take'])->name('exams.take');
-    Route::post('/exams/{attempt}/save-answer', [ExamController::class, 'saveAnswer'])->name('exams.saveAnswer');
-    Route::post('/exams/{attempt}/finish-section', [ExamController::class, 'finishSection'])->name('exams.finishSection');
-    Route::post('/exams/{attempt}/submit', [ExamController::class, 'submitExam'])->name('exams.submit');
-    Route::get('/exams/{attempt}/results', [ExamController::class, 'results'])->name('exams.results');
-    Route::get('/exams/{attempt}/download-pdf', [ExamController::class, 'downloadResults'])->name('exams.downloadPdf');
-    Route::get('/exams/history', [ExamHistoryController::class, 'index'])->name('exams.history');
-    Route::post('/exams/{attempt}/log-violation', [ExamController::class, 'logViolation'])
-        ->name('exams.logViolation');
+        // ✅ Exams - allowed for ALL students (Daftar Ujian + join/start/take/etc.)
+        Route::get('/exams', [ExamController::class, 'index'])->name('exams.index');
+        Route::get('/exams/join', [ExamController::class, 'joinForm'])->name('exams.join');
+        Route::post('/exams/start', [ExamController::class, 'startExam'])->name('exams.start');
+        Route::get('/exams/{attempt}/take', [ExamController::class, 'take'])->name('exams.take');
+        Route::post('/exams/{attempt}/save-answer', [ExamController::class, 'saveAnswer'])->name('exams.saveAnswer');
+        Route::post('/exams/{attempt}/finish-section', [ExamController::class, 'finishSection'])->name('exams.finishSection');
+        Route::post('/exams/{attempt}/submit', [ExamController::class, 'submitExam'])->name('exams.submit');
+        Route::get('/exams/{attempt}/results', [ExamController::class, 'results'])->name('exams.results');
+        Route::get('/exams/{attempt}/download-pdf', [ExamController::class, 'downloadResults'])->name('exams.downloadPdf');
+        Route::post('/exams/{attempt}/log-violation', [ExamController::class, 'logViolation'])
+            ->name('exams.logViolation');
 
-    // consultant requests
-    Route::get('/consultant-requests', [StudentConsultantRequestController::class, 'index'])->name('consultant-requests.index');
-    Route::get('/consultant-requests/create', [StudentConsultantRequestController::class, 'create'])->name('consultant-requests.create');
-    Route::post('/consultant-requests', [StudentConsultantRequestController::class, 'store'])->name('consultant-requests.store');
+        // 🔒 PRO-only pages
+        Route::middleware(['pro'])->group(function () {
 
-    // news
-    Route::get('/news', [StudentNewsController::class, 'index'])->name('news.index');
-    Route::get('/news/{news}', [StudentNewsController::class, 'show'])->name('news.show');
-});
+            // Universitas (pro-only)
+            Route::get('/universities', [StudentUniversityController::class, 'index'])->name('universities.index');
+
+            // Konsultan (pro-only)
+            Route::get('/consultant-requests', [StudentConsultantRequestController::class, 'index'])->name('consultant-requests.index');
+            Route::get('/consultant-requests/create', [StudentConsultantRequestController::class, 'create'])->name('consultant-requests.create');
+            Route::post('/consultant-requests', [StudentConsultantRequestController::class, 'store'])->name('consultant-requests.store');
+
+            // ✅ only "Ujian Saya" (history) is pro-only
+            Route::get('/exams/history', [ExamHistoryController::class, 'index'])->name('exams.history');
+        });
+    });
+
+
 
 
 require __DIR__ . '/settings.php';

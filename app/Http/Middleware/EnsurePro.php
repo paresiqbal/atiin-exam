@@ -18,7 +18,9 @@ class EnsurePro
         $user->checkProExpiration();
 
         if (!$user->isPro()) {
-            abort(403, 'Pro account required.');
+            return redirect()
+                ->route('student.dashboard')
+                ->with('error', 'Fitur ini khusus akun Pro.');
         }
 
         return $next($request);
