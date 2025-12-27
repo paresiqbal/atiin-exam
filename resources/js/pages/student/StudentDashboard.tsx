@@ -300,7 +300,7 @@ export default function StudentDashboard() {
                         <MenuItem
                             icon={IdCard}
                             label="Kartu"
-                            href="#"
+                            href="/student/card"
                             bgClass="bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-200"
                         />
                     </div>
