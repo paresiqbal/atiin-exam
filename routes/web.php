@@ -31,6 +31,7 @@ use App\Http\Controllers\Teacher\QuestionBankController;
 use App\Http\Controllers\Teacher\QuestionController;
 use App\Http\Controllers\Teacher\QuestionImportController;
 use App\Http\Controllers\Student\ConsultantRequestController as StudentConsultantRequestController;
+use App\Http\Controllers\Student\StudentCardController;
 use App\Http\Controllers\Student\StudentNewsController;
 
 Route::get('/', function () {
@@ -161,7 +162,7 @@ Route::middleware(['auth', 'role:student'])
         Route::get('/news', [StudentNewsController::class, 'index'])->name('news.index');
         Route::get('/news/{news}', [StudentNewsController::class, 'show'])->name('news.show');
 
-        // ✅ Exams - allowed for ALL students (Daftar Ujian + join/start/take/etc.)
+        // Exams - allowed for ALL students (Daftar Ujian + join/start/take/etc.)
         Route::get('/exams', [ExamController::class, 'index'])->name('exams.index');
         Route::get('/exams/join', [ExamController::class, 'joinForm'])->name('exams.join');
         Route::post('/exams/start', [ExamController::class, 'startExam'])->name('exams.start');
@@ -174,7 +175,7 @@ Route::middleware(['auth', 'role:student'])
         Route::post('/exams/{attempt}/log-violation', [ExamController::class, 'logViolation'])
             ->name('exams.logViolation');
 
-        // 🔒 PRO-only pages
+        // PRO-only pages
         Route::middleware(['pro'])->group(function () {
 
             // Universitas (pro-only)
@@ -185,8 +186,11 @@ Route::middleware(['auth', 'role:student'])
             Route::get('/consultant-requests/create', [StudentConsultantRequestController::class, 'create'])->name('consultant-requests.create');
             Route::post('/consultant-requests', [StudentConsultantRequestController::class, 'store'])->name('consultant-requests.store');
 
-            // ✅ only "Ujian Saya" (history) is pro-only
+            // only "Ujian Saya" (history) is pro-only
             Route::get('/exams/history', [ExamHistoryController::class, 'index'])->name('exams.history');
+
+            Route::get('/card', [StudentCardController::class, 'show'])->name('student.card.show');
+            Route::post('/card/photo', [StudentCardController::class, 'uploadPhoto'])->name('student.card.photo');
         });
     });
 

@@ -1,7 +1,9 @@
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 
 type StudentCardProps = {
+    templateUrl: string;
+    photoUrl?: string | null;
+
     name: string;
     studentId: string;
     school?: string | null;
@@ -10,6 +12,8 @@ type StudentCardProps = {
 };
 
 export default function StudentCard({
+    templateUrl,
+    photoUrl,
     name,
     studentId,
     school,
@@ -17,62 +21,70 @@ export default function StudentCard({
     isPro,
 }: StudentCardProps) {
     return (
-        <Card className="mx-auto max-w-md overflow-hidden border-2">
-            {/* Header */}
-            <div className="border-b bg-muted px-4 py-3">
-                <div className="text-xs tracking-wide text-muted-foreground">
-                    KARTU SISWA
-                </div>
-                <div className="text-lg font-semibold">ATTIN BIMBEL</div>
-            </div>
-
-            <CardContent className="space-y-4 p-4">
-                {/* Main Info */}
-                <div className="space-y-2">
-                    <Field label="Nama">
-                        <span className="font-semibold">{name}</span>
-                    </Field>
-
-                    <Field label="Nomor Siswa">{studentId}</Field>
-
-                    <Field label="Sekolah">{school ?? '-'}</Field>
-
-                    <Field label="Kelas">{className ?? '-'}</Field>
-                </div>
-
-                {/* Status */}
-                <div className="flex items-center justify-between pt-2">
-                    <div className="text-xs text-muted-foreground">
-                        Status Akun
-                    </div>
-
+        <div className="mx-auto w-full max-w-[720px]">
+            <div
+                className="relative overflow-hidden rounded-2xl border shadow-md"
+                style={{
+                    aspectRatio: '16 / 9',
+                    backgroundImage: `url(${templateUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                }}
+            >
+                {/* PRO badge */}
+                <div className="absolute top-[6%] right-[4%]">
                     {isPro ? (
                         <Badge>PRO</Badge>
                     ) : (
                         <Badge variant="outline">REGULAR</Badge>
                     )}
                 </div>
-            </CardContent>
 
-            {/* Footer */}
-            <div className="border-t bg-muted/50 px-4 py-2 text-[11px] text-muted-foreground">
-                Berlaku selama terdaftar sebagai siswa aktif
+                {/* Photo */}
+                <div className="absolute top-[26%] left-[6%] aspect-[3/4] w-[18%] overflow-hidden rounded-xl bg-white/90">
+                    {photoUrl ? (
+                        <img
+                            src={photoUrl}
+                            alt="Student photo"
+                            className="h-full w-full object-cover"
+                        />
+                    ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+                            NO PHOTO
+                        </div>
+                    )}
+                </div>
+
+                {/* Text block */}
+                <div className="absolute top-[26%] right-[6%] left-[28%] text-white">
+                    <div className="text-xs tracking-[0.3em] opacity-80">
+                        KARTU SISWA
+                    </div>
+
+                    <div className="mt-1 text-lg font-semibold">
+                        ATTIN BIMBEL
+                    </div>
+
+                    <div className="mt-4 font-mono text-sm tracking-[0.18em] opacity-90">
+                        {studentId}
+                    </div>
+
+                    <div className="mt-1 text-base font-semibold tracking-wide">
+                        {name.toUpperCase()}
+                    </div>
+
+                    <div className="mt-2 text-xs opacity-85">
+                        {school ?? '-'} • {className ?? '-'}
+                    </div>
+
+                    <div className="mt-4 text-[10px] opacity-75">
+                        Berlaku selama terdaftar sebagai siswa aktif
+                    </div>
+                </div>
+
+                {/* Optional dark overlay if template too bright */}
+                <div className="pointer-events-none absolute inset-0 bg-black/10" />
             </div>
-        </Card>
-    );
-}
-
-function Field({
-    label,
-    children,
-}: {
-    label: string;
-    children: React.ReactNode;
-}) {
-    return (
-        <div className="grid grid-cols-3 gap-2 text-sm">
-            <div className="text-muted-foreground">{label}</div>
-            <div className="col-span-2">{children}</div>
         </div>
     );
 }

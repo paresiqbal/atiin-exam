@@ -24,6 +24,7 @@ class User extends Authenticatable
         'school_id',
         'class',
         'university_selections',
+        'photo_path',
     ];
 
     protected $hidden = [
