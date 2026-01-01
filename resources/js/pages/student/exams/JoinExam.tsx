@@ -92,8 +92,8 @@ export default function JoinExam({ universities, exam }: Props) {
         0,
     );
 
-    // Max 3 universities
-    const canAddUniversity = selections.length < 3;
+    // Max 4 universities
+    const canAddUniversity = selections.length < 4;
 
     const getUniversityById = (id: string) =>
         universities.find((u) => u.id === Number(id));

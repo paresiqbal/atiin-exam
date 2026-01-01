@@ -75,7 +75,7 @@ class ExamController extends Controller
             'token' => 'required|string|exists:exam_tokens,token',
 
             // your placement selections (keep as-is)
-            'selections' => 'required|array|max:3',
+            'selections' => 'required|array|max:4',
             'selections.*.university_id' => 'required|exists:universities,id',
             'selections.*.majors' => 'required|array|max:4',
             'selections.*.majors.*' => 'required|exists:majors,id',
