@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
 // layout
@@ -125,7 +125,7 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
 
     const handleEditorChange = (value: string) => {
         setEditorContent(value);
-        // optional: could also do setData('question_text', value) if you want
+        setData('question_text', value);
     };
 
     const handleAddOption = () => {
@@ -174,21 +174,26 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        // make sure latest editor HTML is sent
-        setData('question_text', editorContent || '');
+        const backToBank = () => {
+            router.visit(`/admin/question-banks/${questionBank.id}`, {
+                replace: true,
+                preserveScroll: true,
+                preserveState: false,
+            });
+        };
 
         if (isEditing && question) {
             put(`/admin/questions/${question.id}`, {
                 onSuccess: () => {
                     reset();
-                    window.history.back();
+                    backToBank();
                 },
             });
         } else {
             post(`/admin/question-banks/${questionBank.id}/questions`, {
                 onSuccess: () => {
                     reset();
-                    window.history.back();
+                    backToBank();
                 },
             });
         }
@@ -400,7 +405,15 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => window.history.back()}
+                                    onClick={() =>
+                                        router.visit(
+                                            `/admin/question-banks/${questionBank.id}`,
+                                            {
+                                                replace: true,
+                                                preserveState: false,
+                                            },
+                                        )
+                                    }
                                 >
                                     Batal
                                 </Button>
