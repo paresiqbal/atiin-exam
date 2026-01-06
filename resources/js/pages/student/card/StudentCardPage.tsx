@@ -49,7 +49,7 @@ export default function StudentCardPage() {
                 <h1 className="text-xl font-semibold">Kartu Siswa</h1>
 
                 <StudentCard
-                    templateUrl="/assets/card.jpeg"
+                    templateUrl="/assets/card.png"
                     name={props.student.name}
                     studentId={props.student.student_id}
                     school={props.student.school}

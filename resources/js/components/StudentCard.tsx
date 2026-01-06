@@ -21,7 +21,7 @@ export default function StudentCard({
     isPro,
 }: StudentCardProps) {
     return (
-        <div className="mx-auto w-full max-w-[720px]">
+        <div className="mx-auto w-full max-w-[980px]">
             <div
                 className="relative overflow-hidden rounded-2xl border shadow-md"
                 style={{
@@ -31,8 +31,8 @@ export default function StudentCard({
                     backgroundPosition: 'center',
                 }}
             >
-                {/* PRO badge */}
-                <div className="absolute top-[6%] right-[4%]">
+                {/* PRO/REGULAR Badge */}
+                <div className="absolute top-[6%] right-[3%]">
                     {isPro ? (
                         <Badge>PRO</Badge>
                     ) : (
@@ -40,8 +40,8 @@ export default function StudentCard({
                     )}
                 </div>
 
-                {/* Photo */}
-                <div className="absolute top-[26%] left-[6%] aspect-[3/4] w-[18%] overflow-hidden rounded-xl bg-white/90">
+                {/* Photo - positioned at top right */}
+                <div className="absolute top-[15%] right-[6%] aspect-[3/4] w-[11.5%] overflow-hidden rounded-xl bg-white/90 shadow">
                     {photoUrl ? (
                         <img
                             src={photoUrl}
@@ -55,35 +55,31 @@ export default function StudentCard({
                     )}
                 </div>
 
-                {/* Text block */}
-                <div className="absolute top-[26%] right-[6%] left-[28%] text-white">
-                    <div className="text-xs tracking-[0.3em] opacity-80">
-                        KARTU SISWA
-                    </div>
+                {/* Name and info - positioned on the left */}
+                <div className="absolute top-[15%] right-[19%] left-[6%]">
+                    <div className="inline-block rounded-xl bg-white/18 px-4 py-3 backdrop-blur-[2px]">
+                        <div className="text-white drop-shadow">
+                            <div className="text-[clamp(22px,3.1vw,46px)] leading-none font-extrabold tracking-wide">
+                                {name.toUpperCase()}
+                            </div>
 
-                    <div className="mt-1 text-lg font-semibold">
-                        ATTIN BIMBEL
-                    </div>
+                            <div className="mt-2 text-[clamp(12px,1.4vw,18px)] font-semibold opacity-95">
+                                {(school ?? 'SEKOLAH').toUpperCase()}
+                            </div>
 
-                    <div className="mt-4 font-mono text-sm tracking-[0.18em] opacity-90">
-                        {studentId}
-                    </div>
-
-                    <div className="mt-1 text-base font-semibold tracking-wide">
-                        {name.toUpperCase()}
-                    </div>
-
-                    <div className="mt-2 text-xs opacity-85">
-                        {school ?? '-'} • {className ?? '-'}
-                    </div>
-
-                    <div className="mt-4 text-[10px] opacity-75">
-                        Berlaku selama terdaftar sebagai siswa aktif
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[clamp(11px,1.2vw,16px)] font-semibold opacity-90">
+                                <span>
+                                    KELAS:{' '}
+                                    {(className ?? '-')
+                                        .toString()
+                                        .toUpperCase()}
+                                </span>
+                                <span className="opacity-70">•</span>
+                                <span>ID: {studentId}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                {/* Optional dark overlay if template too bright */}
-                <div className="pointer-events-none absolute inset-0 bg-black/10" />
             </div>
         </div>
     );
