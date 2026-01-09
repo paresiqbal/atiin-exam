@@ -154,7 +154,6 @@ Route::middleware(['auth', 'role:student'])
     ->prefix('student')
     ->name('student.')
     ->group(function () {
-
         Route::get('/dashboard', [StudentDashboardController::class, '__invoke'])->name('dashboard');
         Route::get('account', [StudentStudentAccountController::class, 'index'])->name('account');
 
@@ -175,6 +174,10 @@ Route::middleware(['auth', 'role:student'])
         Route::post('/exams/{attempt}/log-violation', [ExamController::class, 'logViolation'])
             ->name('exams.logViolation');
 
+        // Student Card
+        Route::get('/card', [StudentCardController::class, 'show'])->name('student.card.show');
+        Route::post('/card/photo', [StudentCardController::class, 'uploadPhoto'])->name('student.card.photo');
+
         // PRO-only pages
         Route::middleware(['pro'])->group(function () {
 
@@ -188,9 +191,6 @@ Route::middleware(['auth', 'role:student'])
 
             // only "Ujian Saya" (history) is pro-only
             Route::get('/exams/history', [ExamHistoryController::class, 'index'])->name('exams.history');
-
-            Route::get('/card', [StudentCardController::class, 'show'])->name('student.card.show');
-            Route::post('/card/photo', [StudentCardController::class, 'uploadPhoto'])->name('student.card.photo');
         });
     });
 

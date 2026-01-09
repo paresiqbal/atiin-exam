@@ -22,7 +22,7 @@ return new class extends Migration
             $table->foreignId('school_id')->nullable()->onDelete('set null');
             $table->string('class')->nullable();
             $table->json('university_selections')->nullable();
-            $table->string('photo_path')->nullable()->after('university_selections');
+            $table->string('photo_path')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
