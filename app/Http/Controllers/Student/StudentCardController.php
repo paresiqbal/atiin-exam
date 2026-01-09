@@ -21,7 +21,9 @@ class StudentCardController extends Controller
                 'student_id' => (string) $user->id,
                 'school' => optional($user->school)->name,
                 'class' => $user->class,
-                'photo_url' => $user->photo_url,
+                'photo_url' => $user->photo_path
+                    ? Storage::url($user->photo_path)
+                    : null,
             ],
             'auth' => [
                 'user' => [
