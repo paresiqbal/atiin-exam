@@ -290,8 +290,14 @@ class UniversityImportController extends Controller
 
             $grade = (int) $data['minimum_passing_grade'];
 
-            if ($grade < 0 || $grade > 100) {
-                return 'Invalid passing grade (0-100)';
+            if (!is_numeric($grade)) {
+                return 'Minimum passing grade must be a number';
+            }
+
+            $grade = (float) $grade;
+
+            if ($grade < 0) {
+                return 'Invalid passing grade (min 0)';
             }
         }
 
