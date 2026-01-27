@@ -17,7 +17,7 @@ import {
     Upload,
 } from 'lucide-react';
 import type React from 'react';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useMemo, useState } from 'react';
 
 interface PreviewQuestion {
     row: number;
@@ -49,6 +49,13 @@ function getCsrfToken(): string {
     return meta?.content ?? '';
 }
 
+// helper: detect route prefix from current URL
+function getRoutePrefix(): 'admin' | 'teacher' {
+    if (typeof window === 'undefined') return 'admin';
+    const firstSeg = window.location.pathname.split('/').filter(Boolean)[0];
+    return firstSeg === 'teacher' ? 'teacher' : 'admin';
+}
+
 export default function QuestionBulkImport({
     questionBankId,
     onImportSuccess,
@@ -63,6 +70,16 @@ export default function QuestionBulkImport({
         text: string;
     } | null>(null);
     const [dragActive, setDragActive] = useState(false);
+
+    // Build URLs once (based on current page prefix)
+    const { previewUrl, importUrl, templateUrl } = useMemo(() => {
+        const prefix = getRoutePrefix();
+        return {
+            previewUrl: `/${prefix}/question-banks/${questionBankId}/questions/import/preview`,
+            importUrl: `/${prefix}/question-banks/${questionBankId}/questions/import`,
+            templateUrl: `/${prefix}/question-banks/${questionBankId}/questions/import/template`,
+        };
+    }, [questionBankId]);
 
     const handleDrag = (e: React.DragEvent) => {
         e.preventDefault();
@@ -115,19 +132,25 @@ export default function QuestionBulkImport({
         formData.append('file', file);
 
         try {
-            const response = await fetch(
-                `/admin/question-banks/${questionBankId}/questions/import/preview`,
-                {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': getCsrfToken(),
-                        'X-Requested-With': 'XMLHttpRequest',
-                        Accept: 'application/json',
-                    },
-                    credentials: 'same-origin',
+            const response = await fetch(previewUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    Accept: 'application/json',
                 },
-            );
+                // If you ever run this from a different origin (vite :5173), change to 'include'
+                credentials: 'same-origin',
+            });
+
+            // If blocked by middleware, Laravel may return HTML, not JSON.
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                throw new Error(
+                    `Unexpected response (non-JSON). Status: ${response.status}`,
+                );
+            }
 
             const data: ImportResponse = await response.json();
 
@@ -163,19 +186,17 @@ export default function QuestionBulkImport({
         formData.append('file', file);
 
         try {
-            const response = await fetch(
-                `/admin/question-banks/${questionBankId}/questions/import`,
-                {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': getCsrfToken(),
-                        'X-Requested-With': 'XMLHttpRequest',
-                        Accept: 'application/json',
-                    },
-                    credentials: 'same-origin',
+            const response = await fetch(importUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest',
+                    Accept: 'application/json',
                 },
-            );
+                // If you ever run this from a different origin (vite :5173), change to 'include'
+                credentials: 'same-origin',
+            });
 
             if (response.ok) {
                 setMessage({
@@ -208,7 +229,7 @@ export default function QuestionBulkImport({
     };
 
     const downloadTemplate = () => {
-        window.location.href = `/admin/question-banks/${questionBankId}/questions/import/template`;
+        window.location.href = templateUrl;
     };
 
     return (
@@ -287,7 +308,7 @@ export default function QuestionBulkImport({
                                     : 'Drag & drop file di sini, atau klik untuk memilih'}
                             </p>
                             <p className="mt-1 text-xs text-muted-foreground">
-                                Format: CSV, XLS, XLSX &mdash; Maksimal 2MB
+                                Format: CSV, XLS, XLSX — Maksimal 2MB
                             </p>
                         </label>
                     </div>
