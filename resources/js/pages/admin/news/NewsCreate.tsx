@@ -244,7 +244,6 @@ export default function NewsCreate() {
                                 </div>
                             )}
                         </div>
-
                         <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                             <Button
                                 type="submit"

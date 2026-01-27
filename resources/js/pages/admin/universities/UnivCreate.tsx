@@ -23,7 +23,7 @@ import {
     Upload,
 } from 'lucide-react';
 
-import React, { useState, type FormEvent } from 'react';
+import React, { useMemo, useState, type FormEvent } from 'react';
 
 interface PreviewRow {
     row: number;
@@ -53,21 +53,27 @@ type UniversityOption = {
 };
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Admin Dashboard',
-        href: '/admin/dashboard',
-    },
-    {
-        title: 'Daftar Universitas',
-        href: '/admin/universities',
-    },
+    { title: 'Admin Dashboard', href: '/admin/dashboard' },
+    { title: 'Daftar Universitas', href: '/admin/universities' },
     { title: 'Buat Universitas', href: '/admin/universities/create' },
 ];
 
-// Get CSRF token from meta tag
-const csrfToken = (
-    document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
-)?.content;
+// Read token fresh (prevents stale token issues)
+const getCsrfToken = () =>
+    (
+        document.querySelector(
+            'meta[name="csrf-token"]',
+        ) as HTMLMetaElement | null
+    )?.content ?? '';
+
+// Helper: safely read JSON, fallback to text error
+async function safeReadJson<T>(res: Response): Promise<T | null> {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return (await res.json()) as T;
+    }
+    return null;
+}
 
 export default function UnivCreate({
     universities,
@@ -85,6 +91,8 @@ export default function UnivCreate({
     } | null>(null);
     const [dragActive, setDragActive] = useState(false);
 
+    const fileName = useMemo(() => file?.name ?? null, [file]);
+
     const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
@@ -95,44 +103,37 @@ export default function UnivCreate({
         }
     };
 
+    const setCsvFileOrError = (picked: File) => {
+        if (
+            picked.type === 'text/csv' ||
+            picked.name.toLowerCase().endsWith('.csv')
+        ) {
+            setFile(picked);
+            // Reset previous results when selecting new file
+            setPreview([]);
+            setErrors([]);
+            setMessage(null);
+            return;
+        }
+
+        setMessage({
+            type: 'error',
+            text: 'Hanya file CSV yang diperbolehkan.',
+        });
+    };
+
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         e.stopPropagation();
         setDragActive(false);
 
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            const droppedFile = e.dataTransfer.files[0];
-
-            if (
-                droppedFile.type === 'text/csv' ||
-                droppedFile.name.toLowerCase().endsWith('.csv')
-            ) {
-                setFile(droppedFile);
-            } else {
-                setMessage({
-                    type: 'error',
-                    text: 'Hanya file CSV yang diperbolehkan.',
-                });
-            }
-        }
+        const dropped = e.dataTransfer.files?.[0];
+        if (dropped) setCsvFileOrError(dropped);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const pickedFile = e.target.files[0];
-
-            if (
-                pickedFile.type === 'text/csv' ||
-                pickedFile.name.toLowerCase().endsWith('.csv')
-            ) {
-                setFile(pickedFile);
-            } else {
-                setMessage({
-                    type: 'error',
-                    text: 'Hanya file CSV yang diperbolehkan.',
-                });
-            }
-        }
+        const picked = e.target.files?.[0];
+        if (picked) setCsvFileOrError(picked);
     };
 
     const handlePreview = async (e: FormEvent) => {
@@ -142,6 +143,7 @@ export default function UnivCreate({
         setLoading(true);
         setErrors([]);
         setMessage(null);
+        setPreview([]);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -150,20 +152,42 @@ export default function UnivCreate({
             const response = await fetch('/admin/universities/import/preview', {
                 method: 'POST',
                 body: formData,
+                credentials: 'same-origin',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrfToken || '',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
             });
 
-            const data: ImportResponse = await response.json();
+            // Handle CSRF mismatch / expired session
+            if (response.status === 419) {
+                setMessage({
+                    type: 'error',
+                    text: 'Sesi kamu expired (CSRF mismatch). Coba refresh halaman lalu ulangi upload.',
+                });
+                return;
+            }
+
+            const data = await safeReadJson<ImportResponse>(response);
+
+            // If server returned HTML (nginx/apache/Laravel error page)
+            if (!data) {
+                const text = await response.text();
+                setMessage({
+                    type: 'error',
+                    text:
+                        'Server mengembalikan respons non-JSON. Cek log server. ' +
+                        (response.status ? `(${response.status})` : ''),
+                });
+                console.error('Non-JSON response:', text);
+                return;
+            }
 
             if (response.ok && data.success) {
                 setPreview(data.preview || []);
                 setErrors(data.errors || []);
             } else {
-                setPreview([]);
                 setErrors(data.errors || []);
                 setMessage({
                     type: 'error',
@@ -197,14 +221,35 @@ export default function UnivCreate({
             const response = await fetch('/admin/universities/import', {
                 method: 'POST',
                 body: formData,
+                credentials: 'same-origin',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     Accept: 'application/json',
-                    'X-CSRF-TOKEN': csrfToken || '',
+                    'X-CSRF-TOKEN': getCsrfToken(),
                 },
             });
 
-            const data: ImportResponse = await response.json();
+            if (response.status === 419) {
+                setMessage({
+                    type: 'error',
+                    text: 'Sesi kamu expired (CSRF mismatch). Coba refresh halaman lalu import ulang.',
+                });
+                return;
+            }
+
+            const data = await safeReadJson<ImportResponse>(response);
+
+            if (!data) {
+                const text = await response.text();
+                setMessage({
+                    type: 'error',
+                    text:
+                        'Server mengembalikan respons non-JSON. Cek log server. ' +
+                        (response.status ? `(${response.status})` : ''),
+                });
+                console.error('Non-JSON response:', text);
+                return;
+            }
 
             if (response.ok && data.success) {
                 setMessage({
@@ -249,7 +294,6 @@ export default function UnivCreate({
             <Head title="Buat Universitas dan Jurusan Baru" />
 
             <div className="space-y-6 p-4">
-                {/* Header */}
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">
                         Buat Universitas dan Jurusan Baru
@@ -261,7 +305,6 @@ export default function UnivCreate({
                 </div>
 
                 <div className="grid gap-6">
-                    {/* Template Download Card */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">
@@ -291,7 +334,6 @@ export default function UnivCreate({
                         </CardContent>
                     </Card>
 
-                    {/* File Upload + Preview + Import in ONE card */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-lg">
@@ -331,8 +373,8 @@ export default function UnivCreate({
                                     >
                                         <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
                                         <p className="font-semibold text-foreground">
-                                            {file
-                                                ? file.name
+                                            {fileName
+                                                ? fileName
                                                 : 'Drag and drop file CSV Anda di sini, atau klik untuk memilih'}
                                         </p>
                                         <p className="mt-1 text-sm text-muted-foreground">
@@ -358,7 +400,6 @@ export default function UnivCreate({
                                 </Button>
                             </form>
 
-                            {/* Message Display */}
                             {message && (
                                 <Alert
                                     variant={
@@ -399,7 +440,6 @@ export default function UnivCreate({
                                 </Alert>
                             )}
 
-                            {/* Preview Table + Import button */}
                             {preview.length > 0 && (
                                 <div className="space-y-4">
                                     <div className="overflow-x-auto rounded-lg border">
@@ -529,7 +569,6 @@ export default function UnivCreate({
                         </CardContent>
                     </Card>
 
-                    {/* Manual create forms */}
                     <div className="grid gap-4 md:grid-cols-2">
                         <UniversityForm onCreated={() => {}} />
                         <MajorForm
@@ -538,7 +577,6 @@ export default function UnivCreate({
                         />
                     </div>
 
-                    {/* Back Link */}
                     <Link href="/admin/universities" method="get">
                         <Button
                             variant="outline"

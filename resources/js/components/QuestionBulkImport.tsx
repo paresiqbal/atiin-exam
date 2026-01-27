@@ -116,7 +116,7 @@ export default function QuestionBulkImport({
 
         try {
             const response = await fetch(
-                `/teacher/question-banks/${questionBankId}/questions/import/preview`,
+                `/admin/question-banks/${questionBankId}/questions/import/preview`,
                 {
                     method: 'POST',
                     body: formData,
@@ -164,7 +164,7 @@ export default function QuestionBulkImport({
 
         try {
             const response = await fetch(
-                `/teacher/question-banks/${questionBankId}/questions/import`,
+                `/admin/question-banks/${questionBankId}/questions/import`,
                 {
                     method: 'POST',
                     body: formData,
@@ -208,7 +208,7 @@ export default function QuestionBulkImport({
     };
 
     const downloadTemplate = () => {
-        window.location.href = `/teacher/question-banks/${questionBankId}/questions/import/template`;
+        window.location.href = `/admin/question-banks/${questionBankId}/questions/import/template`;
     };
 
     return (

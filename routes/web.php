@@ -112,7 +112,10 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         // Import routes
         Route::post('question-banks/{questionBank}/questions/import/preview', [AdminQuestionImportController::class, 'preview'])->name('questions.import.preview');
         Route::post('question-banks/{questionBank}/questions/import', [AdminQuestionImportController::class, 'import'])->name('questions.import');
-        Route::get('questions/import/template', [AdminQuestionImportController::class, 'downloadTemplate'])->name('questions.import.template');
+        Route::get(
+            'question-banks/{questionBank}/questions/import/template',
+            [AdminQuestionImportController::class, 'downloadTemplate']
+        )->name('questions.import.template');
         Route::post('questions/upload-image', [AdminQuestionController::class, 'uploadImage'])->name('questions.uploadImage');
 
         // Consultant Request management routes
