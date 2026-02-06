@@ -3,6 +3,7 @@ export type QuestionType = 'multiple_choice' | 'multiple_select' | 'true_false';
 export interface Option {
     id?: number;
     option_text: string;
+    image_url?: string | null;
     is_correct: boolean;
 }
 
@@ -25,5 +26,6 @@ export interface QuestionBank {
 export interface QuestionOption {
     id?: number;
     option_text: string;
+    image_url?: string | null;
     is_correct: boolean;
 }

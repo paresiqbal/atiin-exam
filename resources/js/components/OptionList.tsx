@@ -8,13 +8,15 @@ export function OptionList({
     options,
     value,
     optionsHtml,
+    optionsImage,
     onSelect,
     onClear,
 }: {
     questionId: number;
-    options: { id: number; option_text: string }[];
+    options: { id: number; option_text: string; image_url?: string | null }[];
     value: number | undefined;
     optionsHtml: Record<number, string>;
+    optionsImage: Record<number, string | null>;
     onSelect: (questionId: number, optionId: number) => void;
     onClear: (questionId: number) => void;
 }) {
@@ -43,6 +45,15 @@ export function OptionList({
                         />
 
                         <div className="flex-1">
+                            {optionsImage[option.id] && (
+                                <img
+                                    src={optionsImage[option.id] as string}
+                                    alt="gambar opsi"
+                                    className="mb-2 max-h-48 w-full rounded-lg border bg-muted/30 object-contain"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                            )}
                             <div
                                 className="prose prose-sm dark:prose-invert max-w-none [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-border [&_p]:my-2"
                                 dangerouslySetInnerHTML={{

@@ -26,6 +26,7 @@ type ConfirmMode = 'next_section' | 'submit_exam';
 interface Option {
     id: number;
     option_text: string;
+    image_url?: string | null;
 }
 
 interface Question {
@@ -142,11 +143,6 @@ export default function TakeExamPage({
     // html + images
     const questionText = currentQuestion?.question_text ?? '';
 
-    const currentQuestionHtml = useMemo(() => {
-        if (!questionText) return '';
-        return resolveHtmlImages(questionText);
-    }, [questionText]);
-
     const currentQuestionImage = useMemo(() => {
         if (!currentQuestion) return null;
 
@@ -155,12 +151,20 @@ export default function TakeExamPage({
                 ? currentQuestion.image_url.trim()
                 : null;
 
-        const fromHtml = extractFirstImageSrc(currentQuestion.question_text);
-        const src = fromField ?? fromHtml;
-        if (!src) return null;
-
-        return normalizeImageSrc(src);
+        if (!fromField) return null;
+        return normalizeImageSrc(fromField);
     }, [currentQuestion]);
+
+    const currentQuestionHtml = useMemo(() => {
+        if (!questionText) return '';
+
+        // Avoid duplicate image if image_url is set
+        const cleaned = currentQuestionImage
+            ? questionText.replace(/<img[^>]*>/gi, '')
+            : questionText;
+
+        return resolveHtmlImages(cleaned);
+    }, [questionText, currentQuestionImage]);
 
     const optionsHtml = useMemo(() => {
         const map: Record<number, string> = {};
@@ -168,6 +172,17 @@ export default function TakeExamPage({
 
         for (const opt of opts) {
             map[opt.id] = resolveHtmlImages(opt.option_text ?? '');
+        }
+
+        return map;
+    }, [currentQuestion?.options]);
+
+    const optionsImage = useMemo(() => {
+        const map: Record<number, string | null> = {};
+        const opts = currentQuestion?.options ?? [];
+
+        for (const opt of opts) {
+            map[opt.id] = normalizeImageSrc(opt.image_url ?? '');
         }
 
         return map;
@@ -283,6 +298,7 @@ export default function TakeExamPage({
                                             options={currentQuestion.options}
                                             value={answers[currentQuestion.id]}
                                             optionsHtml={optionsHtml}
+                                            optionsImage={optionsImage}
                                             onSelect={selectAnswer}
                                             onClear={clearAnswer}
                                         />

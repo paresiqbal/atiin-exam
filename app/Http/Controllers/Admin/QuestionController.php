@@ -39,6 +39,7 @@ class QuestionController extends Controller
             'image_url' => 'nullable|url',
             'options' => 'required|array|min:2',
             'options.*.option_text' => 'required|string',
+            'options.*.image_url' => 'nullable|string',
             'options.*.is_correct' => 'required|boolean',
         ]);
 
@@ -53,6 +54,7 @@ class QuestionController extends Controller
             QuestionOption::create([
                 'question_id' => $question->id,
                 'option_text' => $option['option_text'],
+                'image_url' => $option['image_url'] ?? null,
                 'is_correct' => $option['is_correct'],
                 'option_order' => $index,
             ]);
@@ -70,6 +72,7 @@ class QuestionController extends Controller
             'image_url' => 'nullable|url',
             'options' => 'required|array|min:2',
             'options.*.option_text' => 'required|string',
+            'options.*.image_url' => 'nullable|string',
             'options.*.is_correct' => 'required|boolean',
         ]);
 
@@ -86,6 +89,7 @@ class QuestionController extends Controller
             QuestionOption::create([
                 'question_id' => $question->id,
                 'option_text' => $option['option_text'],
+                'image_url' => $option['image_url'] ?? null,
                 'is_correct' => $option['is_correct'],
                 'option_order' => $index,
             ]);

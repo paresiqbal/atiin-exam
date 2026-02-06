@@ -47,6 +47,30 @@ function getCsrfToken(): string {
     return meta?.content ?? '';
 }
 
+async function uploadImage(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch('/admin/questions/upload-image', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'X-Requested-With': 'XMLHttpRequest',
+            Accept: 'application/json',
+        },
+        body: formData,
+        credentials: 'same-origin',
+    });
+
+    if (!response.ok) {
+        console.error('Image upload failed', await response.text());
+        throw new Error('Image upload failed');
+    }
+
+    const data: { url: string } = await response.json();
+    return data.url;
+}
+
 const extensions = [
     BaseKit.configure({
         placeholder: { showOnlyCurrent: true },
@@ -63,29 +87,7 @@ const extensions = [
     Code,
     CodeBlock,
     Image.configure({
-        upload: async (file: File) => {
-            const formData = new FormData();
-            formData.append('image', file);
-
-            const response = await fetch('/admin/questions/upload-image', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': getCsrfToken(),
-                    'X-Requested-With': 'XMLHttpRequest',
-                    Accept: 'application/json',
-                },
-                body: formData,
-                credentials: 'same-origin',
-            });
-
-            if (!response.ok) {
-                console.error('Image upload failed', await response.text());
-                throw new Error('Image upload failed');
-            }
-
-            const data: { url: string } = await response.json();
-            return data.url;
-        },
+        upload: async (file: File) => uploadImage(file),
     }),
 ];
 
@@ -113,8 +115,8 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
             points: question?.points || 5,
             image_url: question?.image_url || '',
             options: question?.options || [
-                { option_text: '', is_correct: false },
-                { option_text: '', is_correct: false },
+                { option_text: '', image_url: '', is_correct: false },
+                { option_text: '', image_url: '', is_correct: false },
             ],
         });
 
@@ -122,6 +124,9 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
     const [editorContent, setEditorContent] = useState<string>(() => {
         return question?.question_text || data.question_text || '';
     });
+    const [uploadingOptionIndex, setUploadingOptionIndex] = useState<
+        number | null
+    >(null);
 
     const handleEditorChange = (value: string) => {
         setEditorContent(value);
@@ -131,7 +136,7 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
     const handleAddOption = () => {
         setData('options', [
             ...data.options,
-            { option_text: '', is_correct: false },
+            { option_text: '', image_url: '', is_correct: false },
         ]);
     };
 
@@ -169,6 +174,24 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
         }
 
         setData('options', newOptions);
+    };
+
+    const handleOptionImageChange = async (
+        index: number,
+        file: File | null,
+    ) => {
+        if (!file) return;
+
+        setUploadingOptionIndex(index);
+
+        try {
+            const url = await uploadImage(file);
+            handleOptionChange(index, 'image_url', url);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setUploadingOptionIndex(null);
+        }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -332,50 +355,97 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
                                     {data.options.map((option, idx) => (
                                         <div
                                             key={idx}
-                                            className="flex items-center gap-2"
+                                            className="flex flex-col gap-2 rounded-md border p-2"
                                         >
-                                            <Input
-                                                placeholder={`Opsi ${idx + 1}`}
-                                                value={option.option_text}
-                                                onChange={(e) =>
-                                                    handleOptionChange(
-                                                        idx,
-                                                        'option_text',
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                className="flex-1"
-                                            />
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                variant={
-                                                    option.is_correct
-                                                        ? 'default'
-                                                        : 'outline'
-                                                }
-                                                onClick={() =>
-                                                    handleOptionChange(
-                                                        idx,
-                                                        'is_correct',
-                                                        !option.is_correct,
-                                                    )
-                                                }
-                                            >
-                                                <Check className="h-4 w-4" />
-                                            </Button>
-                                            {data.options.length > 2 && (
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    placeholder={`Opsi ${idx + 1}`}
+                                                    value={option.option_text}
+                                                    onChange={(e) =>
+                                                        handleOptionChange(
+                                                            idx,
+                                                            'option_text',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="flex-1"
+                                                />
                                                 <Button
                                                     type="button"
                                                     size="sm"
-                                                    variant="ghost"
+                                                    variant={
+                                                        option.is_correct
+                                                            ? 'default'
+                                                            : 'outline'
+                                                    }
                                                     onClick={() =>
-                                                        handleRemoveOption(idx)
+                                                        handleOptionChange(
+                                                            idx,
+                                                            'is_correct',
+                                                            !option.is_correct,
+                                                        )
                                                     }
                                                 >
-                                                    <X className="h-4 w-4" />
+                                                    <Check className="h-4 w-4" />
                                                 </Button>
-                                            )}
+                                                {data.options.length > 2 && (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() =>
+                                                            handleRemoveOption(
+                                                                idx,
+                                                            )
+                                                        }
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <Input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={(e) =>
+                                                        handleOptionImageChange(
+                                                            idx,
+                                                            e.target.files?.[0] ??
+                                                                null,
+                                                        )
+                                                    }
+                                                    className="max-w-xs"
+                                                />
+                                                {uploadingOptionIndex ===
+                                                    idx && (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Uploading...
+                                                    </span>
+                                                )}
+                                                {option.image_url && (
+                                                    <img
+                                                        src={option.image_url}
+                                                        alt={`Opsi ${idx + 1}`}
+                                                        className="h-10 w-10 rounded object-cover"
+                                                    />
+                                                )}
+                                                {option.image_url && (
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() =>
+                                                            handleOptionChange(
+                                                                idx,
+                                                                'image_url',
+                                                                '',
+                                                            )
+                                                        }
+                                                    >
+                                                        Hapus Gambar
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
