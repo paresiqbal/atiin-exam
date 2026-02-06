@@ -14,11 +14,7 @@ import { useAnswerSync } from '@/hooks/useAnswerSync';
 import { useExamTimer } from '@/hooks/useExamTimer';
 import { useExamViolations } from '@/hooks/useExamViolations';
 import { useToasts } from '@/hooks/useToasts';
-import {
-    extractFirstImageSrc,
-    normalizeImageSrc,
-    resolveHtmlImages,
-} from '@/utils/htmlImages';
+import { normalizeImageSrc, resolveHtmlImages } from '@/utils/htmlImages';
 
 type Responses = Record<number, number>;
 type ConfirmMode = 'next_section' | 'submit_exam';
