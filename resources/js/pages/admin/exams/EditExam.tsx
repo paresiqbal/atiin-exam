@@ -98,7 +98,7 @@ export default function EditExam({ exam, questionBanks, schools }: Props) {
         name: string;
         description: string;
         school_id: string;
-        start_at: string; // "YYYY-MM-DD HH:mm"
+        start_at: string;
         end_at: string;
         shuffle_questions: boolean;
         allow_review: boolean;

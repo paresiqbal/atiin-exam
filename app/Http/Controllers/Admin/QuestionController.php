@@ -35,7 +35,7 @@ class QuestionController extends Controller
         $validated = $request->validate([
             'question_text' => 'required|string',
             'question_type' => 'required|in:multiple_choice,multiple_select,true_false',
-            'points' => 'required|integer|min:1|max:45',
+            'points' => 'required|integer|min:1|max:100',
             'image_url' => 'nullable|url',
             'options' => 'required|array|min:2',
             'options.*.option_text' => 'required|string',
@@ -68,7 +68,7 @@ class QuestionController extends Controller
         $validated = $request->validate([
             'question_text' => 'required|string',
             'question_type' => 'required|in:multiple_choice,multiple_select,true_false',
-            'points' => 'required|integer|min:1|max:45',
+            'points' => 'required|integer|min:1|max:100',
             'image_url' => 'nullable|url',
             'options' => 'required|array|min:2',
             'options.*.option_text' => 'required|string',

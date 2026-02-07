@@ -285,7 +285,7 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
                                     <Input
                                         type="number"
                                         min="1"
-                                        max="45"
+                                        max="100"
                                         value={data.points}
                                         onChange={(e) =>
                                             setData(

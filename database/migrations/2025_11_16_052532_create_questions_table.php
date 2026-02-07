@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('question_bank_id')->constrained()->onDelete('cascade');
             $table->longText('question_text');
             $table->enum('question_type', ['multiple_choice', 'multiple_select', 'true_false']);
-            $table->integer('points')->default(1); // 1-45
+            $table->integer('points')->default(1); // 1 - 100
             $table->string('image_url')->nullable();
             $table->timestamps();
         });
