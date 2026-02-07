@@ -50,22 +50,22 @@ export default function QuestionBankEdit({ questionBank }: Props) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        put(`/teacher/question-banks/${questionBank.id}`);
+        put(`/admin/question-banks/${questionBank.id}`);
     };
 
     const handleCancel = () => {
-        window.location.href = '/teacher/question-banks';
+        window.location.href = '/admin/question-banks';
     };
 
     const handleDelete = () => {
-        router.delete(`/teacher/question-banks/${questionBank.id}`);
+        router.delete(`/admin/question-banks/${questionBank.id}`);
     };
 
     const breadcrumbs: BreadcrumbItem[] = [
-        { title: 'Bank Soal', href: '/teacher/question-banks' },
+        { title: 'Bank Soal', href: '/admin/question-banks' },
         {
             title: 'Edit Bank Soal',
-            href: `/teacher/question-banks/${questionBank.id}/edit`,
+            href: `/admin/question-banks/${questionBank.id}/edit`,
         },
     ];
 

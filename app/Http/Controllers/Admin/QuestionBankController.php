@@ -69,10 +69,19 @@ class QuestionBankController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'teacher_id' => 'required|exists:users,id',
+            'teacher_id' => 'nullable|exists:users,id',
         ]);
 
-        $questionBank->update($validated);
+        $update = [
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+        ];
+
+        if (array_key_exists('teacher_id', $validated)) {
+            $update['teacher_id'] = $validated['teacher_id'];
+        }
+
+        $questionBank->update($update);
 
         return redirect()->route('admin.question-banks.index')
             ->with('success', 'Question bank updated successfully');
