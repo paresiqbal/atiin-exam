@@ -40,6 +40,7 @@ interface Props {
         name: string;
         description?: string | null;
     };
+    questionBankCount: number;
     student: {
         name: string;
         email: string;
@@ -55,6 +56,7 @@ interface Props {
 export default function AttemptDetail({
     attempt,
     exam,
+    questionBankCount,
     student,
     passingScore,
     isPassed,
@@ -68,10 +70,23 @@ export default function AttemptDetail({
         { title: 'Detail', href: '#' },
     ];
 
+    const bankDivisor =
+        typeof questionBankCount === 'number' && questionBankCount > 0
+            ? questionBankCount
+            : 1;
+
+    const adjustedScore = useMemo(() => {
+        return attempt.score / bankDivisor;
+    }, [attempt.score, bankDivisor]);
+
+    const adjustedTotalScore = useMemo(() => {
+        return attempt.total_score / bankDivisor;
+    }, [attempt.total_score, bankDivisor]);
+
     const percentage = useMemo(() => {
-        if (!attempt.total_score || attempt.total_score <= 0) return 0;
-        return (attempt.score / attempt.total_score) * 100;
-    }, [attempt.score, attempt.total_score]);
+        if (!adjustedTotalScore || adjustedTotalScore <= 0) return 0;
+        return (adjustedScore / adjustedTotalScore) * 100;
+    }, [adjustedScore, adjustedTotalScore]);
 
     const timeTaken = useMemo(() => {
         if (!attempt.started_at || !attempt.completed_at) return null;
@@ -185,9 +200,9 @@ export default function AttemptDetail({
                                         Skor
                                     </p>
                                     <p className="text-xl font-bold">
-                                        {attempt.score}{' '}
+                                        {Math.floor(adjustedScore)}{' '}
                                         <span className="text-sm font-normal text-muted-foreground">
-                                            / {attempt.total_score}
+                                            / {Math.floor(adjustedTotalScore)}
                                         </span>
                                     </p>
                                 </div>

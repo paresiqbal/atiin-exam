@@ -471,6 +471,7 @@ class ExamController extends Controller
             'attempt' => $attempt,
             'exam' => $attempt->exam,
             'student' => $attempt->student,
+            'questionBankCount' => $attempt->exam->questionBanks->count(),
             'passingScore' => $passingScore,
             'isPassed' => $isPassed,
             'questionDetails' => $questionDetails,
