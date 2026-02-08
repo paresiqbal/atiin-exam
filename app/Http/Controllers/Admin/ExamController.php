@@ -312,6 +312,8 @@ class ExamController extends Controller
     public function attempts(Exam $exam)
     {
         $totalQuestions = $this->getExamQuestions($exam)->count();
+        $questionBankCount = $exam->questionBanks()->count();
+        $bankDivisor = $questionBankCount > 0 ? $questionBankCount : 1;
 
         $attemptsQuery = $exam->attempts()
             ->with(['student.university', 'student.major'])
@@ -319,9 +321,11 @@ class ExamController extends Controller
 
         $attempts = $attemptsQuery->paginate(15);
 
-        $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) use ($totalQuestions) {
+        $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) use ($totalQuestions, $questionBankCount, $bankDivisor) {
             $score      = (float) ($attempt->score ?? 0);
             $totalScore = (float) ($attempt->total_score ?? 0);
+            $adjustedScore = $score / $bankDivisor;
+            $adjustedTotalScore = $totalScore / $bankDivisor;
 
             $percentage = ($totalQuestions > 0 && $attempt->status === 'submitted')
                 ? round(($score / $totalQuestions) * 100, 2)
@@ -337,7 +341,10 @@ class ExamController extends Controller
                 'id'           => $attempt->id,
                 'score'        => $score,
                 'total_score'  => $totalScore,
+                'adjusted_score' => (int) floor($adjustedScore),
+                'adjusted_total_score' => (int) floor($adjustedTotalScore),
                 'total_questions' => $totalQuestions,
+                'question_bank_count' => $questionBankCount,
                 'percentage'   => $percentage,
                 'is_passed'    => $isPassed,
                 'status'       => $attempt->status,

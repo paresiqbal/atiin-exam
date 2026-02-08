@@ -36,7 +36,10 @@ interface Attempt {
     id: number;
     score: number;
     total_score: number;
+    adjusted_score: number;
+    adjusted_total_score: number;
     total_questions: number;
+    question_bank_count: number;
     percentage: number;
     is_passed: boolean;
     started_at: string;
@@ -406,13 +409,19 @@ export default function ExamAttempts({
 
                             <tbody className="divide-y">
                                 {pageAttempts.map((attempt) => {
-                                    const rawScore = Number(attempt.score ?? 0);
-                                    const totalQuestions = Number(
-                                        attempt.total_questions ?? 0,
+                                    const rawScore = Number(
+                                        attempt.adjusted_score ??
+                                            attempt.score ??
+                                            0,
+                                    );
+                                    const totalScore = Number(
+                                        attempt.adjusted_total_score ??
+                                            attempt.total_score ??
+                                            0,
                                     );
                                     const percent =
-                                        totalQuestions > 0
-                                            ? (rawScore / totalQuestions) * 100
+                                        totalScore > 0
+                                            ? (rawScore / totalScore) * 100
                                             : 0;
 
                                     const isPassed =
@@ -441,7 +450,7 @@ export default function ExamAttempts({
 
                                     const showScore =
                                         attempt.completed_at &&
-                                        totalQuestions > 0;
+                                        totalScore > 0;
 
                                     let statusBadge = (
                                         <Badge
@@ -527,7 +536,7 @@ export default function ExamAttempts({
                                                                 : 'bg-red-100 text-red-800'
                                                         }`}
                                                     >
-                                                        {`${rawScore}/${totalQuestions} (${percent.toFixed(2)}%)`}
+                                                        {`${rawScore}/${totalScore} (${percent.toFixed(2)}%)`}
                                                     </span>
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground">

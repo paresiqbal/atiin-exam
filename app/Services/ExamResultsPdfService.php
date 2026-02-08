@@ -20,6 +20,10 @@ class ExamResultsPdfService
             ->flatMap(fn($bank) => $bank->questions)
             ->unique('id')
             ->values();
+        $bankCount = $exam->questionBanks->count();
+        $bankDivisor = $bankCount > 0 ? $bankCount : 1;
+        $adjustedScore = $attempt->score / $bankDivisor;
+        $adjustedTotalScore = $attempt->total_score / $bankDivisor;
 
         // Get question details
         $questionDetails = $questions
@@ -52,10 +56,10 @@ class ExamResultsPdfService
             'class' => $student->class ?? 'N/A',
             'exam_name' => $exam->name,
             'exam_date' => $attempt->completed_at?->format('Y-m-d H:i'),
-            'score' => $attempt->score,
-            'total_score' => $attempt->total_score,
-            'percentage' => $questions->count() > 0
-                ? round(($attempt->score / $questions->count()) * 100, 2)
+            'score' => (int) floor($adjustedScore),
+            'total_score' => (int) floor($adjustedTotalScore),
+            'percentage' => $adjustedTotalScore > 0
+                ? round(($adjustedScore / $adjustedTotalScore) * 100, 2)
                 : 0,
             'passing_score' => $passingScore,
             'is_passed' => $isPassed,
