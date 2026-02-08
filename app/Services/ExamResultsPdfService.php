@@ -11,11 +11,18 @@ class ExamResultsPdfService
     {
         $student = $attempt->student;
         $exam = $attempt->exam;
-        $passingScore = $student->major->minimum_passing_grade ?? 0;
+        $passingScore = $student?->major?->minimum_passing_grade ?? 0;
         $isPassed = $attempt->score >= $passingScore;
 
+        $exam->loadMissing(['questionBanks.questions.options']);
+
+        $questions = $exam->questionBanks
+            ->flatMap(fn($bank) => $bank->questions)
+            ->unique('id')
+            ->values();
+
         // Get question details
-        $questionDetails = $exam->questionBank->questions
+        $questionDetails = $questions
             ->map(function ($question) use ($attempt) {
                 $response = $attempt->responses()
                     ->where('question_id', $question->id)
@@ -47,8 +54,8 @@ class ExamResultsPdfService
             'exam_date' => $attempt->completed_at?->format('Y-m-d H:i'),
             'score' => $attempt->score,
             'total_score' => $attempt->total_score,
-            'percentage' => $attempt->total_score > 0
-                ? round(($attempt->score / $attempt->total_score) * 100, 2)
+            'percentage' => $questions->count() > 0
+                ? round(($attempt->score / $questions->count()) * 100, 2)
                 : 0,
             'passing_score' => $passingScore,
             'is_passed' => $isPassed,

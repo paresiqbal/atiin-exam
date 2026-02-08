@@ -311,6 +311,7 @@ class ExamController extends Controller
         $attempt->load(['exam.settings', 'exam.questionBanks']);
 
         $questions = $this->getExamQuestions($attempt->exam);
+        $totalQuestions = $questions->count();
 
         $totalScore = 0;
         $maxScore = 0;
@@ -437,6 +438,7 @@ class ExamController extends Controller
         $isPassed = $attempt->score >= $passingScore;
 
         $questions = $this->getExamQuestions($attempt->exam);
+        $totalQuestions = $questions->count();
 
         $questionDetails = $questions->map(function ($question) use ($attempt) {
             $response = $attempt->responses()
@@ -479,6 +481,7 @@ class ExamController extends Controller
                 'id' => $attempt->id,
                 'score' => $attempt->score,
                 'total_score' => $attempt->total_score,
+                'total_questions' => $totalQuestions,
                 'completed_at' => $attempt->completed_at
                     ? \Carbon\Carbon::parse($attempt->completed_at)->toIso8601String()
                     : null,

@@ -36,6 +36,7 @@ interface Attempt {
     id: number;
     score: number;
     total_score: number;
+    total_questions: number;
     percentage: number;
     is_passed: boolean;
     started_at: string;
@@ -406,12 +407,13 @@ export default function ExamAttempts({
                             <tbody className="divide-y">
                                 {pageAttempts.map((attempt) => {
                                     const rawScore = Number(attempt.score ?? 0);
+                                    const totalQuestions = Number(
+                                        attempt.total_questions ?? 0,
+                                    );
                                     const percent =
-                                        attempt.total_score &&
-                                        attempt.total_score > 0
-                                            ? (rawScore / attempt.total_score) *
-                                              100
-                                            : rawScore;
+                                        totalQuestions > 0
+                                            ? (rawScore / totalQuestions) * 100
+                                            : 0;
 
                                     const isPassed =
                                         typeof attempt.is_passed === 'boolean'
@@ -439,7 +441,7 @@ export default function ExamAttempts({
 
                                     const showScore =
                                         attempt.completed_at &&
-                                        attempt.total_score > 0;
+                                        totalQuestions > 0;
 
                                     let statusBadge = (
                                         <Badge
@@ -525,7 +527,7 @@ export default function ExamAttempts({
                                                                 : 'bg-red-100 text-red-800'
                                                         }`}
                                                     >
-                                                        {`${rawScore}/${attempt.total_score} (${percent.toFixed(2)}%)`}
+                                                        {`${rawScore}/${totalQuestions} (${percent.toFixed(2)}%)`}
                                                     </span>
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground">

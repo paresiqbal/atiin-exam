@@ -56,6 +56,7 @@ interface Props {
         id: number;
         score: number;
         total_score: number;
+        total_questions: number;
         completed_at: string;
     };
     exam: {
@@ -83,7 +84,11 @@ export default function Results({
     const page = usePage<{ auth: { user: { is_pro?: boolean } | null } }>();
     const isPro = !!page.props.auth.user?.is_pro;
 
-    const percentage = Math.round((attempt.score / attempt.total_score) * 100);
+    const totalQuestions = Number(attempt.total_questions ?? 0);
+    const percentage =
+        totalQuestions > 0
+            ? Math.round((attempt.score / totalQuestions) * 100)
+            : 0;
 
     // Fallback untuk kompatibilitas
     const placements: StudentPlacement[] = (
@@ -278,7 +283,7 @@ export default function Results({
                                 <div className="text-3xl font-bold">
                                     {attempt.score}{' '}
                                     <span className="text-base font-normal text-muted-foreground">
-                                        / {attempt.total_score}
+                                        / {totalQuestions}
                                     </span>
                                 </div>
                             </div>

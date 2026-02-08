@@ -311,6 +311,8 @@ class ExamController extends Controller
 
     public function attempts(Exam $exam)
     {
+        $totalQuestions = $this->getExamQuestions($exam)->count();
+
         $attemptsQuery = $exam->attempts()
             ->with(['student.university', 'student.major'])
             ->orderByDesc('started_at');
@@ -321,8 +323,8 @@ class ExamController extends Controller
             $score      = (float) ($attempt->score ?? 0);
             $totalScore = (float) ($attempt->total_score ?? 0);
 
-            $percentage = ($totalScore > 0 && $attempt->status === 'submitted')
-                ? round(($score / $totalScore) * 100, 2)
+            $percentage = ($totalQuestions > 0 && $attempt->status === 'submitted')
+                ? round(($score / $totalQuestions) * 100, 2)
                 : 0;
 
             $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
@@ -335,6 +337,7 @@ class ExamController extends Controller
                 'id'           => $attempt->id,
                 'score'        => $score,
                 'total_score'  => $totalScore,
+                'total_questions' => $totalQuestions,
                 'percentage'   => $percentage,
                 'is_passed'    => $isPassed,
                 'status'       => $attempt->status,
@@ -369,10 +372,11 @@ class ExamController extends Controller
             })
             ->count();
 
-        $averagePercentage = $submittedAttempts
-            ->filter(fn($a) => $a->total_score > 0)
-            ->map(fn($a) => ($a->score / $a->total_score) * 100)
-            ->avg() ?? 0;
+        $averagePercentage = $totalQuestions > 0
+            ? ($submittedAttempts
+                ->map(fn($a) => ((float) ($a->score ?? 0) / $totalQuestions) * 100)
+                ->avg() ?? 0)
+            : 0;
 
         return Inertia::render('admin/exams/ExamAttempts', [
             'exam' => [
