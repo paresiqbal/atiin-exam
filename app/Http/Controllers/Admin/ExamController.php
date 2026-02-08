@@ -319,7 +319,7 @@ class ExamController extends Controller
 
         $attempts = $attemptsQuery->paginate(15);
 
-        $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) {
+        $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) use ($totalQuestions) {
             $score      = (float) ($attempt->score ?? 0);
             $totalScore = (float) ($attempt->total_score ?? 0);
 
