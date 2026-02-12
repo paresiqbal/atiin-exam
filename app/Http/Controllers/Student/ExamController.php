@@ -481,6 +481,7 @@ class ExamController extends Controller
                 'id' => $attempt->id,
                 'score' => $attempt->score,
                 'total_score' => $attempt->total_score,
+                'question_block_count' => $attempt->exam->questionBanks->count(),
                 'total_questions' => $totalQuestions,
                 'completed_at' => $attempt->completed_at
                     ? \Carbon\Carbon::parse($attempt->completed_at)->toIso8601String()

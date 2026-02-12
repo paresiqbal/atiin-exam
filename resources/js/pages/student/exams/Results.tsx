@@ -56,6 +56,7 @@ interface Props {
         id: number;
         score: number;
         total_score: number;
+        question_block_count?: number;
         total_questions: number;
         completed_at: string;
     };
@@ -84,10 +85,14 @@ export default function Results({
     const page = usePage<{ auth: { user: { is_pro?: boolean } | null } }>();
     const isPro = !!page.props.auth.user?.is_pro;
 
-    const totalQuestions = Number(attempt.total_questions ?? 0);
+    // const totalQuestions = Number(attempt.total_questions ?? 0);
+    const questionBlockCount = Number(attempt.question_block_count ?? 0);
+    const scoreDivisor = questionBlockCount > 0 ? questionBlockCount : 1;
+    const adjustedScore = attempt.score / scoreDivisor;
+    const adjustedTotalScore = attempt.total_score / scoreDivisor;
     const percentage =
-        totalQuestions > 0
-            ? Math.round((attempt.score / totalQuestions) * 100)
+        adjustedTotalScore > 0
+            ? Math.round((adjustedScore / adjustedTotalScore) * 100)
             : 0;
 
     // Fallback untuk kompatibilitas
@@ -281,9 +286,9 @@ export default function Results({
                                     Nilai Kamu
                                 </div>
                                 <div className="text-3xl font-bold">
-                                    {attempt.score}{' '}
+                                    {Math.floor(adjustedScore)}{' '}
                                     <span className="text-base font-normal text-muted-foreground">
-                                        / {totalQuestions}
+                                        / {Math.floor(adjustedTotalScore)}
                                     </span>
                                 </div>
                             </div>

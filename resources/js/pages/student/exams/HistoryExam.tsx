@@ -25,6 +25,9 @@ interface ExamAttempt {
     };
     score: number;
     total_score: number;
+    adjusted_score?: number;
+    adjusted_total_score?: number;
+    question_bank_count?: number;
     percentage: number;
     is_passed: boolean;
     completed_at: string;
@@ -385,15 +388,18 @@ export default function HistoryExam() {
                                             </div>
 
                                             <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2">
-                                                <div>
-                                                    <div className="text-[11px] text-muted-foreground">
-                                                        Skor
-                                                    </div>
-                                                    <div className="text-sm font-bold">
-                                                        {attempt.score}/
-                                                        {attempt.total_score}
-                                                    </div>
+                                            <div>
+                                                <div className="text-[11px] text-muted-foreground">
+                                                    Skor
                                                 </div>
+                                                <div className="text-sm font-bold">
+                                                    {(attempt.adjusted_score ??
+                                                        attempt.score)}
+                                                    /
+                                                    {(attempt.adjusted_total_score ??
+                                                        attempt.total_score)}
+                                                </div>
+                                            </div>
                                                 <div className="text-right">
                                                     <div className="text-[11px] text-muted-foreground">
                                                         %
