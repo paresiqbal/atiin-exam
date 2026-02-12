@@ -16,36 +16,46 @@ class ExamResultsPdfService
 
         $exam->loadMissing(['questionBanks.questions.options']);
 
-        $questions = $exam->questionBanks
-            ->flatMap(fn($bank) => $bank->questions)
-            ->unique('id')
+        $sortedBanks = $exam->questionBanks
+            ->sortBy(fn($bank) => $bank->pivot?->sort_order ?? 0)
             ->values();
+
         $bankCount = $exam->questionBanks->count();
         $bankDivisor = $bankCount > 0 ? $bankCount : 1;
         $adjustedScore = $attempt->score / $bankDivisor;
         $adjustedTotalScore = $attempt->total_score / $bankDivisor;
 
         // Get question details
-        $questionDetails = $questions
-            ->map(function ($question) use ($attempt) {
-                $response = $attempt->responses()
-                    ->where('question_id', $question->id)
-                    ->first();
+        $buildQuestionDetails = function ($question) use ($attempt) {
+            $response = $attempt->responses()
+                ->where('question_id', $question->id)
+                ->first();
 
-                $correctOption = $question->options()
-                    ->where('is_correct', true)
-                    ->first();
+            $correctOption = $question->options()
+                ->where('is_correct', true)
+                ->first();
 
-                return [
-                    'question_text' => $question->question_text,
-                    'question_type' => $question->question_type,
-                    'points' => $question->points,
-                    'student_answer' => $response?->selectedOption?->option_text,
-                    'correct_answer' => $correctOption?->option_text,
-                    'is_correct' => $response?->selectedOption?->is_correct ?? false,
-                    'points_earned' => $response ? ($response->selectedOption?->is_correct ? $question->points : 0) : 0,
-                ];
-            });
+            return [
+                'question_text' => $question->question_text,
+                'question_type' => $question->question_type,
+                'points' => $question->points,
+                'student_answer' => $response?->selectedOption?->option_text,
+                'correct_answer' => $correctOption?->option_text,
+                'is_correct' => $response?->selectedOption?->is_correct ?? false,
+                'points_earned' => $response ? ($response->selectedOption?->is_correct ? $question->points : 0) : 0,
+            ];
+        };
+
+        $questionSections = $sortedBanks->map(function ($bank, $index) use ($buildQuestionDetails) {
+            return [
+                'bank_name' => $bank->name,
+                'bank_index' => $index + 1,
+                'questions' => $bank->questions
+                    ->unique('id')
+                    ->values()
+                    ->map($buildQuestionDetails),
+            ];
+        });
 
         $data = [
             'student_name' => $student->name,
@@ -64,7 +74,7 @@ class ExamResultsPdfService
             'passing_score' => $passingScore,
             'is_passed' => $isPassed,
             'status' => $isPassed ? 'PASSED' : 'FAILED',
-            'questions' => $questionDetails,
+            'question_sections' => $questionSections,
         ];
 
         return Pdf::loadView('pdfs.exam-results', $data)

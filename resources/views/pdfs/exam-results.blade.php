@@ -73,6 +73,19 @@
             margin-top: 30px;
         }
 
+        .bank-section {
+            margin-bottom: 25px;
+        }
+
+        .bank-title {
+            background-color: #f0f4ff;
+            border-left: 5px solid #3b6dd8;
+            padding: 10px 12px;
+            font-weight: bold;
+            color: #1e3f8a;
+            margin-bottom: 12px;
+        }
+
         .question-item {
             background-color: #fff;
             border: 1px solid #ddd;
@@ -178,44 +191,51 @@
 
     <div class="questions-section">
         <h3>Question Breakdown</h3>
-        @foreach ($questions as $index => $question)
-            <div class="question-item">
-                <div class="question-header">
-                    <div>
-                        <div class="question-text">Question {{ $index + 1 }}</div>
+        @foreach ($question_sections as $section)
+            <div class="bank-section">
+                <div class="bank-title">
+                    Block {{ $section['bank_index'] }}: {{ $section['bank_name'] }}
+                </div>
+                @foreach ($section['questions'] as $index => $question)
+                    <div class="question-item">
+                        <div class="question-header">
+                            <div>
+                                <div class="question-text">Question {{ $index + 1 }}</div>
 
-                        {{-- Render question text as HTML --}}
-                        <div>
-                            {!! $question['question_text'] !!}
+                                {{-- Render question text as HTML --}}
+                                <div>
+                                    {!! $question['question_text'] !!}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="question-type">
+                                    {{ ucfirst(str_replace('_', ' ', $question['question_type'])) }}
+                                </span>
+                                <span class="points-badge">
+                                    {{ $question['points_earned'] }}/{{ $question['points'] }} pts
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <span class="question-type">
-                            {{ ucfirst(str_replace('_', ' ', $question['question_type'])) }}
-                        </span>
-                        <span class="points-badge">
-                            {{ $question['points_earned'] }}/{{ $question['points'] }} pts
-                        </span>
-                    </div>
-                </div>
 
-                {{-- Student Answer --}}
-                <div class="answer-row {{ $question['is_correct'] ? 'correct' : 'incorrect' }}">
-                    <span class="answer-label">Your Answer:</span>
-                    @if (!empty($question['student_answer']))
-                        {!! $question['student_answer'] !!}
-                    @else
-                        Not answered
-                    @endif
-                </div>
+                        {{-- Student Answer --}}
+                        <div class="answer-row {{ $question['is_correct'] ? 'correct' : 'incorrect' }}">
+                            <span class="answer-label">Your Answer:</span>
+                            @if (!empty($question['student_answer']))
+                                {!! $question['student_answer'] !!}
+                            @else
+                                Not answered
+                            @endif
+                        </div>
 
-                {{-- Correct Answer (only when wrong) --}}
-                @if (!$question['is_correct'])
-                    <div class="answer-row correct">
-                        <span class="answer-label">Correct Answer:</span>
-                        {!! $question['correct_answer'] !!}
+                        {{-- Correct Answer (only when wrong) --}}
+                        @if (!$question['is_correct'])
+                            <div class="answer-row correct">
+                                <span class="answer-label">Correct Answer:</span>
+                                {!! $question['correct_answer'] !!}
+                            </div>
+                        @endif
                     </div>
-                @endif
+                @endforeach
             </div>
         @endforeach
     </div>
