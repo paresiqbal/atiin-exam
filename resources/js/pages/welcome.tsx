@@ -48,7 +48,7 @@ export default function Welcome() {
                             </div>
                             <div>
                                 <div className="text-sm font-semibold">
-                                    Bimbel ATTIN
+                                    Bimbel ATTINN
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                     Ujian & Tryout Platform
