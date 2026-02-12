@@ -497,19 +497,47 @@ class ExamController extends Controller
             ])
             ->get();
 
-        $questions = $this->getExamQuestions($exam);
+        $exam->loadMissing([
+            'questionBanks' => function ($q) {
+                $q->withPivot(['sort_order'])->orderBy('exam_question_bank.sort_order');
+            },
+            'questionBanks.questions.options',
+        ]);
 
-        $headers = ['Name', 'Email', 'School', 'Class', 'University', 'Major'];
+        $banks = $exam->questionBanks->map(function ($bank, $index) {
+            $questions = $bank->questions->unique('id')->values();
+            return [
+                'index' => $index + 1,
+                'name' => $bank->name ?? 'Question Bank',
+                'questions' => $questions,
+            ];
+        });
 
-        foreach ($questions as $question) {
-            $headers[] = "Q{$question->id}";
+        $baseHeaders = ['Name', 'Email', 'School', 'Class', 'University', 'Major'];
+        $headerRow1 = $baseHeaders;
+        $headerRow2 = $baseHeaders;
+
+        foreach ($banks as $bank) {
+            $questions = $bank['questions'];
+            $count = $questions->count();
+            for ($i = 0; $i < $count; $i++) {
+                $headerRow1[] = $i === 0
+                    ? "Block {$bank['index']} - {$bank['name']}"
+                    : '';
+            }
+            foreach ($questions as $question) {
+                $headerRow2[] = "Q{$question->id}";
+            }
         }
 
-        $headers[] = 'Total Score';
-        $headers[] = 'Status';
+        $headerRow1[] = 'Total Score';
+        $headerRow1[] = 'Status';
+        $headerRow2[] = 'Total Score';
+        $headerRow2[] = 'Status';
 
         $rows = [];
-        $rows[] = $headers;
+        $rows[] = $headerRow1;
+        $rows[] = $headerRow2;
 
         foreach ($attempts as $attempt) {
             $student = $attempt->student;
@@ -525,11 +553,13 @@ class ExamController extends Controller
 
             $byQuestion = $attempt->responses->keyBy('question_id');
 
-            foreach ($questions as $question) {
-                $response = $byQuestion->get($question->id);
-                $isCorrect = (bool)($response?->selectedOption?->is_correct ?? false);
+            foreach ($banks as $bank) {
+                foreach ($bank['questions'] as $question) {
+                    $response = $byQuestion->get($question->id);
+                    $isCorrect = (bool)($response?->selectedOption?->is_correct ?? false);
 
-                $row[] = $isCorrect ? 'Correct' : 'Wrong';
+                    $row[] = $isCorrect ? 'Correct' : 'Wrong';
+                }
             }
 
             $row[] = "{$attempt->score}/{$attempt->total_score}";
