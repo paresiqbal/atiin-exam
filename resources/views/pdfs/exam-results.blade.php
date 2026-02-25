@@ -73,6 +73,34 @@
             margin-top: 30px;
         }
 
+        .subtest-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        .subtest-table th,
+        .subtest-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        .subtest-table th {
+            background-color: #f0f0f0;
+            text-align: left;
+        }
+
+        .subtest-table td.num {
+            width: 40px;
+            text-align: center;
+        }
+
+        .subtest-table td.score {
+            width: 120px;
+            text-align: right;
+        }
+
         .bank-section {
             margin-bottom: 25px;
         }
@@ -187,6 +215,42 @@
             <strong>{{ $score }} / {{ $total_score }}</strong> ({{ $percentage }}%)
         </div>
         <p>Passing Grade Required: {{ $passing_score }}</p>
+    </div>
+
+    <div class="questions-section">
+        <h3>Subtest Scores</h3>
+        @php
+            $totalEarned = 0;
+            $totalPossible = 0;
+        @endphp
+        <table class="subtest-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">NO</th>
+                    <th>SUBTES</th>
+                    <th style="width: 120px; text-align: right;">SKOR</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($question_sections as $section)
+                    @php
+                        $sectionEarned = collect($section['questions'])->sum('points_earned');
+                        $sectionPossible = collect($section['questions'])->sum('points');
+                        $totalEarned += $sectionEarned;
+                        $totalPossible += $sectionPossible;
+                    @endphp
+                    <tr>
+                        <td class="num">{{ $section['bank_index'] }}</td>
+                        <td>{{ $section['bank_name'] }}</td>
+                        <td class="score">{{ $sectionEarned }} / {{ $sectionPossible }}</td>
+                    </tr>
+                @endforeach
+                <tr>
+                    <th colspan="2" style="text-align: right;">TOTAL</th>
+                    <th style="text-align: right;">{{ $totalEarned }} / {{ $totalPossible }}</th>
+                </tr>
+            </tbody>
+        </table>
     </div>
 
     <div class="questions-section">

@@ -366,7 +366,7 @@ export default function Results({
                                             {selection.majors.map(
                                                 (major, majorIndex) => {
                                                     const passedForThisMajor =
-                                                        attempt.score >=
+                                                        adjustedScore >=
                                                         major.minimum_passing_grade;
 
                                                     const globalIndex =
@@ -477,7 +477,7 @@ export default function Results({
                             const uni = placement.university!;
                             const major = placement.major!;
                             const passedForThisMajor =
-                                attempt.score >= major.minimum_passing_grade;
+                                adjustedScore >= major.minimum_passing_grade;
 
                             return (
                                 <Card

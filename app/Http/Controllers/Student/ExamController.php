@@ -435,7 +435,11 @@ class ExamController extends Controller
         $firstSelectionMajorGrade = $studentSelections[0]['major']['minimum_passing_grade'] ?? null;
         $passingScore = $firstSelectionMajorGrade ?? ($fallbackMajor->minimum_passing_grade ?? 0);
 
-        $isPassed = $attempt->score >= $passingScore;
+        $bankCount = $attempt->exam->questionBanks->count();
+        $bankDivisor = $bankCount > 0 ? $bankCount : 1;
+        $adjustedScore = (float) ($attempt->score ?? 0) / $bankDivisor;
+
+        $isPassed = $adjustedScore >= $passingScore;
 
         $questions = $this->getExamQuestions($attempt->exam);
         $totalQuestions = $questions->count();

@@ -12,7 +12,6 @@ class ExamResultsPdfService
         $student = $attempt->student;
         $exam = $attempt->exam;
         $passingScore = $student?->major?->minimum_passing_grade ?? 0;
-        $isPassed = $attempt->score >= $passingScore;
 
         $exam->loadMissing(['questionBanks.questions.options']);
 
@@ -24,6 +23,7 @@ class ExamResultsPdfService
         $bankDivisor = $bankCount > 0 ? $bankCount : 1;
         $adjustedScore = $attempt->score / $bankDivisor;
         $adjustedTotalScore = $attempt->total_score / $bankDivisor;
+        $isPassed = $adjustedScore >= $passingScore;
 
         // Get question details
         $buildQuestionDetails = function ($question) use ($attempt) {

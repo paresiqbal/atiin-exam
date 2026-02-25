@@ -14,10 +14,15 @@ class UniversityController extends Controller
         $student = auth()->user();
 
         $latestAttempt = ExamAttempt::where('student_id', $student->id)
+            ->with('exam.questionBanks')
             ->orderByDesc('completed_at')
             ->first();
 
-        $studentScore = $latestAttempt?->score;
+        $bankCount = $latestAttempt?->exam?->questionBanks?->count() ?? 0;
+        $bankDivisor = $bankCount > 0 ? $bankCount : 1;
+        $studentScore = $latestAttempt
+            ? (float) $latestAttempt->score / $bankDivisor
+            : null;
 
         $universities = University::with(['majors' => function ($q) {
             $q->select('id', 'university_id', 'name', 'description', 'minimum_passing_grade');
@@ -43,6 +48,7 @@ class UniversityController extends Controller
 
         // Get student's latest exam attempt
         $latestAttempt = ExamAttempt::where('student_id', $student->id)
+            ->with('exam.questionBanks')
             ->orderByDesc('completed_at')
             ->first();
 
@@ -53,7 +59,9 @@ class UniversityController extends Controller
                 ->with('error', 'Anda belum memiliki hasil ujian. Silakan kerjakan ujian terlebih dahulu untuk membandingkan nilai.');
         }
 
-        $studentScore = $latestAttempt->score;
+        $bankCount = $latestAttempt?->exam?->questionBanks?->count() ?? 0;
+        $bankDivisor = $bankCount > 0 ? $bankCount : 1;
+        $studentScore = (float) $latestAttempt->score / $bankDivisor;
 
         // Majors with comparison info for THIS university
         $majors = $university->majors

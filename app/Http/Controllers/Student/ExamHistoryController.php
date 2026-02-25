@@ -25,7 +25,7 @@ class ExamHistoryController extends Controller
             $adjustedScore = (float) ($attempt->score ?? 0) / $bankDivisor;
             $adjustedTotalScore = (float) ($attempt->total_score ?? 0) / $bankDivisor;
 
-            $attempt->is_passed = $attempt->score >= $passingScore;
+            $attempt->is_passed = $adjustedScore >= $passingScore;
             $attempt->adjusted_score = (int) floor($adjustedScore);
             $attempt->adjusted_total_score = (int) floor($adjustedTotalScore);
             $attempt->question_bank_count = $bankCount;
