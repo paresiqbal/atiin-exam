@@ -222,6 +222,7 @@
         @php
             $totalEarned = 0;
             $totalPossible = 0;
+            $bankDivisor = count($question_sections) > 0 ? count($question_sections) : 1;
         @endphp
         <table class="subtest-table">
             <thead>
@@ -247,7 +248,9 @@
                 @endforeach
                 <tr>
                     <th colspan="2" style="text-align: right;">TOTAL</th>
-                    <th style="text-align: right;">{{ $totalEarned }} / {{ $totalPossible }}</th>
+                    <th style="text-align: right;">
+                        {{ (int) floor($totalEarned / $bankDivisor) }} / {{ (int) floor($totalPossible / $bankDivisor) }}
+                    </th>
                 </tr>
             </tbody>
         </table>
