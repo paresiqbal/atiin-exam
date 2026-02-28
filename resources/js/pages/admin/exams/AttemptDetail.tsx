@@ -8,7 +8,7 @@ import AppLayout from '@/layouts/app-layout';
 import { AttemptQuestionList } from '@/components/AttemptQuestionList';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
-import { ArrowLeft, CheckCircle2, Download, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Download, FileText, XCircle } from 'lucide-react';
 
 interface QuestionDetail {
     id: number;
@@ -145,6 +145,22 @@ export default function AttemptDetail({
                             >
                                 <Download className="h-4 w-4" />
                                 Unduh PDF
+                            </Button>
+                        </a>
+
+                        <a
+                            href={`/admin/attempts/${attempt.id}/download-letter`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex"
+                        >
+                            <Button
+                                variant="outline"
+                                className="gap-2"
+                                type="button"
+                            >
+                                <FileText className="h-4 w-4" />
+                                Unduh Surat
                             </Button>
                         </a>
                     </div>

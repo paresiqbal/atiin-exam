@@ -11,6 +11,7 @@ use App\Models\QuestionBank;
 use App\Models\School;
 use App\Models\User;
 use App\Services\ExamResultsPdfService;
+use App\Services\ExamOfficialLetterPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Collection;
@@ -591,6 +592,14 @@ class ExamController extends Controller
         $pdf = $pdfService->generate($attempt);
 
         return $pdf->download('exam-attempt-' . $attempt->id . '.pdf');
+    }
+
+    public function downloadAttemptLetter(ExamAttempt $attempt)
+    {
+        $pdfService = new ExamOfficialLetterPdfService();
+        $pdf = $pdfService->generate($attempt);
+
+        return $pdf->download('exam-letter-' . $attempt->id . '.pdf');
     }
 
     public function unfreezeAttempt(ExamAttempt $attempt)
