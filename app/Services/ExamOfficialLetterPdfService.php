@@ -77,7 +77,7 @@ class ExamOfficialLetterPdfService
             return [
                 'program' => trim($universityName . ' - ' . $majorName),
                 'minimum_grade' => $minimumGrade,
-                'result' => $adjustedScore >= (float) $minimumGrade ? 'LULUS' : 'TIDAK LULUS',
+                'result' => $adjustedScore >= (float) $minimumGrade ? 'LULUS' : 'TL',
             ];
         })->values();
 
