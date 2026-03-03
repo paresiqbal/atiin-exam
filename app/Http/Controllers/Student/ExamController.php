@@ -13,6 +13,7 @@ use App\Services\ExamResultsPdfService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Services\IRTService;
 
 class ExamController extends Controller
 {
@@ -335,6 +336,22 @@ class ExamController extends Controller
             'score' => $totalScore,
             'total_score' => $maxScore,
         ]);
+
+        // 🔥 IRT CALCULATION START
+        $attempt->refresh();
+
+        $irtService = new IRTService();
+
+        $theta = $irtService->estimateTheta($attempt);
+
+        if (!is_null($theta)) {
+            $scaledScore = $irtService->convertToScaledScore($theta);
+
+            $attempt->irt_theta = $theta;
+            $attempt->irt_score = $scaledScore;
+            $attempt->irt_processed_at = now();
+            $attempt->save();
+        }
 
         return redirect()->route('student.exams.results', $attempt->id);
     }

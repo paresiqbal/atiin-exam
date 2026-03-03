@@ -12,11 +12,17 @@ class Exam extends Model
     protected $fillable = [
         'admin_id',
         'name',
+        'scoring_method',
         'description',
         'school_id',
         'start_at',
         'end_at',
         'is_published',
+    ];
+
+    protected $casts = [
+        'scoring_method' => 'string',
+        'irt_calibrated_at' => 'datetime',
     ];
 
     public function admin()
@@ -55,5 +61,10 @@ class Exam extends Model
     public function school()
     {
         return $this->belongsTo(School::class);
+    }
+
+    public function isCalibrated(): bool
+    {
+        return !is_null($this->irt_calibrated_at);
     }
 }

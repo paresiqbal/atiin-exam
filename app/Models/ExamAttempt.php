@@ -31,6 +31,9 @@ class ExamAttempt extends Model
         'section_started_at' => 'datetime',
         'is_frozen' => 'boolean',
         'current_section' => 'integer',
+        'irt_theta' => 'float',
+        'irt_score' => 'float',
+        'irt_processed_at' => 'datetime',
     ];
 
 

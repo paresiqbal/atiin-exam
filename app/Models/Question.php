@@ -14,8 +14,23 @@ class Question extends Model
         'question_text',
         'question_type',
         'points',
+        'irt_a',
+        'irt_b',
         'image_url',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function (Question $question) {
+            if ($question->irt_a === null) {
+                $question->irt_a = 1.0000;
+            }
+
+            if ($question->irt_b === null) {
+                $question->irt_b = 0.0000;
+            }
+        });
+    }
 
     public function questionBank()
     {
