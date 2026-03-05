@@ -323,7 +323,6 @@ class ExamController extends Controller
                 ->where('question_id', $question->id)
                 ->first();
 
-            // same logic as your current version
             if ($response && $response->selectedOption && $response->selectedOption->is_correct) {
                 $totalScore += (int) $question->points;
             }
@@ -336,6 +335,7 @@ class ExamController extends Controller
             'total_score' => $maxScore,
         ]);
 
+        // Run Rasch scoring
         return redirect()->route('student.exams.results', $attempt->id);
     }
 
@@ -483,7 +483,9 @@ class ExamController extends Controller
         return Inertia::render('student/exams/Results', [
             'attempt' => [
                 'id' => $attempt->id,
-                'score' => $attempt->score,
+                'score' => $attempt->irt_theta ?? $attempt->score,
+                'raw_score' => $attempt->score,
+                'irt_theta' => $attempt->irt_theta,
                 'total_score' => $attempt->total_score,
                 'question_block_count' => $attempt->exam->questionBanks->count(),
                 'total_questions' => $totalQuestions,

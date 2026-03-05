@@ -81,6 +81,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');
         Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
         Route::get('exams/{exam}/export-results', [AdminExamController::class, 'exportResults'])->name('exams.exportResults');
+        Route::get('exams/{exam}/irt-export', [AdminExamController::class, 'exportIrtResults'])->name('admin.exams.irt.export');
+        Route::post('exams/{exam}/process-irt', [AdminExamController::class, 'processIrtScoring'])->name('exams.process-irt');
         Route::post('/exams/{exam}/regenerate-token', [AdminExamController::class, 'regenerateToken'])->name('admin.exams.regenerate-token');
         Route::get('/attempts/{attempt}/download-pdf', [AdminExamController::class, 'downloadAttemptPdf'])->name('attempts.download-pdf');
         Route::get('/attempts/{attempt}/download-letter', [AdminExamController::class, 'downloadAttemptLetter'])->name('attempts.download-letter');

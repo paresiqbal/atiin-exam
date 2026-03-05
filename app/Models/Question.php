@@ -15,6 +15,11 @@ class Question extends Model
         'question_type',
         'points',
         'image_url',
+        'irt_b',
+    ];
+
+    protected $casts = [
+        'irt_b' => 'float',
     ];
 
     public function questionBank()

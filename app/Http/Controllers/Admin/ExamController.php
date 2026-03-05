@@ -12,6 +12,7 @@ use App\Models\School;
 use App\Models\User;
 use App\Services\ExamResultsPdfService;
 use App\Services\ExamOfficialLetterPdfService;
+use App\Services\IrtRaschService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Collection;
@@ -312,6 +313,8 @@ class ExamController extends Controller
 
     public function attempts(Exam $exam)
     {
+        $this->ensureIrtScored($exam);
+
         $totalQuestions = $this->getExamQuestions($exam)->count();
         $questionBankCount = $exam->questionBanks()->count();
         $bankDivisor = $questionBankCount > 0 ? $questionBankCount : 1;
@@ -323,24 +326,28 @@ class ExamController extends Controller
         $attempts = $attemptsQuery->paginate(15);
 
         $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) use ($totalQuestions, $questionBankCount, $bankDivisor) {
-            $score      = (float) ($attempt->score ?? 0);
+            $rawScore      = (float) ($attempt->score ?? 0);
             $totalScore = (float) ($attempt->total_score ?? 0);
-            $adjustedScore = $score / $bankDivisor;
+            $thetaScore = $attempt->irt_theta;
+            $displayScore = $thetaScore ?? $rawScore;
+            $adjustedScore = $rawScore / $bankDivisor;
             $adjustedTotalScore = $totalScore / $bankDivisor;
 
             $percentage = ($totalQuestions > 0 && $attempt->status === 'submitted')
-                ? round(($score / $totalQuestions) * 100, 2)
+                ? round(($rawScore / $totalQuestions) * 100, 2)
                 : 0;
 
             $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
 
             $isPassed   = $attempt->status === 'submitted'
-                ? $score >= $minPassing
+                ? $rawScore >= $minPassing
                 : false;
 
             return [
                 'id'           => $attempt->id,
-                'score'        => $score,
+                'score'        => $displayScore,
+                'raw_score'    => $rawScore,
+                'irt_theta'    => $thetaScore,
                 'total_score'  => $totalScore,
                 'adjusted_score' => (int) floor($adjustedScore),
                 'adjusted_total_score' => (int) floor($adjustedTotalScore),
@@ -489,6 +496,8 @@ class ExamController extends Controller
 
     public function exportResults(Exam $exam)
     {
+        $this->ensureIrtScored($exam);
+
         $attempts = $exam->attempts()
             ->with([
                 'student.university',
@@ -586,6 +595,129 @@ class ExamController extends Controller
             ->header('Content-Disposition', "attachment; filename=\"$filename\"");
     }
 
+    public function exportIrtResults(Exam $exam)
+    {
+        $this->ensureIrtScored($exam);
+
+        $attempts = $exam->attempts()
+            ->with(['student', 'responses.selectedOption'])
+            ->get();
+
+        $questions = $this->getExamQuestions($exam);
+
+        $tempDir = storage_path('app/tmp');
+        if (! is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $studentsPath = $tempDir . DIRECTORY_SEPARATOR . 'students_theta.csv';
+        $questionsPath = $tempDir . DIRECTORY_SEPARATOR . 'questions_difficulty.csv';
+        $matrixPath = $tempDir . DIRECTORY_SEPARATOR . 'response_matrix.csv';
+
+        $studentsHandle = fopen($studentsPath, 'w');
+        fputcsv($studentsHandle, [
+            'student_id',
+            'student_name',
+            'raw_score',
+            'total_score',
+            'percent',
+            'theta',
+        ]);
+
+        foreach ($attempts as $attempt) {
+            $rawScore = (float) ($attempt->score ?? 0);
+            $totalScore = (float) ($attempt->total_score ?? 0);
+            $percent = $totalScore > 0 ? round(($rawScore / $totalScore) * 100, 2) : 0;
+
+            fputcsv($studentsHandle, [
+                $attempt->student_id,
+                $attempt->student?->name ?? '',
+                $rawScore,
+                $totalScore,
+                $percent,
+                $attempt->irt_theta,
+            ]);
+        }
+
+        fclose($studentsHandle);
+
+        $questionsHandle = fopen($questionsPath, 'w');
+        fputcsv($questionsHandle, [
+            'question_id',
+            'difficulty_b',
+            'difficulty_level',
+        ]);
+
+        foreach ($questions as $question) {
+            $b = $question->irt_b;
+            $level = $this->difficultyLevel($b);
+
+            fputcsv($questionsHandle, [
+                $question->id,
+                $b,
+                $level,
+            ]);
+        }
+
+        fclose($questionsHandle);
+
+        $matrixHandle = fopen($matrixPath, 'w');
+        $header = ['student_id'];
+        foreach ($questions as $question) {
+            $header[] = 'Q' . $question->id;
+        }
+        fputcsv($matrixHandle, $header);
+
+        foreach ($attempts as $attempt) {
+            $byQuestion = $attempt->responses->keyBy('question_id');
+            $row = [$attempt->student_id];
+
+            foreach ($questions as $question) {
+                $response = $byQuestion->get($question->id);
+                $isCorrect = (bool) ($response?->selectedOption?->is_correct ?? false);
+                $row[] = $isCorrect ? 1 : 0;
+            }
+
+            fputcsv($matrixHandle, $row);
+        }
+
+        fclose($matrixHandle);
+
+        $zipName = 'exam_' . $exam->id . '_irt_results.zip';
+        $zipPath = $tempDir . DIRECTORY_SEPARATOR . $zipName;
+        $zip = new \ZipArchive();
+        $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $zip->addFile($studentsPath, 'students_theta.csv');
+        $zip->addFile($questionsPath, 'questions_difficulty.csv');
+        $zip->addFile($matrixPath, 'response_matrix.csv');
+        $zip->close();
+
+        @unlink($studentsPath);
+        @unlink($questionsPath);
+        @unlink($matrixPath);
+
+        return response()->download($zipPath, $zipName)->deleteFileAfterSend(true);
+    }
+
+    public function processIrtScoring(Exam $exam)
+    {
+        $service = new IrtRaschService();
+        $result = $service->scoreExam($exam);
+
+        if (! $result['success']) {
+            return back()->with('error', $result['message']);
+        }
+
+        $statusNote = $result['converged']
+            ? 'converged'
+            : 'max iterations reached';
+
+        return back()->with(
+            'success',
+            "IRT scoring completed in {$result['iterations']} iterations ({$statusNote})."
+        );
+    }
+
     public function downloadAttemptPdf(ExamAttempt $attempt)
     {
         $pdfService = new ExamResultsPdfService();
@@ -613,5 +745,44 @@ class ExamController extends Controller
         $attempt->violations()->delete();
 
         return back()->with('success', 'Ujian berhasil dibuka kembali untuk siswa.');
+    }
+
+    private function ensureIrtScored(Exam $exam): void
+    {
+        if (! $exam->end_at || now()->lt($exam->end_at)) {
+            return;
+        }
+
+        if ($exam->irt_scored_at) {
+            return;
+        }
+
+        $service = new IrtRaschService();
+        $service->scoreExam($exam);
+    }
+
+    private function difficultyLevel(?float $b): string
+    {
+        if ($b === null) {
+            return '';
+        }
+
+        if ($b < -2) {
+            return 'Very Easy';
+        }
+
+        if ($b < -1) {
+            return 'Easy';
+        }
+
+        if ($b <= 1) {
+            return 'Medium';
+        }
+
+        if ($b <= 2) {
+            return 'Hard';
+        }
+
+        return 'Very Hard';
     }
 }

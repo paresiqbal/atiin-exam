@@ -226,15 +226,27 @@ export default function ExamAttempts({
                         </p>
                     </div>
 
-                    <a
-                        href={`/admin/exams/${exam.id}/export-results`}
-                        className="inline-flex items-center gap-2"
-                    >
-                        <Button variant="outline">
-                            <Download className="mr-2 h-4 w-4" />
-                            Ekspor ke CSV
-                        </Button>
-                    </a>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <a
+                            href={`/admin/exams/${exam.id}/export-results`}
+                            className="inline-flex items-center gap-2"
+                        >
+                            <Button variant="outline">
+                                <Download className="mr-2 h-4 w-4" />
+                                Ekspor Nilai (CSV)
+                            </Button>
+                        </a>
+
+                        <a
+                            href={`/admin/exams/${exam.id}/irt-export`}
+                            className="inline-flex items-center gap-2"
+                        >
+                            <Button variant="outline">
+                                <Download className="mr-2 h-4 w-4" />
+                                Download IRT Results
+                            </Button>
+                        </a>
+                    </div>
                 </div>
 
                 {/* Analytics Cards */}

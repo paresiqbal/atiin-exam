@@ -17,6 +17,7 @@ class ExamAttempt extends Model
         'completed_at',
         'score',
         'total_score',
+        'irt_theta',
         'status',
         'is_frozen',
         'frozen_at',
@@ -31,6 +32,7 @@ class ExamAttempt extends Model
         'section_started_at' => 'datetime',
         'is_frozen' => 'boolean',
         'current_section' => 'integer',
+        'irt_theta' => 'float',
     ];
 
 
