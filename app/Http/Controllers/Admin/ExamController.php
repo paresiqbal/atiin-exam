@@ -496,7 +496,12 @@ class ExamController extends Controller
 
         return Inertia::render('admin/exams/AttemptDetail', [
             'attempt' => $attempt,
-            'exam' => $attempt->exam,
+            'exam' => [
+                'id' => $attempt->exam->id,
+                'name' => $attempt->exam->name,
+                'description' => $attempt->exam->description,
+                'irt_processed_at' => optional($attempt->exam->irt_processed_at)->toIso8601String(),
+            ],
             'student' => $attempt->student,
             'questionBankCount' => $attempt->exam->questionBanks->count(),
             'passingScore' => $passingScore,
@@ -738,6 +743,11 @@ class ExamController extends Controller
 
     public function downloadAttemptPdf(ExamAttempt $attempt)
     {
+        $attempt->loadMissing('exam');
+        if (! $attempt->exam?->irt_processed_at) {
+            return back()->with('error', 'IRT belum diproses untuk ujian ini.');
+        }
+
         $pdfService = new ExamResultsPdfService();
         $pdf = $pdfService->generate($attempt);
 
@@ -746,6 +756,11 @@ class ExamController extends Controller
 
     public function downloadAttemptLetter(ExamAttempt $attempt)
     {
+        $attempt->loadMissing('exam');
+        if (! $attempt->exam?->irt_processed_at) {
+            return back()->with('error', 'IRT belum diproses untuk ujian ini.');
+        }
+
         $pdfService = new ExamOfficialLetterPdfService();
         $pdf = $pdfService->generate($attempt);
 

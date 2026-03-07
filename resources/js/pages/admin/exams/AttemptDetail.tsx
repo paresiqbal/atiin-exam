@@ -39,6 +39,7 @@ interface Props {
         id: number;
         name: string;
         description?: string | null;
+        irt_processed_at?: string | null;
     };
     questionBankCount: number;
     student: {
@@ -132,37 +133,41 @@ export default function AttemptDetail({
                             </Button>
                         </Link>
 
-                        <a
-                            href={`/admin/attempts/${attempt.id}/download-pdf`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex"
-                        >
-                            <Button
-                                variant="outline"
-                                className="gap-2"
-                                type="button"
-                            >
-                                <Download className="h-4 w-4" />
-                                Unduh PDF
-                            </Button>
-                        </a>
+                        {exam.irt_processed_at ? (
+                            <>
+                                <a
+                                    href={`/admin/attempts/${attempt.id}/download-pdf`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex"
+                                >
+                                    <Button
+                                        variant="outline"
+                                        className="gap-2"
+                                        type="button"
+                                    >
+                                        <Download className="h-4 w-4" />
+                                        Unduh PDF
+                                    </Button>
+                                </a>
 
-                        <a
-                            href={`/admin/attempts/${attempt.id}/download-letter`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex"
-                        >
-                            <Button
-                                variant="outline"
-                                className="gap-2"
-                                type="button"
-                            >
-                                <FileText className="h-4 w-4" />
-                                Unduh Surat
-                            </Button>
-                        </a>
+                                <a
+                                    href={`/admin/attempts/${attempt.id}/download-letter`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex"
+                                >
+                                    <Button
+                                        variant="outline"
+                                        className="gap-2"
+                                        type="button"
+                                    >
+                                        <FileText className="h-4 w-4" />
+                                        Unduh Surat
+                                    </Button>
+                                </a>
+                            </>
+                        ) : null}
                     </div>
                 </div>
 
