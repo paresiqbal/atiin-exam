@@ -42,7 +42,7 @@ class UserImportController extends Controller
             $errors  = [];
             $rowNum  = 1; // header row
 
-            // Rows: name, email, school_id, class
+            // Rows: name, email, school_id, class, password
             while (($row = fgetcsv($handle)) !== false) {
                 $rowNum++;
 
@@ -56,7 +56,7 @@ class UserImportController extends Controller
                     'email'     => $row[1] ?? null,
                     'school_id' => $row[2] ?? null,
                     'class'     => $row[3] ?? null,
-                    'password'  => Str::random(10),
+                    'password'  => $row[4] ?? null,
                     'role'      => 'student',
                 ];
 
@@ -123,7 +123,7 @@ class UserImportController extends Controller
                     'email'     => $row[1] ?? null,
                     'school_id' => $row[2] ?? null,
                     'class'     => $row[3] ?? null,
-                    'password'  => Hash::make(Str::random(10)),
+                    'password'  => $row[4] ?? null,
                     'role'      => 'student',
                 ];
 
@@ -135,6 +135,7 @@ class UserImportController extends Controller
                     continue;
                 }
 
+                $student['password'] = Hash::make($student['password']);
                 User::create($student);
                 $created++;
             }
@@ -167,6 +168,14 @@ class UserImportController extends Controller
             return 'Email already exists';
         }
 
+        if (! $data['password']) {
+            return 'Password is required';
+        }
+
+        if (strlen($data['password']) < 8) {
+            return 'Password must be at least 8 characters';
+        }
+
         if (! empty($data['school_id']) && ! School::where('id', $data['school_id'])->exists()) {
             return 'School not found';
         }
@@ -181,7 +190,7 @@ class UserImportController extends Controller
         $handle = fopen('php://memory', 'w');
 
         // Header row - must match import order
-        fputcsv($handle, ['name', 'email', 'school_id', 'class']);
+        fputcsv($handle, ['name', 'email', 'school_id', 'class', 'password']);
 
         // Helper row (only for humans, import skips it because we only skip the first row in code.
         // If you keep this helper row, remember that admins should delete it or we adjust the code.)
@@ -190,13 +199,14 @@ class UserImportController extends Controller
             '# required, must be unique & valid email',
             '# optional, use ID from school list',
             '# optional, e.g. 10A, 9B',
+            '# required, min 8 chars',
         ]);
 
         $exampleSchoolId = School::value('id') ?? 1;
 
         $rows = [
-            ['John Doe', 'john@example.com', $exampleSchoolId, '10A'],
-            ['Jane Smith', 'jane@example.com', $exampleSchoolId, '10B'],
+            ['John Doe', 'john@example.com', $exampleSchoolId, '10A', 'Password123'],
+            ['Jane Smith', 'jane@example.com', $exampleSchoolId, '10B', 'Password123'],
         ];
 
         foreach ($rows as $row) {

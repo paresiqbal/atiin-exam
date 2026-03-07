@@ -38,6 +38,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import { getPaginationRange } from '@/lib/pagination';
 
 import {
     CheckCircle2,
@@ -527,9 +528,9 @@ export default function QuestionBankShow({
                                     </button>
                                 </PaginationItem>
 
-                                {Array.from(
-                                    { length: lastPage },
-                                    (_, i) => i + 1,
+                                {getPaginationRange(
+                                    safeCurrentPage,
+                                    lastPage,
                                 ).map((page) => (
                                     <PaginationItem key={page}>
                                         <button

@@ -253,10 +253,7 @@ export default function StudentCreate({ schools }: StudentCreateProps) {
                                 {/* Email */}
                                 <div className="space-y-2">
                                     <Label htmlFor="email">
-                                        Alamat Email{' '}
-                                        <span className="text-destructive">
-                                            *
-                                        </span>
+                                        Alamat Email
                                     </Label>
                                     <Input
                                         id="email"
@@ -276,6 +273,9 @@ export default function StudentCreate({ schools }: StudentCreateProps) {
                                             {errors.email}
                                         </p>
                                     )}
+                                    <p className="text-xs text-muted-foreground">
+                                        Biarkan kosong untuk email otomatis.
+                                    </p>
                                 </div>
 
                                 {/* Password */}
@@ -352,7 +352,10 @@ export default function StudentCreate({ schools }: StudentCreateProps) {
                                 {/* Class */}
                                 <div className="space-y-2">
                                     <Label htmlFor="class">
-                                        Kelas (opsional)
+                                        Kelas{' '}
+                                        <span className="text-destructive">
+                                            *
+                                        </span>
                                     </Label>
                                     <Input
                                         id="class"
@@ -511,6 +514,9 @@ export default function StudentCreate({ schools }: StudentCreateProps) {
                                                     <th className="px-3 py-2">
                                                         Kelas
                                                     </th>
+                                                    <th className="px-3 py-2">
+                                                        Password
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -534,6 +540,9 @@ export default function StudentCreate({ schools }: StudentCreateProps) {
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             {row.class ?? '-'}
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            {row.password ?? '-'}
                                                         </td>
                                                     </tr>
                                                 ))}

@@ -9,6 +9,7 @@ export interface PreviewRow {
     email: string;
     school_id: number | string | null;
     class: string | null;
+    password: string | null;
 }
 
 export interface ImportPreviewResponse {

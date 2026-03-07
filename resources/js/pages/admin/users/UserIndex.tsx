@@ -29,6 +29,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import { getPaginationRange } from '@/lib/pagination';
 import type { BreadcrumbItem } from '@/types';
 import type { Paginated } from '@/types/pagination';
 import type { User } from '@/types/user';
@@ -370,9 +371,9 @@ export default function UserIndex() {
                                     )}
                                 </PaginationItem>
 
-                                {Array.from(
-                                    { length: users.last_page },
-                                    (_, i) => i + 1,
+                                {getPaginationRange(
+                                    users.current_page,
+                                    users.last_page,
                                 ).map((page) => (
                                     <PaginationItem key={page}>
                                         <Link

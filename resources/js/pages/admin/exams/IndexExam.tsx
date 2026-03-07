@@ -28,6 +28,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import { getPaginationRange } from '@/lib/pagination';
 
 import {
     Select,
@@ -544,9 +545,9 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
                                     )}
                                 </PaginationItem>
 
-                                {Array.from(
-                                    { length: exams.last_page },
-                                    (_, i) => i + 1,
+                                {getPaginationRange(
+                                    exams.current_page,
+                                    exams.last_page,
                                 ).map((page) => (
                                     <PaginationItem key={page}>
                                         <Link

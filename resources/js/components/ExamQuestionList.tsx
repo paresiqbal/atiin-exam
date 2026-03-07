@@ -31,6 +31,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import { getPaginationRange } from '@/lib/pagination';
 
 import type { Question } from '@/types/question';
 
@@ -365,13 +366,16 @@ export function ExamQuestionList({ questions }: ExamQuestionListProps) {
                                 </button>
                             </PaginationItem>
 
-                            {Array.from({ length: lastPage }).map((_, i) => (
-                                <PaginationItem key={i}>
-                                    <button onClick={() => handlePage(i + 1)}>
+                            {getPaginationRange(
+                                safeCurrent,
+                                lastPage,
+                            ).map((page) => (
+                                <PaginationItem key={page}>
+                                    <button onClick={() => handlePage(page)}>
                                         <PaginationLink
-                                            isActive={i + 1 === safeCurrent}
+                                            isActive={page === safeCurrent}
                                         >
-                                            {i + 1}
+                                            {page}
                                         </PaginationLink>
                                     </button>
                                 </PaginationItem>

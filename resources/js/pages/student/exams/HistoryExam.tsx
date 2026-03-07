@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
+import { limitPaginationLinks } from '@/lib/pagination';
 
 interface ExamAttempt {
     id: number;
@@ -476,7 +477,11 @@ export default function HistoryExam() {
                         {/* Pagination */}
                         {attempts.links && attempts.links.length > 0 && (
                             <Pagination
-                                links={attempts.links}
+                                links={limitPaginationLinks(
+                                    attempts.links,
+                                    attempts.current_page,
+                                    attempts.last_page,
+                                )}
                                 onNavigate={handleNavigate}
                             />
                         )}

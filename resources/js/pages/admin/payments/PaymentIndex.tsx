@@ -17,6 +17,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import { getPaginationRange } from '@/lib/pagination';
 import {
     Select,
     SelectContent,
@@ -706,9 +707,9 @@ export default function PaymentIndex() {
                                         )}
                                     </PaginationItem>
 
-                                    {Array.from(
-                                        { length: students.last_page },
-                                        (_, i) => i + 1,
+                                    {getPaginationRange(
+                                        students.current_page,
+                                        students.last_page,
                                     ).map((page) => (
                                         <PaginationItem key={page}>
                                             <a

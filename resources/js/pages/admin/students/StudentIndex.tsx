@@ -37,6 +37,7 @@ import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
 import type { Paginated } from '@/types/pagination';
 import type { PageProps as InertiaPageProps } from '@inertiajs/core';
+import { getPaginationRange } from '@/lib/pagination';
 
 interface School {
     id: number;
@@ -499,9 +500,9 @@ export default function StudentIndex() {
                                     )}
                                 </PaginationItem>
 
-                                {Array.from(
-                                    { length: students.last_page },
-                                    (_, i) => i + 1,
+                                {getPaginationRange(
+                                    students.current_page,
+                                    students.last_page,
                                 ).map((page) => (
                                     <PaginationItem key={page}>
                                         <Link

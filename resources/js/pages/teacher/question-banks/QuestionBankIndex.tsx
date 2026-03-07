@@ -22,6 +22,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import { getPaginationRange } from '@/lib/pagination';
 
 import {
     Select,
@@ -427,9 +428,9 @@ export default function TeacherQuestionBankIndex() {
                                     )}
                                 </PaginationItem>
 
-                                {Array.from(
-                                    { length: questionBanks.last_page },
-                                    (_, i) => i + 1,
+                                {getPaginationRange(
+                                    questionBanks.current_page,
+                                    questionBanks.last_page,
                                 ).map((page) => (
                                     <PaginationItem key={page}>
                                         <Link

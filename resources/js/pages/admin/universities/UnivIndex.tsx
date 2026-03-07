@@ -22,6 +22,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import { getPaginationRange } from '@/lib/pagination';
 
 import {
     Select,
@@ -460,9 +461,9 @@ export default function UnivIndex() {
                                     )}
                                 </PaginationItem>
 
-                                {Array.from(
-                                    { length: universities.last_page },
-                                    (_, i) => i + 1,
+                                {getPaginationRange(
+                                    universities.current_page,
+                                    universities.last_page,
                                 ).map((page) => (
                                     <PaginationItem key={page}>
                                         <Link

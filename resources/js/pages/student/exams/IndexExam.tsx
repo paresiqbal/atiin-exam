@@ -5,6 +5,7 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Calendar, Clock, Hourglass, Play, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { limitPaginationLinks } from '@/lib/pagination';
 
 type ExamStatus = 'available' | 'coming_soon' | 'ended';
 
@@ -303,7 +304,11 @@ export default function IndexExam() {
                             {/* Pagination */}
                             {exams.links?.length > 0 && (
                                 <Pagination
-                                    links={exams.links}
+                                    links={limitPaginationLinks(
+                                        exams.links,
+                                        exams.current_page,
+                                        exams.last_page,
+                                    )}
                                     onNavigate={handlePageNavigate}
                                 />
                             )}

@@ -24,6 +24,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import { getPaginationRange } from '@/lib/pagination';
 import {
     Select,
     SelectContent,
@@ -404,9 +405,9 @@ export default function NewsIndex() {
                                     )}
                                 </PaginationItem>
 
-                                {Array.from(
-                                    { length: news.last_page },
-                                    (_, i) => i + 1,
+                                {getPaginationRange(
+                                    news.current_page,
+                                    news.last_page,
                                 ).map((page) => (
                                     <PaginationItem key={page}>
                                         <Link

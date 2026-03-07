@@ -26,6 +26,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from '@/components/ui/pagination';
+import { getPaginationRange } from '@/lib/pagination';
 
 import { UnfreezeAttemptDialog } from '@/components/UnfreezeAttemptDialog';
 import AppLayout from '@/layouts/app-layout';
@@ -661,9 +662,9 @@ export default function ExamAttempts({
                                     )}
                                 </PaginationItem>
 
-                                {Array.from(
-                                    { length: attempts.last_page },
-                                    (_, i) => i + 1,
+                                {getPaginationRange(
+                                    attempts.current_page,
+                                    attempts.last_page,
                                 ).map((page) => (
                                     <PaginationItem key={page}>
                                         <button
