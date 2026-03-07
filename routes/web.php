@@ -66,6 +66,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('students/cards', [StudentController::class, 'cards'])->name('students.cards');
         Route::get('students/cards/download', [StudentController::class, 'downloadCards'])->name('students.cards.download');
         Route::delete('students/bulk-delete', [StudentController::class, 'bulkDelete'])->name('students.bulk-delete');
+        Route::post('students/bulk-reset-password', [StudentController::class, 'bulkResetPassword'])->name('students.bulk-reset-password');
         Route::resource('students', StudentController::class);
 
         // student account management routes

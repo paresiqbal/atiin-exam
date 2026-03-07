@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -297,12 +298,14 @@ export default function SchoolIndex() {
 
                                             <td className="px-6 py-3">
                                                 <div className="flex gap-2">
-                                                    <Link
-                                                        href={`${baseUrl}/${school.id}/edit`}
-                                                        className="rounded-md p-2 hover:bg-foreground/20"
-                                                    >
-                                                        <Edit2 className="h-4 w-4" />
-                                                    </Link>
+                                                    <ActionIconTooltip label="Edit">
+                                                        <Link
+                                                            href={`${baseUrl}/${school.id}/edit`}
+                                                            className="rounded-md p-2 hover:bg-foreground/20"
+                                                        >
+                                                            <Edit2 className="h-4 w-4" />
+                                                        </Link>
+                                                    </ActionIconTooltip>
 
                                                     <ConfirmDeleteButton
                                                         deleteUrl={`${baseUrl}/${school.id}`}

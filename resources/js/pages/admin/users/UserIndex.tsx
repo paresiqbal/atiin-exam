@@ -14,6 +14,7 @@ import AppLayout from '@/layouts/app-layout';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -297,12 +298,14 @@ export default function UserIndex() {
 
                                             <td className="px-6 py-2">
                                                 <div className="flex gap-2">
-                                                    <Link
-                                                        href={`${baseUrl}/${user.id}/edit`}
-                                                        className="rounded-md p-2 hover:bg-foreground/20"
-                                                    >
-                                                        <Edit2 size={16} />
-                                                    </Link>
+                                                    <ActionIconTooltip label="Edit">
+                                                        <Link
+                                                            href={`${baseUrl}/${user.id}/edit`}
+                                                            className="rounded-md p-2 hover:bg-foreground/20"
+                                                        >
+                                                            <Edit2 size={16} />
+                                                        </Link>
+                                                    </ActionIconTooltip>
 
                                                     <ConfirmDeleteButton
                                                         deleteUrl={`${baseUrl}/${user.id}`}

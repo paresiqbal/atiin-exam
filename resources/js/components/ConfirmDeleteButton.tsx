@@ -13,12 +13,19 @@ import {
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ConfirmDeleteButtonProps {
     deleteUrl: string;
     resourceLabel?: string;
     itemName?: string;
     className?: string;
+    tooltipLabel?: string;
 }
 
 export function ConfirmDeleteButton({
@@ -26,6 +33,7 @@ export function ConfirmDeleteButton({
     resourceLabel = 'item',
     itemName,
     className,
+    tooltipLabel = 'Hapus',
 }: ConfirmDeleteButtonProps) {
     const [loading, setLoading] = useState(false);
 
@@ -41,16 +49,23 @@ export function ConfirmDeleteButton({
 
     return (
         <AlertDialog>
-            <AlertDialogTrigger asChild>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className={className ?? 'text-red-600'}
-                >
-                    <Trash2 className="h-4 w-4" />
-                </Button>
-            </AlertDialogTrigger>
+            <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className={className ?? 'text-red-600'}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        </AlertDialogTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{tooltipLabel}</TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
 
             <AlertDialogContent>
                 <AlertDialogHeader>

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -347,14 +348,30 @@ export default function UnivIndex() {
                                             <td className="px-6 py-2">
                                                 <div className="flex flex-wrap gap-1">
                                                     {u.majors.length > 0 ? (
-                                                        u.majors.map((m) => (
-                                                            <Badge
-                                                                key={m.id}
-                                                                variant="outline"
-                                                            >
-                                                                {m.name}
-                                                            </Badge>
-                                                        ))
+                                                        <>
+                                                            {u.majors
+                                                                .slice(0, 3)
+                                                                .map((m) => (
+                                                                    <Badge
+                                                                        key={
+                                                                            m.id
+                                                                        }
+                                                                        variant="outline"
+                                                                    >
+                                                                        {m.name}
+                                                                    </Badge>
+                                                                ))}
+                                                            {u.majors.length >
+                                                                3 && (
+                                                                <Badge variant="secondary">
+                                                                    +
+                                                                    {u.majors
+                                                                        .length -
+                                                                        3}{' '}
+                                                                    lainnya
+                                                                </Badge>
+                                                            )}
+                                                        </>
                                                     ) : (
                                                         <span className="text-sm text-muted-foreground">
                                                             -
@@ -365,33 +382,37 @@ export default function UnivIndex() {
 
                                             <td className="px-6 py-2">
                                                 <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        asChild
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="hover:bg-foreground/10"
-                                                    >
-                                                        <Link
-                                                            href={`${baseUrl}/${u.id}`}
-                                                            aria-label={`Lihat detail universitas ${u.name}`}
+                                                    <ActionIconTooltip label="Lihat">
+                                                        <Button
+                                                            asChild
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="hover:bg-foreground/10"
                                                         >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
+                                                            <Link
+                                                                href={`${baseUrl}/${u.id}`}
+                                                                aria-label={`Lihat detail universitas ${u.name}`}
+                                                            >
+                                                                <Eye className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    </ActionIconTooltip>
 
-                                                    <Button
-                                                        asChild
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="hover:bg-foreground/10"
-                                                    >
-                                                        <Link
-                                                            href={`${baseUrl}/${u.id}/edit`}
-                                                            aria-label={`Edit universitas ${u.name}`}
+                                                    <ActionIconTooltip label="Edit">
+                                                        <Button
+                                                            asChild
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="hover:bg-foreground/10"
                                                         >
-                                                            <Edit2 className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
+                                                            <Link
+                                                                href={`${baseUrl}/${u.id}/edit`}
+                                                                aria-label={`Edit universitas ${u.name}`}
+                                                            >
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    </ActionIconTooltip>
 
                                                     <ConfirmDeleteButton
                                                         deleteUrl={`${baseUrl}/${u.id}`}

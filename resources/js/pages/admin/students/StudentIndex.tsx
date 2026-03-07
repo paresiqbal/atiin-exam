@@ -1,13 +1,25 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Edit2, Eye, Plus, Search } from 'lucide-react';
+import { Edit2, Eye, KeyRound, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 import {
     InputGroup,
@@ -177,6 +189,20 @@ export default function StudentIndex() {
         });
     };
 
+    const handleBulkResetPassword = () => {
+        if (selectedIds.length === 0) return;
+
+        return router.post(
+            `${baseUrl}/bulk-reset-password`,
+            { ids: selectedIds },
+            {
+                onSuccess: () => {
+                    setSelectedIds([]);
+                },
+            },
+        );
+    };
+
     const handleChangeRowsPerPage = (value: string) => {
         const perPage = Number(value) || 10;
         setRowsPerPage(perPage);
@@ -273,6 +299,45 @@ export default function StudentIndex() {
                             disabled={selectedIds.length === 0}
                             onConfirm={handleBulkDelete}
                         />
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={selectedIds.length === 0}
+                                >
+                                    <KeyRound className="mr-2 h-4 w-4" />
+                                    Reset Password ({selectedIds.length})
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Reset password {selectedIds.length} siswa?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Semua siswa terpilih akan direset ke
+                                        password default{' '}
+                                        <span className="font-semibold">
+                                            password
+                                        </span>
+                                        .
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Batal</AlertDialogCancel>
+                                    <AlertDialogAction asChild>
+                                        <Button
+                                            type="button"
+                                            onClick={handleBulkResetPassword}
+                                        >
+                                            Ya, reset
+                                        </Button>
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 </div>
 
@@ -405,33 +470,37 @@ export default function StudentIndex() {
 
                                             <td className="px-6 py-2">
                                                 <div className="flex gap-2">
-                                                    <Button
-                                                        asChild
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="hover:bg-foreground/10"
-                                                    >
-                                                        <Link
-                                                            href={`${baseUrl}/${s.id}`}
-                                                            aria-label={`Lihat detail siswa ${s.name}`}
+                                                    <ActionIconTooltip label="Lihat">
+                                                        <Button
+                                                            asChild
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="hover:bg-foreground/10"
                                                         >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
+                                                            <Link
+                                                                href={`${baseUrl}/${s.id}`}
+                                                                aria-label={`Lihat detail siswa ${s.name}`}
+                                                            >
+                                                                <Eye className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    </ActionIconTooltip>
 
-                                                    <Button
-                                                        asChild
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="hover:bg-foreground/10"
-                                                    >
-                                                        <Link
-                                                            href={`${baseUrl}/${s.id}/edit`}
-                                                            aria-label={`Edit data siswa ${s.name}`}
+                                                    <ActionIconTooltip label="Edit">
+                                                        <Button
+                                                            asChild
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="hover:bg-foreground/10"
                                                         >
-                                                            <Edit2 className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
+                                                            <Link
+                                                                href={`${baseUrl}/${s.id}/edit`}
+                                                                aria-label={`Edit data siswa ${s.name}`}
+                                                            >
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    </ActionIconTooltip>
 
                                                     <ConfirmDeleteButton
                                                         deleteUrl={`${baseUrl}/${s.id}`}

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import AppLayout from '@/layouts/app-layout';
 
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -356,51 +357,57 @@ export default function UnivShow() {
                                                     <div className="flex justify-end gap-2">
                                                         {isEditing ? (
                                                             <>
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    className="hover:bg-foreground/10"
-                                                                    onClick={() =>
-                                                                        saveEdit(
-                                                                            major.id,
-                                                                        )
-                                                                    }
-                                                                    disabled={
-                                                                        savingId ===
-                                                                        major.id
-                                                                    }
-                                                                    aria-label="Simpan perubahan"
-                                                                >
-                                                                    <Save className="h-4 w-4" />
-                                                                </Button>
+                                                                <ActionIconTooltip label="Simpan">
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="hover:bg-foreground/10"
+                                                                        onClick={() =>
+                                                                            saveEdit(
+                                                                                major.id,
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            savingId ===
+                                                                            major.id
+                                                                        }
+                                                                        aria-label="Simpan perubahan"
+                                                                    >
+                                                                        <Save className="h-4 w-4" />
+                                                                    </Button>
+                                                                </ActionIconTooltip>
 
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    className="hover:bg-foreground/10"
-                                                                    onClick={
-                                                                        cancelEdit
-                                                                    }
-                                                                    aria-label="Batal edit"
-                                                                >
-                                                                    <X className="h-4 w-4" />
-                                                                </Button>
+                                                                <ActionIconTooltip label="Batal">
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="hover:bg-foreground/10"
+                                                                        onClick={
+                                                                            cancelEdit
+                                                                        }
+                                                                        aria-label="Batal edit"
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                </ActionIconTooltip>
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    className="hover:bg-foreground/10"
-                                                                    onClick={() =>
-                                                                        startEdit(
-                                                                            major,
-                                                                        )
-                                                                    }
-                                                                    aria-label={`Edit program studi ${major.name}`}
-                                                                >
-                                                                    <Edit2 className="h-4 w-4" />
-                                                                </Button>
+                                                                <ActionIconTooltip label="Edit">
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="hover:bg-foreground/10"
+                                                                        onClick={() =>
+                                                                            startEdit(
+                                                                                major,
+                                                                            )
+                                                                        }
+                                                                        aria-label={`Edit program studi ${major.name}`}
+                                                                    >
+                                                                        <Edit2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </ActionIconTooltip>
 
                                                                 <ConfirmDeleteButton
                                                                     deleteUrl={`/admin/majors/${major.id}`}

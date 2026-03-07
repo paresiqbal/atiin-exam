@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     InputGroup,
@@ -574,16 +575,19 @@ export default function ExamAttempts({
 
                                             <td className="px-6 py-3 text-sm">
                                                 <div className="flex items-center gap-2">
-                                                    <Link
-                                                        href={`/admin/attempts/${attempt.id}`}
-                                                    >
+                                                    <ActionIconTooltip label="Detail">
                                                         <Button
+                                                            asChild
                                                             variant="outline"
                                                             size="icon"
                                                         >
-                                                            <Eye className="h-4 w-4" />
+                                                            <Link
+                                                                href={`/admin/attempts/${attempt.id}`}
+                                                            >
+                                                                <Eye className="h-4 w-4" />
+                                                            </Link>
                                                         </Button>
-                                                    </Link>
+                                                    </ActionIconTooltip>
 
                                                     {(attempt.is_frozen ||
                                                         attempt.status ===

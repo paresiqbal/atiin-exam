@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -332,33 +333,37 @@ export default function TeacherQuestionBankIndex() {
 
                                             <td className="px-6 py-2">
                                                 <div className="flex justify-end gap-2">
-                                                    <Button
-                                                        asChild
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="hover:bg-foreground/10"
-                                                    >
-                                                        <Link
-                                                            href={`${baseUrl}/${bank.id}`}
-                                                            aria-label={`Lihat detail bank soal ${bank.name}`}
+                                                    <ActionIconTooltip label="Lihat">
+                                                        <Button
+                                                            asChild
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="hover:bg-foreground/10"
                                                         >
-                                                            <Eye className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
+                                                            <Link
+                                                                href={`${baseUrl}/${bank.id}`}
+                                                                aria-label={`Lihat detail bank soal ${bank.name}`}
+                                                            >
+                                                                <Eye className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    </ActionIconTooltip>
 
-                                                    <Button
-                                                        asChild
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="hover:bg-foreground/10"
-                                                    >
-                                                        <Link
-                                                            href={`${baseUrl}/${bank.id}/edit`}
-                                                            aria-label={`Edit bank soal ${bank.name}`}
+                                                    <ActionIconTooltip label="Edit">
+                                                        <Button
+                                                            asChild
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="hover:bg-foreground/10"
                                                         >
-                                                            <Edit2 className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
+                                                            <Link
+                                                                href={`${baseUrl}/${bank.id}/edit`}
+                                                                aria-label={`Edit bank soal ${bank.name}`}
+                                                            >
+                                                                <Edit2 className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                    </ActionIconTooltip>
 
                                                     <ConfirmDeleteButton
                                                         deleteUrl={`${baseUrl}/${bank.id}`}

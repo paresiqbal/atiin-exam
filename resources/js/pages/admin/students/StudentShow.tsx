@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 import {
   Card,
   CardContent,
@@ -412,21 +413,23 @@ export default function StudentShow() {
 
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                <Button
-                                  asChild
-                                  size="icon"
-                                  variant="ghost"
-                                  className="hover:bg-foreground/10"
-                                >
-                                  <a
-                                    href={`/admin/attempts/${attempt.id}/download-pdf`}
-                                    aria-label={`Download hasil ujian #${attempt.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <ActionIconTooltip label="Download">
+                                  <Button
+                                    asChild
+                                    size="icon"
+                                    variant="ghost"
+                                    className="hover:bg-foreground/10"
                                   >
-                                    <FileDown className="h-4 w-4" />
-                                  </a>
-                                </Button>
+                                    <a
+                                      href={`/admin/attempts/${attempt.id}/download-pdf`}
+                                      aria-label={`Download hasil ujian #${attempt.id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <FileDown className="h-4 w-4" />
+                                    </a>
+                                  </Button>
+                                </ActionIconTooltip>
                               </div>
                             </TableCell>
                           </TableRow>

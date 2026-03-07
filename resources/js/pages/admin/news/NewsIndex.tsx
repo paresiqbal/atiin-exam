@@ -35,6 +35,7 @@ import {
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 
 type NewsRow = {
     id: number;
@@ -328,13 +329,15 @@ export default function NewsIndex() {
 
                                             <td className="px-6 py-2">
                                                 <div className="flex justify-end gap-2">
-                                                    <Link
-                                                        href={`${baseUrl}/${n.id}/edit`}
-                                                        className="rounded-md p-2 hover:bg-foreground/20"
-                                                        aria-label="Edit"
-                                                    >
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Link>
+                                                    <ActionIconTooltip label="Edit">
+                                                        <Link
+                                                            href={`${baseUrl}/${n.id}/edit`}
+                                                            className="rounded-md p-2 hover:bg-foreground/20"
+                                                            aria-label="Edit"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Link>
+                                                    </ActionIconTooltip>
 
                                                     <ConfirmDeleteButton
                                                         deleteUrl={`${baseUrl}/${n.id}`}

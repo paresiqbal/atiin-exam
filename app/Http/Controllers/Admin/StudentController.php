@@ -173,6 +173,26 @@ class StudentController extends Controller
             ->with('success', 'Siswa terpilih berhasil dihapus.');
     }
 
+    public function bulkResetPassword(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:users,id',
+        ]);
+
+        $ids = $validated['ids'];
+
+        $updated = User::whereIn('id', $ids)
+            ->where('role', 'student')
+            ->update([
+                'password' => Hash::make('password'),
+            ]);
+
+        return redirect()
+            ->route('admin.students.index')
+            ->with('success', "Password reset untuk {$updated} siswa.");
+    }
+
 
     public function cards()
     {
