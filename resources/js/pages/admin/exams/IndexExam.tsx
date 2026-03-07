@@ -186,6 +186,13 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
         });
     };
 
+    const isExamEnded = (endAt?: string | null) => {
+        if (!endAt) return false;
+        const end = new Date(endAt);
+        if (Number.isNaN(end.getTime())) return false;
+        return end.getTime() < Date.now();
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Daftar Ujian" />
@@ -411,19 +418,28 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
                                             </td>
 
                                             <td className="px-6 py-2">
-                                                <Badge
-                                                    variant="outline"
-                                                    className={cn(
-                                                        'text-xs',
-                                                        exam.is_published
-                                                            ? 'border-green-500 text-green-700'
-                                                            : 'border-yellow-500 text-yellow-700',
-                                                    )}
-                                                >
-                                                    {exam.is_published
-                                                        ? 'Publis'
-                                                        : 'Draf'}
-                                                </Badge>
+                                                {isExamEnded(exam.end_at) ? (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="text-xs border-red-500 text-red-700"
+                                                    >
+                                                        Berakhir
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={cn(
+                                                            'text-xs',
+                                                            exam.is_published
+                                                                ? 'border-green-500 text-green-700'
+                                                                : 'border-yellow-500 text-yellow-700',
+                                                        )}
+                                                    >
+                                                        {exam.is_published
+                                                            ? 'Publis'
+                                                            : 'Draf'}
+                                                    </Badge>
+                                                )}
                                             </td>
 
                                             <td className="px-6 py-2 text-center">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\School;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -30,6 +31,14 @@ class StudentAccountController extends Controller
             });
         }
 
+        if ($request->filled('school_id')) {
+            $baseQuery->where('school_id', $request->school_id);
+        }
+
+        if ($request->filled('class')) {
+            $baseQuery->where('class', $request->class);
+        }
+
         $statsQuery = clone $baseQuery;
         $total = (clone $statsQuery)->count();
         $totalPro = (clone $statsQuery)->where('account_type', 'pro')->count();
@@ -40,11 +49,23 @@ class StudentAccountController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $schools = School::orderBy('name')->get(['id', 'name']);
+        $classes = User::where('role', 'student')
+            ->whereNotNull('class')
+            ->distinct()
+            ->orderBy('class')
+            ->pluck('class')
+            ->values();
+
         return Inertia::render('admin/payments/PaymentIndex', [
             'students' => $students,
+            'schools' => $schools,
+            'classes' => $classes,
             'filters' => [
                 'search' => $request->search,
                 'account_type' => $request->account_type,
+                'school_id' => $request->school_id,
+                'class' => $request->class,
                 'per_page' => $perPage,
             ],
             'stats' => [
@@ -102,5 +123,51 @@ class StudentAccountController extends Controller
         ]);
 
         return back()->with('success', "Pro extended by {$request->months} month(s)!");
+    }
+
+    public function bulkPro(Request $request)
+    {
+        $validated = $request->validate([
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'integer|exists:users,id',
+        ]);
+
+        $updated = User::query()
+            ->where('role', 'student')
+            ->whereIn('id', $validated['student_ids'])
+            ->update([
+                'account_type' => 'pro',
+            ]);
+
+        return back()->with('success', "Updated {$updated} student(s) to Pro.");
+    }
+
+    public function bulkUpdateAccountType(Request $request)
+    {
+        $validated = $request->validate([
+            'student_ids' => 'required|array|min:1',
+            'student_ids.*' => 'integer|exists:users,id',
+            'account_type' => 'required|in:regular,pro',
+        ]);
+
+        $data = ['account_type' => $validated['account_type']];
+
+        if ($validated['account_type'] === 'regular') {
+            $data['pro_expires_at'] = null;
+        }
+
+        if ($validated['account_type'] === 'pro') {
+            $data['pro_expires_at'] = null;
+        }
+
+        $updated = User::query()
+            ->where('role', 'student')
+            ->whereIn('id', $validated['student_ids'])
+            ->update($data);
+
+        return back()->with(
+            'success',
+            "Updated {$updated} student(s) to {$validated['account_type']}."
+        );
     }
 }

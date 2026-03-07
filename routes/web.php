@@ -70,6 +70,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 
         // student account management routes
         Route::get('payments', [StudentAccountController::class, 'accounts'])->name('payments.index');
+        Route::post('students/bulk-pro', [StudentAccountController::class, 'bulkPro'])->name('students.bulk-pro');
+        Route::post('students/bulk-account-type', [StudentAccountController::class, 'bulkUpdateAccountType'])->name('students.bulk-account-type');
         Route::post('students/{user}/account-type', [StudentAccountController::class, 'updateAccountType'])->name('students.update-account-type');
         Route::post('students/{user}/toggle-pro', [StudentAccountController::class, 'togglePro'])->name('students.toggle-pro');
         Route::post('students/{user}/extend-pro', [StudentAccountController::class, 'extendPro'])->name('students.extend-pro');

@@ -8,6 +8,7 @@ import type { PageProps as InertiaPageProps } from '@inertiajs/core';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Pagination,
     PaginationContent,
@@ -75,9 +76,13 @@ interface Paginated<T> {
 
 interface AccountsPageProps extends InertiaPageProps {
     students: Paginated<StudentAccountRow>;
+    schools: School[];
+    classes: string[];
     filters?: {
         search?: string | null;
         account_type?: string | null;
+        school_id?: string | number | null;
+        class?: string | null;
         per_page?: number | null;
     };
     stats?: {
@@ -118,31 +123,45 @@ function makeQuery({
     perPage,
     search,
     accountType,
+    schoolId,
+    classFilter,
 }: {
     page: number;
     perPage: number;
     search: string;
     accountType: string; // 'all' | 'regular' | 'pro'
+    schoolId: string;
+    classFilter: string;
 }) {
     const params = new URLSearchParams();
     params.set('page', String(page));
     params.set('per_page', String(perPage));
     if (search.trim() !== '') params.set('search', search.trim());
     if (accountType !== 'all') params.set('account_type', accountType);
+    if (schoolId !== 'all') params.set('school_id', schoolId);
+    if (classFilter !== 'all') params.set('class', classFilter);
     return `${baseUrl}?${params.toString()}`;
 }
 
 export default function PaymentIndex() {
-    const { students, filters, stats } = usePage<AccountsPageProps>().props;
+    const { students, schools, classes, filters, stats } =
+        usePage<AccountsPageProps>().props;
     const data = useMemo(() => students.data ?? [], [students.data]);
 
     const [search, setSearch] = useState(filters?.search ?? '');
     const [accountType, setAccountType] = useState<string>(
         filters?.account_type ?? 'all',
     );
+    const [schoolId, setSchoolId] = useState<string>(
+        filters?.school_id ? String(filters.school_id) : 'all',
+    );
+    const [classFilter, setClassFilter] = useState<string>(
+        filters?.class ?? 'all',
+    );
     const [rowsPerPage, setRowsPerPage] = useState<number>(
         (filters?.per_page ?? students.per_page ?? 20) as number,
     );
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
     // Live search (debounced)
     const firstRun = useRef(true);
@@ -159,6 +178,8 @@ export default function PaymentIndex() {
                     search: search.trim() || undefined,
                     account_type:
                         accountType === 'all' ? undefined : accountType,
+                    school_id: schoolId === 'all' ? undefined : schoolId,
+                    class: classFilter === 'all' ? undefined : classFilter,
                     page: 1,
                     per_page: rowsPerPage,
                 },
@@ -171,7 +192,7 @@ export default function PaymentIndex() {
         }, 350);
 
         return () => clearTimeout(t);
-    }, [search, accountType, rowsPerPage]);
+    }, [search, accountType, schoolId, classFilter, rowsPerPage]);
 
     const total = stats?.total ?? students.total ?? data.length;
     const totalPro = stats?.pro ?? 0;
@@ -211,6 +232,8 @@ export default function PaymentIndex() {
             {
                 search: search.trim() || undefined,
                 account_type: accountType === 'all' ? undefined : accountType,
+                school_id: schoolId === 'all' ? undefined : schoolId,
+                class: classFilter === 'all' ? undefined : classFilter,
                 page: 1,
                 per_page: perPage,
             },
@@ -256,7 +279,7 @@ export default function PaymentIndex() {
                             </InputGroup>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <Select
                                 value={accountType}
                                 onValueChange={setAccountType}
@@ -270,6 +293,47 @@ export default function PaymentIndex() {
                                         Regular
                                     </SelectItem>
                                     <SelectItem value="pro">Pro</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <Select
+                                value={schoolId}
+                                onValueChange={setSchoolId}
+                            >
+                                <SelectTrigger className="w-[220px]">
+                                    <SelectValue placeholder="Semua sekolah" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        Semua Sekolah
+                                    </SelectItem>
+                                    {schools.map((school) => (
+                                        <SelectItem
+                                            key={school.id}
+                                            value={String(school.id)}
+                                        >
+                                            {school.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            <Select
+                                value={classFilter}
+                                onValueChange={setClassFilter}
+                            >
+                                <SelectTrigger className="w-[200px]">
+                                    <SelectValue placeholder="Semua kelas" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">
+                                        Semua Kelas
+                                    </SelectItem>
+                                    {classes.map((cls) => (
+                                        <SelectItem key={cls} value={cls}>
+                                            {cls}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -311,11 +375,76 @@ export default function PaymentIndex() {
                         </Card>
                     </div>
 
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div className="text-sm text-muted-foreground">
+                            {selectedIds.length} dipilih
+                        </div>
+                        {(() => {
+                            const selectedStudents = data.filter((s) =>
+                                selectedIds.includes(s.id),
+                            );
+                            const allPro =
+                                selectedStudents.length > 0 &&
+                                selectedStudents.every(
+                                    (s) => s.account_type === 'pro',
+                                );
+                            const nextType = allPro ? 'regular' : 'pro';
+                            const label = allPro
+                                ? 'Set Regular untuk Terpilih'
+                                : 'Set Pro untuk Terpilih';
+
+                            return (
+                                <Button
+                                    variant="outline"
+                                    disabled={selectedIds.length === 0}
+                                    onClick={() =>
+                                        router.post(
+                                            '/admin/students/bulk-account-type',
+                                            {
+                                                student_ids: selectedIds,
+                                                account_type: nextType,
+                                            },
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    {label}
+                                </Button>
+                            );
+                        })()}
+                    </div>
+
                     {/* Table */}
                     <div className="overflow-x-auto rounded-lg border shadow-sm">
                         <table className="w-full text-sm">
                             <thead className="border-b bg-primary/10 dark:bg-primary/60">
                                 <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                        <Checkbox
+                                            checked={
+                                                data.length > 0 &&
+                                                data.every((s) =>
+                                                    selectedIds.includes(s.id),
+                                                )
+                                            }
+                                            onCheckedChange={() => {
+                                                if (
+                                                    data.length > 0 &&
+                                                    data.every((s) =>
+                                                        selectedIds.includes(
+                                                            s.id,
+                                                        ),
+                                                    )
+                                                ) {
+                                                    setSelectedIds([]);
+                                                    return;
+                                                }
+                                                setSelectedIds(
+                                                    data.map((s) => s.id),
+                                                );
+                                            }}
+                                        />
+                                    </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                         Nama
                                     </th>
@@ -357,6 +486,32 @@ export default function PaymentIndex() {
                                                 key={s.id}
                                                 className={`transition-colors ${rowClass}`}
                                             >
+                                                <td className="px-6 py-2">
+                                                    <Checkbox
+                                                        checked={selectedIds.includes(
+                                                            s.id,
+                                                        )}
+                                                        onCheckedChange={() => {
+                                                            setSelectedIds(
+                                                                (prev) =>
+                                                                    prev.includes(
+                                                                        s.id,
+                                                                    )
+                                                                        ? prev.filter(
+                                                                              (
+                                                                                  id,
+                                                                              ) =>
+                                                                                  id !==
+                                                                                  s.id,
+                                                                          )
+                                                                        : [
+                                                                              ...prev,
+                                                                              s.id,
+                                                                          ],
+                                                            );
+                                                        }}
+                                                    />
+                                                </td>
                                                 <td className="px-6 py-2">
                                                     <div className="font-medium">
                                                         {s.name || '-'}
@@ -489,7 +644,7 @@ export default function PaymentIndex() {
                                 ) : (
                                     <tr>
                                         <td
-                                            colSpan={6}
+                                            colSpan={7}
                                             className="px-6 py-8 text-center text-slate-500"
                                         >
                                             Tidak ada data.
@@ -529,19 +684,21 @@ export default function PaymentIndex() {
                             </div>
 
                             <Pagination>
-                                <PaginationContent>
-                                    <PaginationItem>
-                                        {students.current_page > 1 ? (
-                                            <a
-                                                href={makeQuery({
-                                                    page:
-                                                        students.current_page -
-                                                        1,
-                                                    perPage: rowsPerPage,
-                                                    search,
-                                                    accountType,
-                                                })}
-                                            >
+                            <PaginationContent>
+                                <PaginationItem>
+                                    {students.current_page > 1 ? (
+                                        <a
+                                            href={makeQuery({
+                                                page:
+                                                    students.current_page -
+                                                    1,
+                                                perPage: rowsPerPage,
+                                                search,
+                                                accountType,
+                                                schoolId,
+                                                classFilter,
+                                            })}
+                                        >
                                                 <PaginationPrevious />
                                             </a>
                                         ) : (
@@ -560,6 +717,8 @@ export default function PaymentIndex() {
                                                     perPage: rowsPerPage,
                                                     search,
                                                     accountType,
+                                                    schoolId,
+                                                    classFilter,
                                                 })}
                                             >
                                                 <PaginationLink
@@ -585,6 +744,8 @@ export default function PaymentIndex() {
                                                     perPage: rowsPerPage,
                                                     search,
                                                     accountType,
+                                                    schoolId,
+                                                    classFilter,
                                                 })}
                                             >
                                                 <PaginationNext />

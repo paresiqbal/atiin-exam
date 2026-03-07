@@ -516,6 +516,11 @@ class ExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $attempt->loadMissing(['exam']);
+        if (! $attempt->exam?->irt_processed_at) {
+            return Inertia::render('student/exams/WaitingResult');
+        }
+
         $pdfService = new ExamResultsPdfService();
         $pdf = $pdfService->generate($attempt);
 

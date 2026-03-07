@@ -22,6 +22,7 @@ interface ExamAttempt {
         id: number;
         title?: string | null; // allow missing
         name?: string | null; // allow missing
+        irt_processed_at?: string | null;
     };
     score: number;
     total_score: number;
@@ -421,15 +422,22 @@ export default function HistoryExam() {
                                                         attempt.id,
                                                     )
                                                 }
-                                                disabled={downloadingIds.has(
-                                                    attempt.id,
-                                                )}
+                                                disabled={
+                                                    downloadingIds.has(
+                                                        attempt.id,
+                                                    ) ||
+                                                    !attempt.exam
+                                                        .irt_processed_at
+                                                }
                                                 className="mt-3 h-9 w-full gap-2 rounded-xl"
                                             >
                                                 <Download className="h-4 w-4" />
                                                 {downloadingIds.has(attempt.id)
                                                     ? 'Mengunduh...'
-                                                    : 'Unduh PDF'}
+                                                    : attempt.exam
+                                                          .irt_processed_at
+                                                      ? 'Unduh PDF'
+                                                      : 'Menunggu Proses IRT'}
                                             </Button>
                                         </CardContent>
                                     </Card>
