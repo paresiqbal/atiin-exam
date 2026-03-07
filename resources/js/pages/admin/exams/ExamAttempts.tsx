@@ -69,7 +69,7 @@ type SortBy = 'name' | 'score' | 'date';
 type SortDirection = 'asc' | 'desc';
 
 interface Props {
-    exam: { id: number; name: string };
+    exam: { id: number; name: string; irt_processed_at?: string | null };
     attempts: Paginated<Attempt>;
     analytics: Analytics;
 
@@ -237,15 +237,17 @@ export default function ExamAttempts({
                             </Button>
                         </a>
 
-                        <a
-                            href={`/admin/exams/${exam.id}/irt-export`}
-                            className="inline-flex items-center gap-2"
-                        >
-                            <Button variant="outline">
-                                <Download className="mr-2 h-4 w-4" />
-                                Download IRT Results
-                            </Button>
-                        </a>
+                        {exam.irt_processed_at ? (
+                            <a
+                                href={`/admin/exams/${exam.id}/irt-export`}
+                                className="inline-flex items-center gap-2"
+                            >
+                                <Button variant="outline">
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download IRT Results
+                                </Button>
+                            </a>
+                        ) : null}
                     </div>
                 </div>
 

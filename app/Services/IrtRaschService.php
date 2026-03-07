@@ -9,7 +9,12 @@ use Illuminate\Support\Collection;
 
 class IrtRaschService
 {
-    public function scoreExam(Exam $exam, float $threshold = 0.001, int $maxIterations = 100): array
+    public function scoreExam(
+        Exam $exam,
+        float $threshold = 0.001,
+        int $maxIterations = 100,
+        ?Collection $attemptsOverride = null
+    ): array
     {
         $exam->loadMissing([
             'questionBanks' => function ($q) {
@@ -23,10 +28,12 @@ class IrtRaschService
             ->unique('id')
             ->values();
 
-        $attempts = $exam->attempts()
-            ->where('status', 'submitted')
-            ->with(['responses.selectedOption'])
-            ->get();
+        $attempts = $attemptsOverride
+            ? $attemptsOverride->loadMissing(['responses.selectedOption'])
+            : $exam->attempts()
+                ->where('status', 'submitted')
+                ->with(['responses.selectedOption'])
+                ->get();
 
         if ($questions->isEmpty()) {
             return [

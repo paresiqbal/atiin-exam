@@ -347,6 +347,10 @@ class ExamController extends Controller
 
         $attempt->load(['exam.settings', 'exam.questionBanks', 'student']);
 
+        if (! $attempt->exam->irt_processed_at) {
+            return Inertia::render('student/exams/WaitingResult');
+        }
+
         $student = $attempt->student;
 
         $rawSelections = $student->university_selections ?? [];

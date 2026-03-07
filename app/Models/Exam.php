@@ -18,12 +18,14 @@ class Exam extends Model
         'end_at',
         'is_published',
         'irt_scored_at',
+        'irt_processed_at',
     ];
 
     protected $casts = [
         'start_at' => 'datetime',
         'end_at' => 'datetime',
         'irt_scored_at' => 'datetime',
+        'irt_processed_at' => 'datetime',
     ];
 
     public function admin()

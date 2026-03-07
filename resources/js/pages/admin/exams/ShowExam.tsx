@@ -6,6 +6,17 @@ import AppLayout from '@/layouts/app-layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 import { ExamQuestionList } from '@/components/ExamQuestionList';
 import type { Question } from '@/types/question';
@@ -160,6 +171,10 @@ export default function ShowExam({ exam }: Props) {
         );
     };
 
+    const handleEndExam = () => {
+        router.post(`/admin/exams/${exam.id}/end`, {}, { preserveScroll: true });
+    };
+
     return (
         <AppLayout
             breadcrumbs={[
@@ -225,6 +240,38 @@ export default function ShowExam({ exam }: Props) {
                             >
                                 Terbitkan
                             </Button>
+                        )}
+
+                        {statusInfo.label !== 'Sudah berakhir' && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive">
+                                        Akhiri Ujian
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                            Akhiri ujian sekarang?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Ujian akan langsung ditutup. Siswa
+                                            tidak bisa melanjutkan ujian yang
+                                            masih berjalan.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>
+                                            Batal
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleEndExam}
+                                        >
+                                            Akhiri Ujian
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         )}
                     </div>
                 </div>

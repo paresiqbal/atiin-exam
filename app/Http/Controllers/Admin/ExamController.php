@@ -311,10 +311,21 @@ class ExamController extends Controller
         return back()->with('success', 'Exam published successfully');
     }
 
+    public function endNow(Exam $exam)
+    {
+        if ($exam->admin_id !== auth()->id()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $exam->update([
+            'end_at' => now(),
+        ]);
+
+        return back()->with('success', 'Exam ended successfully.');
+    }
+
     public function attempts(Exam $exam)
     {
-        $this->ensureIrtScored($exam);
-
         $totalQuestions = $this->getExamQuestions($exam)->count();
         $questionBankCount = $exam->questionBanks()->count();
         $bankDivisor = $questionBankCount > 0 ? $questionBankCount : 1;
@@ -397,6 +408,7 @@ class ExamController extends Controller
             'exam' => [
                 'id'   => $exam->id,
                 'name' => $exam->name,
+                'irt_processed_at' => optional($exam->irt_processed_at)->toIso8601String(),
             ],
             'attempts' => $attemptsTransformed,
             'analytics' => [
@@ -496,8 +508,6 @@ class ExamController extends Controller
 
     public function exportResults(Exam $exam)
     {
-        $this->ensureIrtScored($exam);
-
         $attempts = $exam->attempts()
             ->with([
                 'student.university',
@@ -597,7 +607,9 @@ class ExamController extends Controller
 
     public function exportIrtResults(Exam $exam)
     {
-        $this->ensureIrtScored($exam);
+        if (! $exam->irt_processed_at) {
+            return back()->with('error', 'IRT belum diproses untuk ujian ini.');
+        }
 
         $attempts = $exam->attempts()
             ->with(['student', 'responses.selectedOption'])
@@ -701,12 +713,18 @@ class ExamController extends Controller
 
     public function processIrtScoring(Exam $exam)
     {
+        if ($exam->irt_processed_at) {
+            return back()->with('error', 'IRT already processed.');
+        }
+
         $service = new IrtRaschService();
         $result = $service->scoreExam($exam);
 
         if (! $result['success']) {
             return back()->with('error', $result['message']);
         }
+
+        $exam->update(['irt_processed_at' => now()]);
 
         $statusNote = $result['converged']
             ? 'converged'
@@ -745,20 +763,6 @@ class ExamController extends Controller
         $attempt->violations()->delete();
 
         return back()->with('success', 'Ujian berhasil dibuka kembali untuk siswa.');
-    }
-
-    private function ensureIrtScored(Exam $exam): void
-    {
-        if (! $exam->end_at || now()->lt($exam->end_at)) {
-            return;
-        }
-
-        if ($exam->irt_scored_at) {
-            return;
-        }
-
-        $service = new IrtRaschService();
-        $service->scoreExam($exam);
     }
 
     private function difficultyLevel(?float $b): string

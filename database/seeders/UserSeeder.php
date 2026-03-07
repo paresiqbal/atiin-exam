@@ -107,5 +107,62 @@ class UserSeeder extends Seeder
             'school_id' => 1,
             'class' => '12A',
         ]);
+
+        // --- SMA Negeri 2 Rejang Lebong students ---
+
+        User::create([
+            'name' => 'Rina Putri',
+            'email' => 'rina.sma2@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 2,
+            'class' => '10A',
+        ]);
+
+        User::create([
+            'name' => 'Ahmad Fauzi',
+            'email' => 'ahmad.sma2@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 2,
+            'class' => '10B',
+        ]);
+
+        User::create([
+            'name' => 'Nina Lestari',
+            'email' => 'nina.sma2@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 2,
+            'class' => '11A',
+        ]);
+
+        User::create([
+            'name' => 'Dimas Pratama',
+            'email' => 'dimas.sma2@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 2,
+            'class' => '11B',
+        ]);
+
+        User::create([
+            'name' => 'Sari Wulandari',
+            'email' => 'sari.sma2@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'student',
+            'university_id' => 1,
+            'major_id' => 1,
+            'school_id' => 2,
+            'class' => '12A',
+        ]);
     }
 }

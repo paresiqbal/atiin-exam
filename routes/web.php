@@ -7,6 +7,7 @@ use Laravel\Fortify\Features;
 // controllers
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExamController as AdminExamController;
+use App\Http\Controllers\Admin\IrtController;
 use App\Http\Controllers\Admin\MajorController;
 use App\Http\Controllers\Admin\QuestionBankController as AdminQuestionBankController;
 use App\Http\Controllers\Admin\QuestionController as AdminQuestionController;
@@ -78,6 +79,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
             ->name('exams.bulk-delete');
         Route::resource('exams', AdminExamController::class);
         Route::post('exams/{exam}/publish', [AdminExamController::class, 'publish'])->name('exams.publish');
+        Route::post('exams/{exam}/end', [AdminExamController::class, 'endNow'])->name('exams.end');
         Route::get('exams/{exam}/attempts', [AdminExamController::class, 'attempts'])->name('exams.attempts');
         Route::get('attempts/{attempt}', [AdminExamController::class, 'attemptDetail'])->name('attempts.detail');
         Route::get('exams/{exam}/export-results', [AdminExamController::class, 'exportResults'])->name('exams.exportResults');
@@ -87,6 +89,14 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('/attempts/{attempt}/download-pdf', [AdminExamController::class, 'downloadAttemptPdf'])->name('attempts.download-pdf');
         Route::get('/attempts/{attempt}/download-letter', [AdminExamController::class, 'downloadAttemptLetter'])->name('attempts.download-letter');
         Route::post('/exams/attempts/{attempt}/unfreeze', [AdminExamController::class, 'unfreezeAttempt'])->name('admin.exams.attempts.unfreeze');
+
+        // IRT processing routes
+        Route::prefix('irt')->group(function () {
+            Route::get('/', [IrtController::class, 'index'])->name('irt.index');
+            Route::post('/process/{exam}', [IrtController::class, 'process'])->name('irt.process');
+            Route::post('/run-bulk', [IrtController::class, 'runBulkIrt'])->name('irt.run-bulk');
+            Route::post('/process-multiple', [IrtController::class, 'processMultiple'])->name('irt.process-multiple');
+        });
 
         // Major management routes
         Route::resource('majors', MajorController::class, ['only' => ['store', 'edit', 'update', 'destroy']]);

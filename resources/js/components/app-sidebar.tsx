@@ -49,6 +49,7 @@ export function AppSidebar() {
                 items: [
                     { title: 'Semua Ujian', href: '/admin/exams' },
                     { title: 'Buat Ujian', href: '/admin/exams/create' },
+                    { title: 'IRT Processing', href: '/admin/irt' },
                 ],
             },
             {
