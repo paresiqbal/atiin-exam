@@ -330,11 +330,69 @@ class ExamController extends Controller
         $questionBankCount = $exam->questionBanks()->count();
         $bankDivisor = $questionBankCount > 0 ? $questionBankCount : 1;
 
-        $attemptsQuery = $exam->attempts()
-            ->with(['student.university', 'student.major'])
-            ->orderByDesc('started_at');
+        $perPage = (int) request()->input('per_page', 15);
+        $query = request();
+        $q = $query->input('q');
+        $status = $query->input('status');
+        $sortBy = $query->input('sort_by', 'date');
+        $sortDir = $query->input('sort_dir', 'desc');
+        $freeze = $query->input('freeze', 'all');
 
-        $attempts = $attemptsQuery->paginate(15);
+        $attemptsQuery = $exam->attempts()
+            ->select('exam_attempts.*')
+            ->with(['student.university', 'student.major'])
+            ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id')
+            ->leftJoin('majors', 'majors.id', '=', 'students.major_id');
+
+        if (! empty($q)) {
+            $attemptsQuery->where(function ($searchQuery) use ($q) {
+                $searchQuery
+                    ->where('students.name', 'like', '%' . $q . '%')
+                    ->orWhere('students.email', 'like', '%' . $q . '%');
+            });
+        }
+
+        if ($status === 'passed') {
+            $attemptsQuery
+                ->where('exam_attempts.status', 'submitted')
+                ->whereRaw('exam_attempts.score >= COALESCE(majors.minimum_passing_grade, 0)');
+        }
+
+        if ($status === 'failed') {
+            $attemptsQuery
+                ->where('exam_attempts.status', 'submitted')
+                ->whereRaw('exam_attempts.score < COALESCE(majors.minimum_passing_grade, 0)');
+        }
+
+        if ($freeze === 'frozen') {
+            $attemptsQuery->where(function ($freezeQuery) {
+                $freezeQuery
+                    ->where('exam_attempts.is_frozen', true)
+                    ->orWhere('exam_attempts.status', 'frozen');
+            });
+        }
+
+        if ($freeze === 'not_frozen') {
+            $attemptsQuery->where(function ($freezeQuery) {
+                $freezeQuery
+                    ->where(function ($notFrozenQuery) {
+                        $notFrozenQuery
+                            ->where('exam_attempts.is_frozen', false)
+                            ->orWhereNull('exam_attempts.is_frozen');
+                    })
+                    ->where('exam_attempts.status', '!=', 'frozen');
+            });
+        }
+
+        if ($sortBy === 'name') {
+            $attemptsQuery->orderBy('students.name', $sortDir);
+        } elseif ($sortBy === 'score') {
+            $attemptsQuery->orderBy('exam_attempts.score', $sortDir);
+        } else {
+            $attemptsQuery->orderBy('exam_attempts.started_at', $sortDir);
+        }
+
+        $attempts = $attemptsQuery->paginate($perPage)->withQueryString();
 
         $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) use ($totalQuestions, $questionBankCount, $bankDivisor) {
             $rawScore      = (float) ($attempt->score ?? 0);
@@ -415,6 +473,14 @@ class ExamController extends Controller
                 'total_attempts' => $totalAttempts,
                 'passed'         => $passed,
                 'average_score'  => round($averagePercentage, 2),
+            ],
+            'filters' => [
+                'q' => $q,
+                'status' => $status,
+                'sort_by' => $sortBy,
+                'sort_dir' => $sortDir,
+                'freeze' => $freeze,
+                'per_page' => $perPage,
             ],
         ]);
     }
@@ -778,6 +844,35 @@ class ExamController extends Controller
         $attempt->violations()->delete();
 
         return back()->with('success', 'Ujian berhasil dibuka kembali untuk siswa.');
+    }
+
+    public function bulkUnfreezeAttempts(Request $request, Exam $exam)
+    {
+        $validated = $request->validate([
+            'attempt_ids' => 'required|array|min:1',
+            'attempt_ids.*' => 'integer',
+        ]);
+
+        $attempts = $exam->attempts()
+            ->whereIn('id', $validated['attempt_ids'])
+            ->get();
+
+        if ($attempts->isEmpty()) {
+            return back()->with('error', 'Tidak ada percobaan yang dipilih.');
+        }
+
+        ExamAttempt::whereIn('id', $attempts->pluck('id'))
+            ->update([
+                'is_frozen' => false,
+                'frozen_at' => null,
+                'frozen_reason' => null,
+            ]);
+
+        foreach ($attempts as $attempt) {
+            $attempt->violations()->delete();
+        }
+
+        return back()->with('success', 'Semua percobaan terpilih berhasil dibuka.');
     }
 
     private function difficultyLevel(?float $b): string

@@ -92,6 +92,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::get('/attempts/{attempt}/download-pdf', [AdminExamController::class, 'downloadAttemptPdf'])->name('attempts.download-pdf');
         Route::get('/attempts/{attempt}/download-letter', [AdminExamController::class, 'downloadAttemptLetter'])->name('attempts.download-letter');
         Route::post('/exams/attempts/{attempt}/unfreeze', [AdminExamController::class, 'unfreezeAttempt'])->name('admin.exams.attempts.unfreeze');
+        Route::post('/exams/{exam}/attempts/unfreeze-bulk', [AdminExamController::class, 'bulkUnfreezeAttempts'])->name('admin.exams.attempts.unfreeze-bulk');
 
         // IRT processing routes
         Route::prefix('irt')->group(function () {

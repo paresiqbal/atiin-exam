@@ -8,9 +8,11 @@ use App\Models\ExamAttempt;
 use App\Models\ExamToken;
 use App\Models\ExamViolation;
 use App\Models\Major;
+use App\Models\SystemSetting;
 use App\Models\University;
 use App\Services\ExamResultsPdfService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -548,6 +550,10 @@ class ExamController extends Controller
 
         $MAX_VIOLATIONS = 3;
 
+        $autoFreezeEnabled = Schema::hasTable('system_settings')
+            ? (SystemSetting::first()?->exam_auto_freeze ?? true)
+            : true;
+
         $type = $validated['violation_type'];
         $label = $this->violationLabel($type);
 
@@ -566,8 +572,8 @@ class ExamController extends Controller
         $violation->increment('count');
         $violation->update(['last_occurred_at' => now()]);
 
-        // Freeze if exceeded
-        if ($violation->count >= $MAX_VIOLATIONS) {
+        // Freeze if exceeded (only when auto-freeze is enabled)
+        if ($autoFreezeEnabled && $violation->count >= $MAX_VIOLATIONS) {
             $attempt->update([
                 'is_frozen' => true,
                 'frozen_at' => now(),
@@ -588,16 +594,21 @@ class ExamController extends Controller
         // Not frozen yet: return a warning (optional but nice UX)
         $remaining = max(0, $MAX_VIOLATIONS - $violation->count);
 
+        $message = $autoFreezeEnabled
+            ? "Terdeteksi pelanggaran: {$label}. "
+                . "Peringatan {$violation->count}/{$MAX_VIOLATIONS}. "
+                . ($remaining > 0 ? "Sisa {$remaining} sebelum ujian dibekukan." : '')
+            : "Terdeteksi pelanggaran: {$label}. "
+                . "Peringatan {$violation->count}/{$MAX_VIOLATIONS}. "
+                . 'Auto freeze sedang nonaktif.';
+
         return response()->json([
             'success' => true,
             'is_frozen' => false,
             'violation_count' => $violation->count,
             'max_violations' => $MAX_VIOLATIONS,
             'remaining' => $remaining,
-            'message' =>
-            "Terdeteksi pelanggaran: {$label}. "
-                . "Peringatan {$violation->count}/{$MAX_VIOLATIONS}. "
-                . ($remaining > 0 ? "Sisa {$remaining} sebelum ujian dibekukan." : ''),
+            'message' => $message,
         ]);
     }
 

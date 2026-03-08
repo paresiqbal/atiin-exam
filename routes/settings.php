@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Settings\ExamSettingController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
@@ -25,4 +26,11 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
+
+    Route::get('settings/exam', [ExamSettingController::class, 'edit'])
+        ->middleware('role:admin')
+        ->name('settings.exam.edit');
+    Route::put('settings/exam', [ExamSettingController::class, 'update'])
+        ->middleware('role:admin')
+        ->name('settings.exam.update');
 });

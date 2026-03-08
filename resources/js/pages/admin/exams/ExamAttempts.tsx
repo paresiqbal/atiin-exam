@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowUpDown, Download, Eye, Search, Unlock } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 import {
     Pagination,
@@ -69,6 +70,7 @@ interface Analytics {
 type StatusFilter = 'all' | 'passed' | 'failed';
 type SortBy = 'name' | 'score' | 'date';
 type SortDirection = 'asc' | 'desc';
+type FreezeFilter = 'all' | 'frozen' | 'not_frozen';
 
 interface Props {
     exam: { id: number; name: string; irt_processed_at?: string | null };
@@ -79,6 +81,7 @@ interface Props {
     filters?: {
         q?: string;
         status?: StatusFilter;
+        freeze?: FreezeFilter;
         sort_by?: SortBy;
         sort_dir?: SortDirection;
         per_page?: number;
@@ -104,6 +107,9 @@ export default function ExamAttempts({
     const [statusFilter, setStatusFilter] = useState<StatusFilter>(
         filters?.status ?? 'all',
     );
+    const [freezeFilter, setFreezeFilter] = useState<FreezeFilter>(
+        filters?.freeze ?? 'all',
+    );
     const [sortBy, setSortBy] = useState<SortBy>(filters?.sort_by ?? 'date');
     const [sortDirection, setSortDirection] = useState<SortDirection>(
         filters?.sort_dir ?? 'desc',
@@ -118,6 +124,7 @@ export default function ExamAttempts({
     const [selectedAttempt, setSelectedAttempt] = useState<Attempt | null>(
         null,
     );
+    const [selectedAttemptIds, setSelectedAttemptIds] = useState<number[]>([]);
 
     // helper buat fetch dengan query yang konsisten
     const pushQuery = (
@@ -128,6 +135,7 @@ export default function ExamAttempts({
             status: StatusFilter;
             sort_by: SortBy;
             sort_dir: SortDirection;
+            freeze: FreezeFilter;
         }>,
     ) => {
         router.get(
@@ -139,6 +147,7 @@ export default function ExamAttempts({
                 status: next.status ?? statusFilter,
                 sort_by: next.sort_by ?? sortBy,
                 sort_dir: next.sort_dir ?? sortDirection,
+                freeze: next.freeze ?? freezeFilter,
             },
             {
                 preserveScroll: true,
@@ -168,6 +177,11 @@ export default function ExamAttempts({
     const handleSortByChange = (val: SortBy) => {
         setSortBy(val);
         pushQuery({ page: 1, sort_by: val });
+    };
+
+    const handleFreezeChange = (val: FreezeFilter) => {
+        setFreezeFilter(val);
+        pushQuery({ page: 1, freeze: val });
     };
 
     // (opsional) biar search ga request tiap ketik, pakai Enter saja
@@ -204,6 +218,26 @@ export default function ExamAttempts({
 
     // IMPORTANT: table harus render attempts.data (page current)
     const pageAttempts = useMemo(() => attempts.data ?? [], [attempts.data]);
+    const allSelected =
+        pageAttempts.length > 0 &&
+        pageAttempts.every((attempt) =>
+            selectedAttemptIds.includes(attempt.id),
+        );
+    const selectedFrozenIds = useMemo(
+        () =>
+            selectedAttemptIds.filter((id) =>
+                pageAttempts.some(
+                    (attempt) =>
+                        attempt.id === id &&
+                        (attempt.is_frozen || attempt.status === 'frozen'),
+                ),
+            ),
+        [pageAttempts, selectedAttemptIds],
+    );
+
+    useEffect(() => {
+        setSelectedAttemptIds([]);
+    }, [pageAttempts]);
 
     return (
         <AppLayout
@@ -352,6 +386,27 @@ export default function ExamAttempts({
                             </SelectContent>
                         </Select>
 
+                        {/* Freeze filter */}
+                        <Select
+                            value={freezeFilter}
+                            onValueChange={(val) =>
+                                handleFreezeChange(val as FreezeFilter)
+                            }
+                        >
+                            <SelectTrigger className="w-[170px]">
+                                <SelectValue placeholder="Status freeze" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Semua</SelectItem>
+                                <SelectItem value="frozen">
+                                    Dibekukan
+                                </SelectItem>
+                                <SelectItem value="not_frozen">
+                                    Tidak Dibekukan
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+
                         {/* Sort */}
                         <div className="flex items-center gap-2">
                             <Select
@@ -395,10 +450,51 @@ export default function ExamAttempts({
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="overflow-x-auto rounded-lg border shadow-sm">
+                    <div className="space-y-3">
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                            <div className="text-sm text-muted-foreground">
+                                {selectedAttemptIds.length} dipilih
+                            </div>
+                            <Button
+                                variant="outline"
+                                disabled={selectedFrozenIds.length === 0}
+                                onClick={() =>
+                                    router.post(
+                                        `/admin/exams/${exam.id}/attempts/unfreeze-bulk`,
+                                        { attempt_ids: selectedFrozenIds },
+                                        {
+                                            preserveScroll: true,
+                                            onFinish: () =>
+                                                setSelectedAttemptIds([]),
+                                        },
+                                    )
+                                }
+                            >
+                                Buka masal
+                            </Button>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-lg border shadow-sm">
                         <table className="w-full text-sm">
                             <thead className="border-b bg-muted/40">
                                 <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                        <Checkbox
+                                            checked={allSelected}
+                                            onCheckedChange={() => {
+                                                if (allSelected) {
+                                                    setSelectedAttemptIds([]);
+                                                    return;
+                                                }
+                                                setSelectedAttemptIds(
+                                                    pageAttempts.map(
+                                                        (attempt) =>
+                                                            attempt.id,
+                                                    ),
+                                                );
+                                            }}
+                                        />
+                                    </th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                         Nama Siswa
                                     </th>
@@ -517,6 +613,30 @@ export default function ExamAttempts({
                                             className="transition-colors hover:bg-foreground/5"
                                         >
                                             <td className="px-6 py-3 text-sm">
+                                                <Checkbox
+                                                    checked={selectedAttemptIds.includes(
+                                                        attempt.id,
+                                                    )}
+                                                    onCheckedChange={() => {
+                                                        setSelectedAttemptIds(
+                                                            (prev) =>
+                                                                prev.includes(
+                                                                    attempt.id,
+                                                                )
+                                                                    ? prev.filter(
+                                                                          (id) =>
+                                                                              id !==
+                                                                              attempt.id,
+                                                                      )
+                                                                    : [
+                                                                          ...prev,
+                                                                          attempt.id,
+                                                                      ],
+                                                        );
+                                                    }}
+                                                />
+                                            </td>
+                                            <td className="px-6 py-3 text-sm">
                                                 <div className="font-medium">
                                                     {attempt.student.name}
                                                 </div>
@@ -613,6 +733,7 @@ export default function ExamAttempts({
                                 })}
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 )}
 
