@@ -62,14 +62,14 @@ class IrtController extends Controller
             ->values();
 
         return Inertia::render('admin/irt/IrtProcessing', [
-            'exams' => $exams,
-            'schools' => $schools,
-            'classes' => $classes,
-            'filters' => [
-                'search' => $request->input('search'),
+            'exams'            => $exams,
+            'schools'          => $schools,
+            'classes'          => $classes,
+            'filters'          => [
+                'search'    => $request->input('search'),
                 'school_id' => $request->input('school_id'),
-                'class' => $request->input('class'),
-                'status' => $request->input('status'),
+                'class'     => $request->input('class'),
+                'status'    => $request->input('status'),
             ],
             'hasIrtProcessedAt' => $hasIrtProcessedAt,
         ]);
@@ -81,12 +81,15 @@ class IrtController extends Controller
             return back()->with('error', 'Kolom irt_processed_at belum ada. Jalankan migrasi terlebih dahulu.');
         }
 
-        if ($exam->irt_processed_at) {
+        // Allow reprocessing when force=true is passed
+        $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
+
+        if ($exam->irt_processed_at && ! $force) {
             if ($request->wantsJson()) {
-                return response()->json(['error' => 'IRT already processed'], 409);
+                return response()->json(['error' => 'IRT already processed. Use force=true to reprocess.'], 409);
             }
 
-            return back()->with('error', 'IRT already processed.');
+            return back()->with('error', 'IRT sudah diproses. Gunakan tombol Reprocess untuk memproses ulang.');
         }
 
         if ($exam->end_at && now()->lt($exam->end_at)) {
@@ -106,7 +109,11 @@ class IrtController extends Controller
 
         $exam->update(['irt_processed_at' => now()]);
 
-        return back()->with('success', 'IRT scoring completed.');
+        $message = $force
+            ? 'IRT reprocessing completed successfully.'
+            : 'IRT scoring completed.';
+
+        return back()->with('success', $message);
     }
 
     public function runBulkIrt(Request $request)
@@ -116,17 +123,19 @@ class IrtController extends Controller
         }
 
         $validated = $request->validate([
-            'exam_id' => 'required|exists:exams,id',
+            'exam_id'    => 'required|exists:exams,id',
             'school_ids' => 'nullable|array',
             'school_ids.*' => 'integer|exists:schools,id',
-            'classes' => 'nullable|array',
-            'classes.*' => 'string|max:50',
+            'classes'    => 'nullable|array',
+            'classes.*'  => 'string|max:50',
+            'force'      => 'nullable|boolean',
         ]);
 
-        $exam = Exam::findOrFail($validated['exam_id']);
+        $force = ! empty($validated['force']);
+        $exam  = Exam::findOrFail($validated['exam_id']);
 
-        if ($exam->irt_processed_at) {
-            return back()->with('error', 'IRT already processed.');
+        if ($exam->irt_processed_at && ! $force) {
+            return back()->with('error', 'IRT sudah diproses. Gunakan force reprocess untuk memproses ulang.');
         }
 
         if ($exam->end_at && now()->lt($exam->end_at)) {
@@ -175,10 +184,12 @@ class IrtController extends Controller
         }
 
         $validated = $request->validate([
-            'exam_ids' => 'required|array|min:1',
+            'exam_ids'   => 'required|array|min:1',
             'exam_ids.*' => 'integer|exists:exams,id',
+            'force'      => 'nullable|boolean',
         ]);
 
+        $force = ! empty($validated['force']);
         $exams = Exam::whereIn('id', $validated['exam_ids'])->get();
 
         if ($exams->isEmpty()) {
@@ -186,10 +197,11 @@ class IrtController extends Controller
         }
 
         $processed = 0;
-        $skipped = 0;
+        $skipped   = 0;
 
         foreach ($exams as $exam) {
-            if ($exam->irt_processed_at) {
+            // Skip already-processed exams unless force=true
+            if ($exam->irt_processed_at && ! $force) {
                 $skipped++;
                 continue;
             }
@@ -211,10 +223,10 @@ class IrtController extends Controller
         }
 
         if ($processed === 0) {
-            return back()->with('error', 'No exams were processed.');
+            return back()->with('error', 'No exams were processed. They may already be processed — use Force Reprocess to override.');
         }
 
-        $message = "IRT processed for {$processed} exam(s).";
+        $message = ($force ? 'Force reprocessed' : 'IRT processed') . " for {$processed} exam(s).";
         if ($skipped > 0) {
             $message .= " Skipped {$skipped} exam(s) (already processed or not ended).";
         }
