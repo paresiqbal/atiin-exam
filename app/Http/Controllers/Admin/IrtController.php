@@ -61,7 +61,7 @@ class IrtController extends Controller
             ->pluck('class')
             ->values();
 
-        return Inertia::render('admin/irt/Index', [
+        return Inertia::render('admin/irt/IrtProcessing', [
             'exams' => $exams,
             'schools' => $schools,
             'classes' => $classes,

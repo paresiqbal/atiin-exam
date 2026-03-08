@@ -53,14 +53,29 @@ interface Props {
     };
 }
 
-export default function Index({ exams, schools, classes, filters }: Props) {
-    const [search, setSearch] = useState(filters?.search ?? '');
-    const [schoolId, setSchoolId] = useState(
-        filters?.school_id ? String(filters.school_id) : 'all',
-    );
-    const [classFilter, setClassFilter] = useState(filters?.class ?? 'all');
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>(
-        filters?.status ?? 'all',
+export default function IrtProcessing({ exams, schools, classes, filters }: Props) {
+    const initialSearch = filters?.search ?? '';
+    const initialSchoolId = filters?.school_id
+        ? String(filters.school_id)
+        : 'all';
+    const initialClassFilter =
+        filters?.class && filters.class.trim() !== ''
+            ? filters.class
+            : 'all';
+    const initialStatusFilter =
+        filters?.status && filters.status.trim() !== ''
+            ? filters.status
+            : 'all';
+
+    const [search, setSearch] = useState(initialSearch);
+    const [schoolId, setSchoolId] = useState(initialSchoolId);
+    const [classFilter, setClassFilter] = useState(initialClassFilter);
+    const [statusFilter, setStatusFilter] =
+        useState<StatusFilter>(initialStatusFilter as StatusFilter);
+
+    const classOptions = useMemo(
+        () => classes.filter((cls) => cls.trim() !== ''),
+        [classes],
     );
 
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -171,7 +186,7 @@ export default function Index({ exams, schools, classes, filters }: Props) {
                                     <SelectItem value="all">
                                         Semua Kelas
                                     </SelectItem>
-                                    {classes.map((cls) => (
+                                    {classOptions.map((cls) => (
                                         <SelectItem key={cls} value={cls}>
                                             {cls}
                                         </SelectItem>
