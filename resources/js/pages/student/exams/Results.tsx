@@ -55,6 +55,8 @@ interface Props {
     attempt: {
         id: number;
         score: number;
+        raw_score: number;
+        irt_theta: number | null;
         total_score: number;
         question_block_count?: number;
         total_questions: number;
@@ -88,12 +90,14 @@ export default function Results({
     // const totalQuestions = Number(attempt.total_questions ?? 0);
     const questionBlockCount = Number(attempt.question_block_count ?? 0);
     const scoreDivisor = questionBlockCount > 0 ? questionBlockCount : 1;
-    const adjustedScore = attempt.score / scoreDivisor;
+    const adjustedRawScore = attempt.raw_score / scoreDivisor;
     const adjustedTotalScore = attempt.total_score / scoreDivisor;
     const percentage =
         adjustedTotalScore > 0
-            ? Math.round((adjustedScore / adjustedTotalScore) * 100)
+            ? Math.round((adjustedRawScore / adjustedTotalScore) * 100)
             : 0;
+    const hasIrt = typeof attempt.irt_theta === 'number';
+    const irtScore = hasIrt ? attempt.irt_theta : null;
 
     // Fallback untuk kompatibilitas
     const placements: StudentPlacement[] = (
@@ -283,33 +287,48 @@ export default function Results({
                         <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-3">
                             <div className="rounded-lg border bg-background p-4 shadow-sm">
                                 <div className="mb-1 text-sm text-muted-foreground">
-                                    Nilai Kamu
+                                    {hasIrt ? 'Skor IRT (Theta)' : 'Nilai Kamu'}
                                 </div>
                                 <div className="text-3xl font-bold">
-                                    {Math.floor(adjustedScore)}{' '}
-                                    <span className="text-base font-normal text-muted-foreground">
-                                        / {Math.floor(adjustedTotalScore)}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="rounded-lg border bg-background p-4 shadow-sm">
-                                <div className="mb-1 text-sm text-muted-foreground">
-                                    Persentase
-                                </div>
-                                <div
-                                    className={cn(
-                                        'text-3xl font-bold',
-                                        isPassed
-                                            ? 'text-green-600'
-                                            : 'text-destructive',
+                                    {hasIrt
+                                        ? irtScore?.toFixed(2)
+                                        : Math.floor(adjustedRawScore)}
+                                    {!hasIrt && (
+                                        <span className="text-base font-normal text-muted-foreground">
+                                            / {Math.floor(adjustedTotalScore)}
+                                        </span>
                                     )}
-                                >
-                                    {percentage}%
                                 </div>
                             </div>
                             <div className="rounded-lg border bg-background p-4 shadow-sm">
                                 <div className="mb-1 text-sm text-muted-foreground">
-                                    Nilai Kelulusan Minimal
+                                    {hasIrt ? 'Skor Mentah' : 'Persentase'}
+                                </div>
+                                {hasIrt ? (
+                                    <div className="text-3xl font-bold">
+                                        {Math.floor(adjustedRawScore)}{' '}
+                                        <span className="text-base font-normal text-muted-foreground">
+                                            / {Math.floor(adjustedTotalScore)}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div
+                                        className={cn(
+                                            'text-3xl font-bold',
+                                            isPassed
+                                                ? 'text-green-600'
+                                                : 'text-destructive',
+                                        )}
+                                    >
+                                        {percentage}%
+                                    </div>
+                                )}
+                            </div>
+                            <div className="rounded-lg border bg-background p-4 shadow-sm">
+                                <div className="mb-1 text-sm text-muted-foreground">
+                                    {hasIrt
+                                        ? 'Nilai Minimal (Skor Mentah)'
+                                        : 'Nilai Kelulusan Minimal'}
                                 </div>
                                 <div className="text-3xl font-bold">
                                     {passingScore}
@@ -366,7 +385,7 @@ export default function Results({
                                             {selection.majors.map(
                                                 (major, majorIndex) => {
                                                     const passedForThisMajor =
-                                                        adjustedScore >=
+                                                        adjustedRawScore >=
                                                         major.minimum_passing_grade;
 
                                                     const globalIndex =
@@ -477,7 +496,7 @@ export default function Results({
                             const uni = placement.university!;
                             const major = placement.major!;
                             const passedForThisMajor =
-                                adjustedScore >= major.minimum_passing_grade;
+                                adjustedRawScore >= major.minimum_passing_grade;
 
                             return (
                                 <Card
