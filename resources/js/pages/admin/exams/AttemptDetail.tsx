@@ -8,7 +8,13 @@ import AppLayout from '@/layouts/app-layout';
 import { AttemptQuestionList } from '@/components/AttemptQuestionList';
 import { cn } from '@/lib/utils';
 import type { BreadcrumbItem } from '@/types';
-import { ArrowLeft, CheckCircle2, Download, FileText, XCircle } from 'lucide-react';
+import {
+    ArrowLeft,
+    CheckCircle2,
+    Download,
+    FileText,
+    XCircle,
+} from 'lucide-react';
 
 interface QuestionDetail {
     id: number;
@@ -32,6 +38,8 @@ interface Props {
         id: number;
         score: number;
         total_score: number;
+        irt_theta: number | null;
+        irt_block_score: number | null;
         started_at: string | null;
         completed_at: string | null;
     };
@@ -48,6 +56,16 @@ interface Props {
         university: { name: string | null } | null;
         major: { name: string | null } | null;
     };
+    studentData?: {
+        university_selections: Array<{
+            university_id: string;
+            majors: string[];
+        }> | null;
+        selected_university: string | null;
+        selected_major: string | null;
+        minimum_passing_grade: number;
+    };
+    adjustedScore: number;
     passingScore: number;
     isPassed: boolean;
     questionDetails: QuestionDetail[];
@@ -59,6 +77,8 @@ export default function AttemptDetail({
     exam,
     questionBankCount,
     student,
+    studentData,
+    adjustedScore,
     passingScore,
     isPassed,
     questionDetails,
@@ -71,23 +91,13 @@ export default function AttemptDetail({
         { title: 'Detail', href: '#' },
     ];
 
-    const bankDivisor =
-        typeof questionBankCount === 'number' && questionBankCount > 0
-            ? questionBankCount
-            : 1;
-
-    const adjustedScore = useMemo(() => {
-        return attempt.score / bankDivisor;
-    }, [attempt.score, bankDivisor]);
-
-    const adjustedTotalScore = useMemo(() => {
-        return attempt.total_score / bankDivisor;
-    }, [attempt.total_score, bankDivisor]);
+    const displayScore = attempt.irt_block_score ?? adjustedScore;
+    const displayTotalScore = questionBankCount;
 
     const percentage = useMemo(() => {
-        if (!adjustedTotalScore || adjustedTotalScore <= 0) return 0;
-        return (adjustedScore / adjustedTotalScore) * 100;
-    }, [adjustedScore, adjustedTotalScore]);
+        if (!displayTotalScore || displayTotalScore <= 0) return 0;
+        return (displayScore / displayTotalScore) * 100;
+    }, [displayScore, displayTotalScore]);
 
     const timeTaken = useMemo(() => {
         if (!attempt.started_at || !attempt.completed_at) return null;
@@ -95,7 +105,7 @@ export default function AttemptDetail({
         const start = new Date(attempt.started_at);
         const end = new Date(attempt.completed_at);
 
-        const diffMs = end.getTime() - start.getTime();
+        const diffMs = Math.abs(end.getTime() - start.getTime());
         if (Number.isNaN(diffMs) || diffMs <= 0) return null;
 
         const totalMinutes = Math.floor(diffMs / 1000 / 60);
@@ -221,9 +231,9 @@ export default function AttemptDetail({
                                         Skor
                                     </p>
                                     <p className="text-xl font-bold">
-                                        {Math.floor(adjustedScore)}{' '}
+                                        {Math.floor(displayScore)}{' '}
                                         <span className="text-sm font-normal text-muted-foreground">
-                                            / {Math.floor(adjustedTotalScore)}
+                                            / {Math.floor(displayTotalScore)}
                                         </span>
                                     </p>
                                 </div>
@@ -298,7 +308,9 @@ export default function AttemptDetail({
                                     Universitas
                                 </span>
                                 <span className="font-medium">
-                                    {student.university?.name ?? '-'}
+                                    {studentData?.selected_university ??
+                                        student.university?.name ??
+                                        '-'}
                                 </span>
                             </div>
                             <div className="flex justify-between gap-4">
@@ -306,7 +318,17 @@ export default function AttemptDetail({
                                     Program Studi
                                 </span>
                                 <span className="font-medium">
-                                    {student.major?.name ?? '-'}
+                                    {studentData?.selected_major ??
+                                        student.major?.name ??
+                                        '-'}
+                                </span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <span className="text-muted-foreground">
+                                    Nilai Kelulusan
+                                </span>
+                                <span className="font-medium">
+                                    {passingScore}
                                 </span>
                             </div>
                         </CardContent>

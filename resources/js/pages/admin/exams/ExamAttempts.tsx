@@ -2,10 +2,11 @@ import { Head, Link, router } from '@inertiajs/react';
 import { ArrowUpDown, Download, Eye, Search, Unlock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
+import ActionIconTooltip from '@/components/ActionIconTooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import ActionIconTooltip from '@/components/ActionIconTooltip';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     InputGroup,
     InputGroupAddon,
@@ -18,7 +19,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 
 import {
     Pagination,
@@ -475,264 +475,277 @@ export default function ExamAttempts({
                         </div>
 
                         <div className="overflow-x-auto rounded-lg border shadow-sm">
-                        <table className="w-full text-sm">
-                            <thead className="border-b bg-muted/40">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        <Checkbox
-                                            checked={allSelected}
-                                            onCheckedChange={() => {
-                                                if (allSelected) {
-                                                    setSelectedAttemptIds([]);
-                                                    return;
-                                                }
-                                                setSelectedAttemptIds(
-                                                    pageAttempts.map(
-                                                        (attempt) =>
-                                                            attempt.id,
+                            <table className="w-full text-sm">
+                                <thead className="border-b bg-muted/40">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                            <Checkbox
+                                                checked={allSelected}
+                                                onCheckedChange={() => {
+                                                    if (allSelected) {
+                                                        setSelectedAttemptIds(
+                                                            [],
+                                                        );
+                                                        return;
+                                                    }
+                                                    setSelectedAttemptIds(
+                                                        pageAttempts.map(
+                                                            (attempt) =>
+                                                                attempt.id,
+                                                        ),
+                                                    );
+                                                }}
+                                            />
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                            Nama Siswa
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                            Universitas
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                            Jurusan
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                            Status Ujian
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                            Skor
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                            Waktu Pengambilan
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                            Aksi
+                                        </th>
+                                    </tr>
+                                </thead>
+
+                                <tbody className="divide-y">
+                                    {pageAttempts.map((attempt) => {
+                                        const rawScore = Number(
+                                            attempt.adjusted_score ??
+                                                attempt.score ??
+                                                0,
+                                        );
+                                        const totalScore = Number(
+                                            attempt.adjusted_total_score ??
+                                                attempt.total_score ??
+                                                0,
+                                        );
+                                        const percent =
+                                            totalScore > 0
+                                                ? (rawScore / totalScore) * 100
+                                                : 0;
+
+                                        const isPassed =
+                                            typeof attempt.is_passed ===
+                                            'boolean'
+                                                ? attempt.is_passed
+                                                : percent >= 60;
+
+                                        let timeTakenMinutes: number | null =
+                                            null;
+                                        if (
+                                            attempt.started_at &&
+                                            attempt.completed_at
+                                        ) {
+                                            const started = new Date(
+                                                attempt.started_at,
+                                            ).getTime();
+                                            const completed = new Date(
+                                                attempt.completed_at,
+                                            ).getTime();
+                                            timeTakenMinutes = Math.max(
+                                                0,
+                                                Math.round(
+                                                    Math.abs(
+                                                        (completed - started) /
+                                                            60000,
                                                     ),
-                                                );
-                                            }}
-                                        />
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Nama Siswa
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Universitas
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Jurusan
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Status Ujian
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Skor
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Waktu Pengambilan
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                        Aksi
-                                    </th>
-                                </tr>
-                            </thead>
+                                                ),
+                                            );
+                                        }
 
-                            <tbody className="divide-y">
-                                {pageAttempts.map((attempt) => {
-                                    const rawScore = Number(
-                                        attempt.adjusted_score ??
-                                            attempt.score ??
-                                            0,
-                                    );
-                                    const totalScore = Number(
-                                        attempt.adjusted_total_score ??
-                                            attempt.total_score ??
-                                            0,
-                                    );
-                                    const percent =
-                                        totalScore > 0
-                                            ? (rawScore / totalScore) * 100
-                                            : 0;
+                                        const showScore =
+                                            attempt.completed_at &&
+                                            totalScore > 0;
 
-                                    const isPassed =
-                                        typeof attempt.is_passed === 'boolean'
-                                            ? attempt.is_passed
-                                            : percent >= 60;
-
-                                    let timeTakenMinutes: number | null = null;
-                                    if (
-                                        attempt.started_at &&
-                                        attempt.completed_at
-                                    ) {
-                                        const started = new Date(
-                                            attempt.started_at,
-                                        ).getTime();
-                                        const completed = new Date(
-                                            attempt.completed_at,
-                                        ).getTime();
-                                        timeTakenMinutes = Math.max(
-                                            0,
-                                            Math.round(
-                                                (completed - started) / 60000,
-                                            ),
-                                        );
-                                    }
-
-                                    const showScore =
-                                        attempt.completed_at &&
-                                        totalScore > 0;
-
-                                    let statusBadge = (
-                                        <Badge
-                                            variant="outline"
-                                            className="text-xs"
-                                        >
-                                            {attempt.status}
-                                        </Badge>
-                                    );
-
-                                    if (
-                                        attempt.is_frozen ||
-                                        attempt.status === 'frozen'
-                                    ) {
-                                        statusBadge = (
-                                            <Badge
-                                                variant="destructive"
-                                                className="text-xs"
-                                            >
-                                                Dibekukan
-                                            </Badge>
-                                        );
-                                    } else if (
-                                        attempt.status === 'in_progress'
-                                    ) {
-                                        statusBadge = (
+                                        let statusBadge = (
                                             <Badge
                                                 variant="outline"
                                                 className="text-xs"
                                             >
-                                                Sedang dikerjakan
+                                                {attempt.status}
                                             </Badge>
                                         );
-                                    } else if (attempt.status === 'submitted') {
-                                        statusBadge = (
-                                            <Badge
-                                                variant="default"
-                                                className="text-xs"
+
+                                        if (
+                                            attempt.is_frozen ||
+                                            attempt.status === 'frozen'
+                                        ) {
+                                            statusBadge = (
+                                                <Badge
+                                                    variant="destructive"
+                                                    className="text-xs"
+                                                >
+                                                    Dibekukan
+                                                </Badge>
+                                            );
+                                        } else if (
+                                            attempt.status === 'in_progress'
+                                        ) {
+                                            statusBadge = (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="text-xs"
+                                                >
+                                                    Sedang dikerjakan
+                                                </Badge>
+                                            );
+                                        } else if (
+                                            attempt.status === 'submitted'
+                                        ) {
+                                            statusBadge = (
+                                                <Badge
+                                                    variant="default"
+                                                    className="text-xs"
+                                                >
+                                                    Selesai
+                                                </Badge>
+                                            );
+                                        }
+
+                                        return (
+                                            <tr
+                                                key={attempt.id}
+                                                className="transition-colors hover:bg-foreground/5"
                                             >
-                                                Selesai
-                                            </Badge>
-                                        );
-                                    }
-
-                                    return (
-                                        <tr
-                                            key={attempt.id}
-                                            className="transition-colors hover:bg-foreground/5"
-                                        >
-                                            <td className="px-6 py-3 text-sm">
-                                                <Checkbox
-                                                    checked={selectedAttemptIds.includes(
-                                                        attempt.id,
-                                                    )}
-                                                    onCheckedChange={() => {
-                                                        setSelectedAttemptIds(
-                                                            (prev) =>
-                                                                prev.includes(
-                                                                    attempt.id,
-                                                                )
-                                                                    ? prev.filter(
-                                                                          (id) =>
-                                                                              id !==
+                                                <td className="px-6 py-3 text-sm">
+                                                    <Checkbox
+                                                        checked={selectedAttemptIds.includes(
+                                                            attempt.id,
+                                                        )}
+                                                        onCheckedChange={() => {
+                                                            setSelectedAttemptIds(
+                                                                (prev) =>
+                                                                    prev.includes(
+                                                                        attempt.id,
+                                                                    )
+                                                                        ? prev.filter(
+                                                                              (
+                                                                                  id,
+                                                                              ) =>
+                                                                                  id !==
+                                                                                  attempt.id,
+                                                                          )
+                                                                        : [
+                                                                              ...prev,
                                                                               attempt.id,
-                                                                      )
-                                                                    : [
-                                                                          ...prev,
-                                                                          attempt.id,
-                                                                      ],
-                                                        );
-                                                    }}
-                                                />
-                                            </td>
-                                            <td className="px-6 py-3 text-sm">
-                                                <div className="font-medium">
-                                                    {attempt.student.name}
-                                                </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {attempt.student.email}
-                                                </div>
-                                            </td>
+                                                                          ],
+                                                            );
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-3 text-sm">
+                                                    <div className="font-medium">
+                                                        {attempt.student.name}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {attempt.student.email}
+                                                    </div>
+                                                </td>
 
-                                            <td className="px-6 py-3 text-sm">
-                                                {attempt.student.university
-                                                    ?.name ?? (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        -
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            <td className="px-6 py-3 text-sm">
-                                                {attempt.student.major?.name ??
-                                                    '-'}
-                                            </td>
-
-                                            <td className="px-6 py-3 text-sm">
-                                                {statusBadge}
-                                            </td>
-
-                                            <td className="px-6 py-3 text-sm">
-                                                {showScore ? (
-                                                    <span
-                                                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                                                            isPassed
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : 'bg-red-100 text-red-800'
-                                                        }`}
-                                                    >
-                                                        {`${rawScore}/${totalScore} (${percent.toFixed(2)}%)`}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        Belum selesai
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            <td className="px-6 py-3 text-sm">
-                                                {timeTakenMinutes !== null ? (
-                                                    <span>
-                                                        {timeTakenMinutes} min
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        -
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            <td className="px-6 py-3 text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <ActionIconTooltip label="Detail">
-                                                        <Button
-                                                            asChild
-                                                            variant="outline"
-                                                            size="icon"
-                                                        >
-                                                            <Link
-                                                                href={`/admin/attempts/${attempt.id}`}
-                                                            >
-                                                                <Eye className="h-4 w-4" />
-                                                            </Link>
-                                                        </Button>
-                                                    </ActionIconTooltip>
-
-                                                    {(attempt.is_frozen ||
-                                                        attempt.status ===
-                                                            'frozen') && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() =>
-                                                                handleUnfreezeClick(
-                                                                    attempt,
-                                                                )
-                                                            }
-                                                            className="inline-flex items-center"
-                                                        >
-                                                            <Unlock className="mr-1 h-4 w-4" />
-                                                            Buka
-                                                        </Button>
+                                                <td className="px-6 py-3 text-sm">
+                                                    {attempt.student.university
+                                                        ?.name ?? (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            -
+                                                        </span>
                                                     )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                                </td>
+
+                                                <td className="px-6 py-3 text-sm">
+                                                    {attempt.student.major
+                                                        ?.name ?? '-'}
+                                                </td>
+
+                                                <td className="px-6 py-3 text-sm">
+                                                    {statusBadge}
+                                                </td>
+
+                                                <td className="px-6 py-3 text-sm">
+                                                    {showScore ? (
+                                                        <span
+                                                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                                                                isPassed
+                                                                    ? 'bg-green-100 text-green-800'
+                                                                    : 'bg-red-100 text-red-800'
+                                                            }`}
+                                                        >
+                                                            {`${rawScore}/${totalScore} (${percent.toFixed(2)}%)`}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Belum selesai
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                <td className="px-6 py-3 text-sm">
+                                                    {timeTakenMinutes !==
+                                                    null ? (
+                                                        <span>
+                                                            {timeTakenMinutes}{' '}
+                                                            min
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            -
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                <td className="px-6 py-3 text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <ActionIconTooltip label="Detail">
+                                                            <Button
+                                                                asChild
+                                                                variant="outline"
+                                                                size="icon"
+                                                            >
+                                                                <Link
+                                                                    href={`/admin/attempts/${attempt.id}`}
+                                                                >
+                                                                    <Eye className="h-4 w-4" />
+                                                                </Link>
+                                                            </Button>
+                                                        </ActionIconTooltip>
+
+                                                        {(attempt.is_frozen ||
+                                                            attempt.status ===
+                                                                'frozen') && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() =>
+                                                                    handleUnfreezeClick(
+                                                                        attempt,
+                                                                    )
+                                                                }
+                                                                className="inline-flex items-center"
+                                                            >
+                                                                <Unlock className="mr-1 h-4 w-4" />
+                                                                Buka
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}

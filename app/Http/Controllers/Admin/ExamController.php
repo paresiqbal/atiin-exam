@@ -406,7 +406,20 @@ class ExamController extends Controller
                 ? round(($rawScore / $totalQuestions) * 100, 2)
                 : 0;
 
-            $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
+            $selections = $attempt->student->university_selections ?? [];
+            $firstSelection = $selections[0] ?? null;
+            $firstUniversityId = $firstSelection['university_id'] ?? null;
+            $firstMajorId = $firstSelection['majors'][0] ?? null;
+
+            $selectedUniversity = $firstUniversityId
+                ? \App\Models\University::find($firstUniversityId)?->name
+                : null;
+            $selectedMajor = $firstMajorId
+                ? \App\Models\Major::find($firstMajorId)?->name
+                : null;
+            $minPassing = $firstMajorId
+                ? \App\Models\Major::find($firstMajorId)?->minimum_passing_grade ?? 0
+                : ($attempt->student->major->minimum_passing_grade ?? 0);
 
             $isPassed = $attempt->status === 'submitted'
                 ? $adjustedScore >= $minPassing
@@ -434,10 +447,10 @@ class ExamController extends Controller
                     'name' => $attempt->student->name,
                     'email' => $attempt->student->email,
                     'university' => [
-                        'name' => $attempt->student->university->name ?? '-',
+                        'name' => $selectedUniversity ?? $attempt->student->university->name ?? '-',
                     ],
                     'major' => [
-                        'name' => $attempt->student->major->name ?? '-',
+                        'name' => $selectedMajor ?? $attempt->student->major->name ?? '-',
                         'minimum_passing_grade' => $minPassing,
                     ],
                 ],
@@ -452,15 +465,23 @@ class ExamController extends Controller
 
         $passed = $submittedAttempts
             ->filter(function ($attempt) {
-                $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
+                $selections = $attempt->student->university_selections ?? [];
+                $firstSelection = $selections[0] ?? null;
+                $firstMajorId = $firstSelection['majors'][0] ?? null;
 
-                return $attempt->score >= $minPassing;
+                $minPassing = $firstMajorId
+                    ? \App\Models\Major::find($firstMajorId)?->minimum_passing_grade ?? 0
+                    : ($attempt->student->major->minimum_passing_grade ?? 0);
+
+                $adjustedScore = $attempt->irt_block_score ?? 0;
+
+                return $adjustedScore >= $minPassing;
             })
             ->count();
 
         $averagePercentage = $totalQuestions > 0
             ? ($submittedAttempts
-                ->map(fn ($a) => ((float) ($a->score ?? 0) / $totalQuestions) * 100)
+                ->map(fn ($a) => (($a->irt_block_score ?? 0) / $totalQuestions) * 100)
                 ->avg() ?? 0)
             : 0;
 
@@ -518,8 +539,17 @@ class ExamController extends Controller
             'responses.selectedOption',
         ]);
 
-        $passingScore = $attempt->student?->major?->minimum_passing_grade ?? 0;
-        $isPassed = (float) ($attempt->score ?? 0) >= (float) $passingScore;
+        $selections = $attempt->student->university_selections ?? [];
+        $firstSelection = $selections[0] ?? null;
+        $firstMajorId = $firstSelection['majors'][0] ?? null;
+
+        $selectedMajor = $firstMajorId
+            ? \App\Models\Major::find($firstMajorId)
+            : null;
+        $passingScore = $selectedMajor?->minimum_passing_grade ?? $attempt->student?->major?->minimum_passing_grade ?? 0;
+
+        $adjustedScore = $attempt->irt_block_score ?? 0;
+        $isPassed = $adjustedScore >= $passingScore;
 
         $questions = $this->getExamQuestions($attempt->exam);
 
@@ -571,7 +601,16 @@ class ExamController extends Controller
                 'irt_processed_at' => optional($attempt->exam->irt_processed_at)->toIso8601String(),
             ],
             'student' => $attempt->student,
+            'studentData' => [
+                'university_selections' => $selections,
+                'selected_university' => $firstSelection
+                    ? \App\Models\University::find($firstSelection['university_id'])?->name
+                    : null,
+                'selected_major' => $selectedMajor?->name,
+                'minimum_passing_grade' => $passingScore,
+            ],
             'questionBankCount' => $attempt->exam->questionBanks->count(),
+            'adjustedScore' => $adjustedScore,
             'passingScore' => $passingScore,
             'isPassed' => $isPassed,
             'questionDetails' => $questionDetails,
