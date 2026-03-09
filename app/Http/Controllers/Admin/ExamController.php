@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Exports\ExamResultsExport;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamSetting;
@@ -10,8 +9,8 @@ use App\Models\ExamToken;
 use App\Models\QuestionBank;
 use App\Models\School;
 use App\Models\User;
-use App\Services\ExamResultsPdfService;
 use App\Services\ExamOfficialLetterPdfService;
+use App\Services\ExamResultsPdfService;
 use App\Services\IrtRaschService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -55,8 +54,8 @@ class ExamController extends Controller
 
         return Inertia::render('admin/exams/CreateExam', [
             'questionBanks' => $questionBanks,
-            'schools'       => $schools,
-            'classes'       => $classes,
+            'schools' => $schools,
+            'classes' => $classes,
         ]);
     }
 
@@ -80,12 +79,12 @@ class ExamController extends Controller
         $admin = auth()->user();
 
         $exam = Exam::create([
-            'admin_id'     => $admin->id,
-            'school_id'    => $validated['school_id'],
-            'name'         => $validated['name'],
-            'description'  => $validated['description'] ?? null,
-            'start_at'     => $validated['start_at'],
-            'end_at'       => $validated['end_at'],
+            'admin_id' => $admin->id,
+            'school_id' => $validated['school_id'],
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'start_at' => $validated['start_at'],
+            'end_at' => $validated['end_at'],
             'is_published' => false,
         ]);
 
@@ -105,16 +104,16 @@ class ExamController extends Controller
         $exam->questionBanks()->sync($syncData);
 
         ExamSetting::create([
-            'exam_id'            => $exam->id,
+            'exam_id' => $exam->id,
             'time_limit_minutes' => $totalMinutes,
-            'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
-            'allow_review'       => $validated['allow_review'] ?? true,
-            'max_attempts'       => 1,
+            'shuffle_questions' => $validated['shuffle_questions'] ?? true,
+            'allow_review' => $validated['allow_review'] ?? true,
+            'max_attempts' => 1,
         ]);
 
         ExamToken::create([
             'exam_id' => $exam->id,
-            'token'   => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
+            'token' => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
         ]);
 
         return redirect()
@@ -150,7 +149,7 @@ class ExamController extends Controller
 
         ExamToken::create([
             'exam_id' => $exam->id,
-            'token'   => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
+            'token' => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
         ]);
 
         return back()->with('success', 'Token regenerated successfully');
@@ -197,7 +196,7 @@ class ExamController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'start_at' => ['required', 'date'],
-            'end_at'   => ['required', 'date', 'after_or_equal:start_at'],
+            'end_at' => ['required', 'date', 'after_or_equal:start_at'],
             'shuffle_questions' => ['boolean'],
             'allow_review' => ['boolean'],
             'school_id' => ['required', 'exists:schools,id'],
@@ -209,11 +208,11 @@ class ExamController extends Controller
         ]);
 
         $exam->update([
-            'name'        => $validated['name'],
+            'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'start_at'    => $validated['start_at'],
-            'end_at'      => $validated['end_at'],
-            'school_id'   => $validated['school_id'],
+            'start_at' => $validated['start_at'],
+            'end_at' => $validated['end_at'],
+            'school_id' => $validated['school_id'],
         ]);
 
         $syncData = [];
@@ -233,8 +232,8 @@ class ExamController extends Controller
 
         $exam->settings()->update([
             'time_limit_minutes' => $totalMinutes,
-            'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
-            'allow_review'       => $validated['allow_review'] ?? true,
+            'shuffle_questions' => $validated['shuffle_questions'] ?? true,
+            'allow_review' => $validated['allow_review'] ?? true,
         ]);
 
         return redirect()
@@ -294,7 +293,7 @@ class ExamController extends Controller
                 ->route('admin.exams.index')
                 ->with(
                     'warning',
-                    "Sebanyak {$deletedCount} ujian berhasil dihapus. " .
+                    "Sebanyak {$deletedCount} ujian berhasil dihapus. ".
                         "Beberapa ujian tidak dapat dihapus karena sudah pernah dikerjakan siswa: {$blockedNames}."
                 );
         }
@@ -347,8 +346,8 @@ class ExamController extends Controller
         if (! empty($q)) {
             $attemptsQuery->where(function ($searchQuery) use ($q) {
                 $searchQuery
-                    ->where('students.name', 'like', '%' . $q . '%')
-                    ->orWhere('students.email', 'like', '%' . $q . '%');
+                    ->where('students.name', 'like', '%'.$q.'%')
+                    ->orWhere('students.email', 'like', '%'.$q.'%');
             });
         }
 
@@ -395,11 +394,12 @@ class ExamController extends Controller
         $attempts = $attemptsQuery->paginate($perPage)->withQueryString();
 
         $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) use ($totalQuestions, $questionBankCount, $bankDivisor) {
-            $rawScore      = (float) ($attempt->score ?? 0);
+            $rawScore = (float) ($attempt->score ?? 0);
             $totalScore = (float) ($attempt->total_score ?? 0);
             $thetaScore = $attempt->irt_theta;
             $displayScore = $thetaScore ?? $rawScore;
-            $adjustedScore = $rawScore / $bankDivisor;
+            $blockScore = $attempt->irt_block_score;
+            $adjustedScore = $blockScore ?? ($rawScore / $bankDivisor);
             $adjustedTotalScore = $totalScore / $bankDivisor;
 
             $percentage = ($totalQuestions > 0 && $attempt->status === 'submitted')
@@ -408,35 +408,36 @@ class ExamController extends Controller
 
             $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
 
-            $isPassed   = $attempt->status === 'submitted'
-                ? $rawScore >= $minPassing
+            $isPassed = $attempt->status === 'submitted'
+                ? $adjustedScore >= $minPassing
                 : false;
 
             return [
-                'id'           => $attempt->id,
-                'score'        => $displayScore,
-                'raw_score'    => $rawScore,
-                'irt_theta'    => $thetaScore,
-                'total_score'  => $totalScore,
+                'id' => $attempt->id,
+                'score' => $displayScore,
+                'raw_score' => $rawScore,
+                'irt_theta' => $thetaScore,
+                'irt_block_score' => $attempt->irt_block_score,
+                'total_score' => $totalScore,
                 'adjusted_score' => (int) floor($adjustedScore),
                 'adjusted_total_score' => (int) floor($adjustedTotalScore),
                 'total_questions' => $totalQuestions,
                 'question_bank_count' => $questionBankCount,
-                'percentage'   => $percentage,
-                'is_passed'    => $isPassed,
-                'status'       => $attempt->status,
-                'is_frozen'    => (bool) $attempt->is_frozen,
-                'started_at'   => optional($attempt->started_at)->toIso8601String(),
+                'percentage' => $percentage,
+                'is_passed' => $isPassed,
+                'status' => $attempt->status,
+                'is_frozen' => (bool) $attempt->is_frozen,
+                'started_at' => optional($attempt->started_at)->toIso8601String(),
                 'completed_at' => optional($attempt->completed_at)->toIso8601String(),
-                'student'      => [
-                    'id'    => $attempt->student->id,
-                    'name'  => $attempt->student->name,
+                'student' => [
+                    'id' => $attempt->student->id,
+                    'name' => $attempt->student->name,
                     'email' => $attempt->student->email,
                     'university' => [
                         'name' => $attempt->student->university->name ?? '-',
                     ],
                     'major' => [
-                        'name'                  => $attempt->student->major->name ?? '-',
+                        'name' => $attempt->student->major->name ?? '-',
                         'minimum_passing_grade' => $minPassing,
                     ],
                 ],
@@ -452,27 +453,28 @@ class ExamController extends Controller
         $passed = $submittedAttempts
             ->filter(function ($attempt) {
                 $minPassing = $attempt->student->major->minimum_passing_grade ?? 0;
+
                 return $attempt->score >= $minPassing;
             })
             ->count();
 
         $averagePercentage = $totalQuestions > 0
             ? ($submittedAttempts
-                ->map(fn($a) => ((float) ($a->score ?? 0) / $totalQuestions) * 100)
+                ->map(fn ($a) => ((float) ($a->score ?? 0) / $totalQuestions) * 100)
                 ->avg() ?? 0)
             : 0;
 
         return Inertia::render('admin/exams/ExamAttempts', [
             'exam' => [
-                'id'   => $exam->id,
+                'id' => $exam->id,
                 'name' => $exam->name,
                 'irt_processed_at' => optional($exam->irt_processed_at)->toIso8601String(),
             ],
             'attempts' => $attemptsTransformed,
             'analytics' => [
                 'total_attempts' => $totalAttempts,
-                'passed'         => $passed,
-                'average_score'  => round($averagePercentage, 2),
+                'passed' => $passed,
+                'average_score' => round($averagePercentage, 2),
             ],
             'filters' => [
                 'q' => $q,
@@ -499,7 +501,7 @@ class ExamController extends Controller
         ]);
 
         return $exam->questionBanks
-            ->flatMap(fn($qb) => $qb->questions->sortBy('id'))
+            ->flatMap(fn ($qb) => $qb->questions->sortBy('id'))
             ->unique('id')
             ->values();
     }
@@ -517,7 +519,7 @@ class ExamController extends Controller
         ]);
 
         $passingScore = $attempt->student?->major?->minimum_passing_grade ?? 0;
-        $isPassed = (float)($attempt->score ?? 0) >= (float)$passingScore;
+        $isPassed = (float) ($attempt->score ?? 0) >= (float) $passingScore;
 
         $questions = $this->getExamQuestions($attempt->exam);
 
@@ -529,15 +531,15 @@ class ExamController extends Controller
             $correctOption = $question->options->firstWhere('is_correct', true);
 
             return [
-                'id'            => $question->id,
+                'id' => $question->id,
                 'question_text' => $question->question_text,
                 'question_type' => $question->question_type,
-                'points'        => $question->points,
+                'points' => $question->points,
                 'student_answer' => $selected?->option_text,
                 'correct_answer' => $correctOption?->option_text,
-                'is_correct'    => (bool)($selected?->is_correct ?? false),
+                'is_correct' => (bool) ($selected?->is_correct ?? false),
                 'points_earned' => $response
-                    ? ((bool)($selected?->is_correct ?? false) ? $question->points : 0)
+                    ? ((bool) ($selected?->is_correct ?? false) ? $question->points : 0)
                     : 0,
             ];
         });
@@ -547,15 +549,15 @@ class ExamController extends Controller
             ->get();
 
         $questionPerformance = $allAttempts
-            ->flatMap(fn($att) => $att->responses)
+            ->flatMap(fn ($att) => $att->responses)
             ->groupBy('question_id')
             ->map(function ($responses) {
                 $total = $responses->count();
-                $correct = $responses->filter(fn($r) => (bool)($r->selectedOption?->is_correct ?? false))->count();
+                $correct = $responses->filter(fn ($r) => (bool) ($r->selectedOption?->is_correct ?? false))->count();
 
                 return [
-                    'total'      => $total,
-                    'correct'    => $correct,
+                    'total' => $total,
+                    'correct' => $correct,
                     'percentage' => $total > 0 ? ($correct / $total) * 100 : 0,
                 ];
             });
@@ -597,6 +599,7 @@ class ExamController extends Controller
 
         $banks = $exam->questionBanks->map(function ($bank, $index) {
             $questions = $bank->questions->unique('id')->values();
+
             return [
                 'index' => $index + 1,
                 'name' => $bank->name ?? 'Question Bank',
@@ -647,7 +650,7 @@ class ExamController extends Controller
             foreach ($banks as $bank) {
                 foreach ($bank['questions'] as $question) {
                     $response = $byQuestion->get($question->id);
-                    $isCorrect = (bool)($response?->selectedOption?->is_correct ?? false);
+                    $isCorrect = (bool) ($response?->selectedOption?->is_correct ?? false);
 
                     $row[] = $isCorrect ? 'Correct' : 'Wrong';
                 }
@@ -655,12 +658,12 @@ class ExamController extends Controller
 
             $row[] = "{$attempt->score}/{$attempt->total_score}";
             $passingScore = $student?->major?->minimum_passing_grade ?? 0;
-            $row[] = ((float)($attempt->score ?? 0) >= (float)$passingScore) ? 'PASSED' : 'FAILED';
+            $row[] = ((float) ($attempt->score ?? 0) >= (float) $passingScore) ? 'PASSED' : 'FAILED';
 
             $rows[] = $row;
         }
 
-        $filename = 'exam-results-' . $exam->id . '-' . now()->format('Y-m-d') . '.csv';
+        $filename = 'exam-results-'.$exam->id.'-'.now()->format('Y-m-d').'.csv';
         $handle = fopen('php://memory', 'w');
 
         foreach ($rows as $row) {
@@ -693,9 +696,9 @@ class ExamController extends Controller
             mkdir($tempDir, 0755, true);
         }
 
-        $studentsPath = $tempDir . DIRECTORY_SEPARATOR . 'students_theta.csv';
-        $questionsPath = $tempDir . DIRECTORY_SEPARATOR . 'questions_difficulty.csv';
-        $matrixPath = $tempDir . DIRECTORY_SEPARATOR . 'response_matrix.csv';
+        $studentsPath = $tempDir.DIRECTORY_SEPARATOR.'students_theta.csv';
+        $questionsPath = $tempDir.DIRECTORY_SEPARATOR.'questions_difficulty.csv';
+        $matrixPath = $tempDir.DIRECTORY_SEPARATOR.'response_matrix.csv';
 
         $studentsHandle = fopen($studentsPath, 'w');
         fputcsv($studentsHandle, [
@@ -705,6 +708,7 @@ class ExamController extends Controller
             'total_score',
             'percent',
             'theta',
+            'block_score',
         ]);
 
         foreach ($attempts as $attempt) {
@@ -719,6 +723,7 @@ class ExamController extends Controller
                 $totalScore,
                 $percent,
                 $attempt->irt_theta,
+                $attempt->irt_block_score,
             ]);
         }
 
@@ -747,7 +752,7 @@ class ExamController extends Controller
         $matrixHandle = fopen($matrixPath, 'w');
         $header = ['student_id'];
         foreach ($questions as $question) {
-            $header[] = 'Q' . $question->id;
+            $header[] = 'Q'.$question->id;
         }
         fputcsv($matrixHandle, $header);
 
@@ -766,9 +771,9 @@ class ExamController extends Controller
 
         fclose($matrixHandle);
 
-        $zipName = 'exam_' . $exam->id . '_irt_results.zip';
-        $zipPath = $tempDir . DIRECTORY_SEPARATOR . $zipName;
-        $zip = new \ZipArchive();
+        $zipName = 'exam_'.$exam->id.'_irt_results.zip';
+        $zipPath = $tempDir.DIRECTORY_SEPARATOR.$zipName;
+        $zip = new \ZipArchive;
         $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
         $zip->addFile($studentsPath, 'students_theta.csv');
         $zip->addFile($questionsPath, 'questions_difficulty.csv');
@@ -788,7 +793,7 @@ class ExamController extends Controller
             return back()->with('error', 'IRT already processed.');
         }
 
-        $service = new IrtRaschService();
+        $service = new IrtRaschService;
         $result = $service->scoreExam($exam);
 
         if (! $result['success']) {
@@ -814,10 +819,10 @@ class ExamController extends Controller
             return back()->with('error', 'IRT belum diproses untuk ujian ini.');
         }
 
-        $pdfService = new ExamResultsPdfService();
+        $pdfService = new ExamResultsPdfService;
         $pdf = $pdfService->generate($attempt);
 
-        return $pdf->download('exam-attempt-' . $attempt->id . '.pdf');
+        return $pdf->download('exam-attempt-'.$attempt->id.'.pdf');
     }
 
     public function downloadAttemptLetter(ExamAttempt $attempt)
@@ -827,10 +832,10 @@ class ExamController extends Controller
             return back()->with('error', 'IRT belum diproses untuk ujian ini.');
         }
 
-        $pdfService = new ExamOfficialLetterPdfService();
+        $pdfService = new ExamOfficialLetterPdfService;
         $pdf = $pdfService->generate($attempt);
 
-        return $pdf->download('exam-letter-' . $attempt->id . '.pdf');
+        return $pdf->download('exam-letter-'.$attempt->id.'.pdf');
     }
 
     public function unfreezeAttempt(ExamAttempt $attempt)

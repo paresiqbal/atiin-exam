@@ -2,9 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Model;
 
 class ExamAttempt extends Model
 {
@@ -18,6 +17,7 @@ class ExamAttempt extends Model
         'score',
         'total_score',
         'irt_theta',
+        'irt_block_score',
         'status',
         'is_frozen',
         'frozen_at',
@@ -33,8 +33,8 @@ class ExamAttempt extends Model
         'is_frozen' => 'boolean',
         'current_section' => 'integer',
         'irt_theta' => 'float',
+        'irt_block_score' => 'float',
     ];
-
 
     public function exam()
     {
