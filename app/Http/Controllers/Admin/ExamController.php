@@ -293,7 +293,7 @@ class ExamController extends Controller
                 ->route('admin.exams.index')
                 ->with(
                     'warning',
-                    "Sebanyak {$deletedCount} ujian berhasil dihapus. ".
+                    "Sebanyak {$deletedCount} ujian berhasil dihapus. " .
                         "Beberapa ujian tidak dapat dihapus karena sudah pernah dikerjakan siswa: {$blockedNames}."
                 );
         }
@@ -346,8 +346,8 @@ class ExamController extends Controller
         if (! empty($q)) {
             $attemptsQuery->where(function ($searchQuery) use ($q) {
                 $searchQuery
-                    ->where('students.name', 'like', '%'.$q.'%')
-                    ->orWhere('students.email', 'like', '%'.$q.'%');
+                    ->where('students.name', 'like', '%' . $q . '%')
+                    ->orWhere('students.email', 'like', '%' . $q . '%');
             });
         }
 
@@ -481,7 +481,7 @@ class ExamController extends Controller
 
         $averagePercentage = $totalQuestions > 0
             ? ($submittedAttempts
-                ->map(fn ($a) => (($a->irt_block_score ?? 0) / $totalQuestions) * 100)
+                ->map(fn($a) => (($a->irt_block_score ?? 0) / $totalQuestions) * 100)
                 ->avg() ?? 0)
             : 0;
 
@@ -508,10 +508,6 @@ class ExamController extends Controller
         ]);
     }
 
-    /**
-     * ✅ FIX: Exam has MANY question banks (questionBanks), not single questionBank
-     * This helper flattens all questions across banks in pivot sort_order order.
-     */
     private function getExamQuestions(Exam $exam): Collection
     {
         $exam->loadMissing([
@@ -522,7 +518,7 @@ class ExamController extends Controller
         ]);
 
         return $exam->questionBanks
-            ->flatMap(fn ($qb) => $qb->questions->sortBy('id'))
+            ->flatMap(fn($qb) => $qb->questions->sortBy('id'))
             ->unique('id')
             ->values();
     }
@@ -579,11 +575,11 @@ class ExamController extends Controller
             ->get();
 
         $questionPerformance = $allAttempts
-            ->flatMap(fn ($att) => $att->responses)
+            ->flatMap(fn($att) => $att->responses)
             ->groupBy('question_id')
             ->map(function ($responses) {
                 $total = $responses->count();
-                $correct = $responses->filter(fn ($r) => (bool) ($r->selectedOption?->is_correct ?? false))->count();
+                $correct = $responses->filter(fn($r) => (bool) ($r->selectedOption?->is_correct ?? false))->count();
 
                 return [
                     'total' => $total,
@@ -702,7 +698,7 @@ class ExamController extends Controller
             $rows[] = $row;
         }
 
-        $filename = 'exam-results-'.$exam->id.'-'.now()->format('Y-m-d').'.csv';
+        $filename = 'exam-results-' . $exam->id . '-' . now()->format('Y-m-d') . '.csv';
         $handle = fopen('php://memory', 'w');
 
         foreach ($rows as $row) {
@@ -735,9 +731,9 @@ class ExamController extends Controller
             mkdir($tempDir, 0755, true);
         }
 
-        $studentsPath = $tempDir.DIRECTORY_SEPARATOR.'students_theta.csv';
-        $questionsPath = $tempDir.DIRECTORY_SEPARATOR.'questions_difficulty.csv';
-        $matrixPath = $tempDir.DIRECTORY_SEPARATOR.'response_matrix.csv';
+        $studentsPath = $tempDir . DIRECTORY_SEPARATOR . 'students_theta.csv';
+        $questionsPath = $tempDir . DIRECTORY_SEPARATOR . 'questions_difficulty.csv';
+        $matrixPath = $tempDir . DIRECTORY_SEPARATOR . 'response_matrix.csv';
 
         $studentsHandle = fopen($studentsPath, 'w');
         fputcsv($studentsHandle, [
@@ -791,7 +787,7 @@ class ExamController extends Controller
         $matrixHandle = fopen($matrixPath, 'w');
         $header = ['student_id'];
         foreach ($questions as $question) {
-            $header[] = 'Q'.$question->id;
+            $header[] = 'Q' . $question->id;
         }
         fputcsv($matrixHandle, $header);
 
@@ -810,8 +806,8 @@ class ExamController extends Controller
 
         fclose($matrixHandle);
 
-        $zipName = 'exam_'.$exam->id.'_irt_results.zip';
-        $zipPath = $tempDir.DIRECTORY_SEPARATOR.$zipName;
+        $zipName = 'exam_' . $exam->id . '_irt_results.zip';
+        $zipPath = $tempDir . DIRECTORY_SEPARATOR . $zipName;
         $zip = new \ZipArchive;
         $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
         $zip->addFile($studentsPath, 'students_theta.csv');
@@ -861,7 +857,7 @@ class ExamController extends Controller
         $pdfService = new ExamResultsPdfService;
         $pdf = $pdfService->generate($attempt);
 
-        return $pdf->download('exam-attempt-'.$attempt->id.'.pdf');
+        return $pdf->download('exam-attempt-' . $attempt->id . '.pdf');
     }
 
     public function downloadAttemptLetter(ExamAttempt $attempt)
@@ -874,7 +870,7 @@ class ExamController extends Controller
         $pdfService = new ExamOfficialLetterPdfService;
         $pdf = $pdfService->generate($attempt);
 
-        return $pdf->download('exam-letter-'.$attempt->id.'.pdf');
+        return $pdf->download('exam-letter-' . $attempt->id . '.pdf');
     }
 
     public function unfreezeAttempt(ExamAttempt $attempt)
