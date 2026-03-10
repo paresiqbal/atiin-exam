@@ -199,11 +199,14 @@ class IrtExportService
             $ws->setCellValue("{$totalSkorLetter}{$excelRow}", $data['total_skor']);
             $ws->getStyle("{$totalSkorLetter}{$excelRow}")->getNumberFormat()->setFormatCode('0.00');
 
-            // SKOR UTBK: leave for client to confirm formula — filled as blank for now
+            // SKOR UTBK: total_skor / number of blocks
+            $skorUtbk = $blockCount > 0 ? $data['total_skor'] / $blockCount : 0;
             $ws->setCellValue(
                 \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorUtbk) . $excelRow,
-                ''
+                $skorUtbk
             );
+            $ws->getStyle(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorUtbk) . $excelRow)
+                ->getNumberFormat()->setFormatCode('0.00');
 
             // SKOR UTBK (%): total_skor as percentage of max possible
             $pct = $maxTotalSkor > 0 ? round(($data['total_skor'] / ($blockCount * self::MAX_SCORE)) * 100, 2) : 0;
