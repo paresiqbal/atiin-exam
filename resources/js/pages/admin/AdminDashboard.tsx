@@ -1,19 +1,15 @@
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
-import {
-    ChartContainer,
-    ChartTooltip,
-    ChartTooltipContent,
-} from '@/components/ui/chart';
 import AppLayout from '@/layouts/app-layout';
 import type { BreadcrumbItem } from '@/types';
-import { Head } from '@inertiajs/react';
-import { BookOpen, FileText, Users, Zap } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import {
+    BookOpen,
+    CheckCircle2,
+    FileText,
+    Layers,
+    Users,
+    XCircle,
+    Zap,
+} from 'lucide-react';
 import {
     Bar,
     BarChart,
@@ -22,371 +18,514 @@ import {
     Pie,
     PieChart,
     ResponsiveContainer,
+    Tooltip,
     XAxis,
     YAxis,
 } from 'recharts';
+import type { TooltipProps } from 'recharts';
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Dashboard',
-        href: '/admin/dashboard',
-    },
+    { title: 'Dashboard', href: '/admin/dashboard' },
 ];
 
-interface DashboardData {
-    statistics: {
-        users: {
-            total: number;
-            students: number;
-            teachers: number;
-            admins: number;
-        };
-        exams: {
-            total: number;
-            published: number;
-            draft: number;
-        };
-        attempts: {
-            total: number;
-            completed: number;
-            in_progress: number;
-            passed: number;
-            failed: number;
-        };
-        questions: {
-            total: number;
-            banks: number;
-        };
-        average_score: number;
+// ── Types ────────────────────────────────────────────────────────────────────
+interface Stats {
+    users: { total: number; students: number; admins: number };
+    exams: {
+        total: number;
+        published: number;
+        draft: number;
+        irt_processed: number;
     };
-    recent_attempts: Array<{
-        id: number;
-        student_name: string;
-        exam_name: string;
-        score: number;
-        total_score: number;
-        percentage: number;
-        passed: boolean;
-        completed_at: string;
-    }>;
-    exam_performance: Array<{
-        name: string;
-        total_attempts: number;
+    attempts: {
+        total: number;
+        completed: number;
+        in_progress: number;
+        frozen: number;
         passed: number;
         failed: number;
-        pass_rate: number;
-    }>;
-    student_activity: Array<{
-        name: string;
-        email: string;
-        total_exams: number;
-        passed: number;
-        failed: number;
-    }>;
+    };
+    questions: { total: number; banks: number };
+    avg_skor_utbk: number;
 }
 
+interface RecentAttempt {
+    id: number;
+    student_name: string;
+    exam_name: string;
+    skor_utbk_pct: number | null;
+    irt_processed: boolean;
+    passed: boolean;
+    completed_at: string;
+}
+
+interface ExamPerf {
+    name: string;
+    total_attempts: number;
+    passed: number;
+    failed: number;
+    pass_rate: number;
+    avg_skor_utbk: number | null;
+    irt_processed: boolean;
+}
+
+interface SkorBucket {
+    range: string;
+    count: number;
+}
+
+interface Props {
+    statistics: Stats;
+    recent_attempts: RecentAttempt[];
+    exam_performance: ExamPerf[];
+    skor_distribution: SkorBucket[];
+}
+
+// ── Palette ──────────────────────────────────────────────────────────────────
+const GREEN = '#16a34a';
+const RED = '#dc2626';
+const SLATE = '#64748b';
+const BLUE = '#2563eb';
+const AMBER = '#d97706';
+
+// ── Small stat card ──────────────────────────────────────────────────────────
+function StatCard({
+    label,
+    value,
+    sub,
+    icon: Icon,
+    accent,
+}: {
+    label: string;
+    value: string | number;
+    sub?: string;
+    icon: React.ElementType;
+    accent: string;
+}) {
+    return (
+        <div className="flex items-start justify-between gap-3 rounded-xl border bg-card p-5">
+            <div>
+                <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    {label}
+                </p>
+                <p className="text-2xl font-bold">{value}</p>
+                {sub && (
+                    <p className="mt-1 text-xs text-muted-foreground">{sub}</p>
+                )}
+            </div>
+            <div
+                className="mt-0.5 shrink-0 rounded-lg p-2"
+                style={{ backgroundColor: accent + '18' }}
+            >
+                <Icon className="h-5 w-5" style={{ color: accent }} />
+            </div>
+        </div>
+    );
+}
+
+// ── Section header ───────────────────────────────────────────────────────────
+function SectionTitle({ children }: { children: React.ReactNode }) {
+    return (
+        <p className="mb-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+            {children}
+        </p>
+    );
+}
+
+// ── Custom tooltip for charts ────────────────────────────────────────────────
+function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
+    if (!active || !payload?.length) return null;
+    return (
+        <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
+            {label && <p className="mb-1 font-semibold">{label}</p>}
+            {payload.map((p, i) => (
+                <p key={i} style={{ color: p.fill || p.color }}>
+                    {p.name}: <strong>{p.value}</strong>
+                </p>
+            ))}
+        </div>
+    );
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
 export default function AdminDashboard({
-    statistics,
+    statistics: s,
     recent_attempts,
     exam_performance,
-    student_activity,
-}: DashboardData) {
+    skor_distribution,
+}: Props) {
+    const passRate =
+        s.attempts.completed > 0
+            ? ((s.attempts.passed / s.attempts.completed) * 100).toFixed(1)
+            : '0';
+
     const passFailData = [
+        { name: 'Lulus', value: s.attempts.passed, fill: GREEN },
+        { name: 'Tidak Lulus', value: s.attempts.failed, fill: RED },
+    ];
+
+    const irtData = [
+        { name: 'Sudah IRT', value: s.exams.irt_processed, fill: BLUE },
         {
-            name: 'Passed',
-            value: statistics.attempts.passed,
-            fill: 'hsl(var(--chart-2))',
-        },
-        {
-            name: 'Failed',
-            value: statistics.attempts.failed,
-            fill: 'hsl(var(--chart-3))',
+            name: 'Belum IRT',
+            value: s.exams.total - s.exams.irt_processed,
+            fill: SLATE,
         },
     ];
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Admin Dashboard" />
-            <div className="flex flex-1 flex-col gap-6 p-6">
-                {/* Statistics Cards */}
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {/* Total Users Card */}
-                    <Card className="border">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium">
-                                Total Users
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-2xl font-bold">
-                                        {statistics.users.total}
-                                    </p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {statistics.users.students} students,{' '}
-                                        {statistics.users.teachers} teachers
-                                    </p>
-                                </div>
-                                <Users className="h-10 w-10 text-muted-foreground/50" />
-                            </div>
-                        </CardContent>
-                    </Card>
+            <Head title="Dashboard Admin" />
 
-                    {/* Total Exams Card */}
-                    <Card className="border">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium">
-                                Total Exams
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-2xl font-bold">
-                                        {statistics.exams.total}
-                                    </p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {statistics.exams.published} published,{' '}
-                                        {statistics.exams.draft} draft
-                                    </p>
-                                </div>
-                                <FileText className="h-10 w-10 text-muted-foreground/50" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Exam Attempts Card */}
-                    <Card className="border">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium">
-                                Exam Attempts
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-2xl font-bold">
-                                        {statistics.attempts.total}
-                                    </p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {statistics.attempts.completed}{' '}
-                                        completed,{' '}
-                                        {statistics.attempts.in_progress} in
-                                        progress
-                                    </p>
-                                </div>
-                                <Zap className="h-10 w-10 text-muted-foreground/50" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Average Score Card */}
-                    <Card className="border">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-sm font-medium">
-                                Average Score
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-2xl font-bold">
-                                        {statistics.average_score}%
-                                    </p>
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        {statistics.attempts.passed} passed,{' '}
-                                        {statistics.attempts.failed} failed
-                                    </p>
-                                </div>
-                                <BookOpen className="h-10 w-10 text-muted-foreground/50" />
-                            </div>
-                        </CardContent>
-                    </Card>
+            <div className="flex flex-1 flex-col gap-6 p-5">
+                {/* ── Top stat cards ── */}
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <StatCard
+                        label="Total Siswa"
+                        value={s.users.students}
+                        sub={`${s.users.admins} admin`}
+                        icon={Users}
+                        accent={BLUE}
+                    />
+                    <StatCard
+                        label="Total Ujian"
+                        value={s.exams.total}
+                        sub={`${s.exams.published} dipublikasi · ${s.exams.draft} draft`}
+                        icon={FileText}
+                        accent={AMBER}
+                    />
+                    <StatCard
+                        label="Percobaan Selesai"
+                        value={s.attempts.completed}
+                        sub={`${s.attempts.in_progress} sedang berlangsung · ${s.attempts.frozen} dibekukan`}
+                        icon={Zap}
+                        accent={SLATE}
+                    />
+                    <StatCard
+                        label="Rata-rata Skor UTBK"
+                        value={
+                            s.avg_skor_utbk > 0
+                                ? `${s.avg_skor_utbk.toFixed(2)}%`
+                                : '-'
+                        }
+                        sub={`${passRate}% tingkat kelulusan`}
+                        icon={BookOpen}
+                        accent={GREEN}
+                    />
                 </div>
 
-                {/* Charts Section */}
-                <div className="grid gap-4 md:grid-cols-2">
-                    {/* Pass/Fail Distribution */}
-                    <Card className="border">
-                        <CardHeader>
-                            <CardTitle className="text-base">
-                                Pass/Fail Distribution
-                            </CardTitle>
-                            <CardDescription>
-                                Overall exam attempt outcomes
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ChartContainer config={{}} className="h-64">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={passFailData}
-                                            cx="50%"
-                                            cy="50%"
-                                            labelLine={false}
-                                            label={({ name, value, percent }) =>
-                                                `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
-                                            }
-                                            outerRadius={80}
-                                            fill="#8884d8"
-                                            dataKey="value"
-                                        >
-                                            {passFailData.map(
-                                                (entry, index) => (
-                                                    <Cell
-                                                        key={`cell-${index}`}
-                                                        fill={entry.fill}
-                                                    />
-                                                ),
-                                            )}
-                                        </Pie>
-                                        <ChartTooltip
-                                            content={<ChartTooltipContent />}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </ChartContainer>
-                        </CardContent>
-                    </Card>
+                {/* ── Secondary stats row ── */}
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <StatCard
+                        label="IRT Diproses"
+                        value={s.exams.irt_processed}
+                        sub={`dari ${s.exams.total} ujian`}
+                        icon={Layers}
+                        accent={BLUE}
+                    />
+                    <StatCard
+                        label="Total Soal"
+                        value={s.questions.total}
+                        sub={`${s.questions.banks} bank soal`}
+                        icon={BookOpen}
+                        accent={AMBER}
+                    />
+                    <StatCard
+                        label="Lulus"
+                        value={s.attempts.passed}
+                        sub="dari percobaan selesai"
+                        icon={CheckCircle2}
+                        accent={GREEN}
+                    />
+                    <StatCard
+                        label="Tidak Lulus"
+                        value={s.attempts.failed}
+                        sub="dari percobaan selesai"
+                        icon={XCircle}
+                        accent={RED}
+                    />
+                </div>
 
-                    {/* Exam Performance */}
-                    <Card className="border">
-                        <CardHeader>
-                            <CardTitle className="text-base">
-                                Exam Performance
-                            </CardTitle>
-                            <CardDescription>Pass rate by exam</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ChartContainer
-                                config={{
-                                    pass_rate: {
-                                        label: 'Pass Rate %',
-                                        color: 'hsl(var(--chart-2))',
-                                    },
-                                }}
-                                className="h-64"
+                {/* ── Charts row ── */}
+                <div className="grid gap-4 md:grid-cols-3">
+                    {/* Pass/Fail pie */}
+                    <div className="rounded-xl border bg-card p-5">
+                        <SectionTitle>Distribusi Kelulusan</SectionTitle>
+                        <ResponsiveContainer width="100%" height={200}>
+                            <PieChart>
+                                <Pie
+                                    data={passFailData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={50}
+                                    outerRadius={80}
+                                    dataKey="value"
+                                    paddingAngle={3}
+                                >
+                                    {passFailData.map((entry, i) => (
+                                        <Cell key={i} fill={entry.fill} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="mt-2 flex justify-center gap-5 text-xs">
+                            {passFailData.map((d) => (
+                                <div
+                                    key={d.name}
+                                    className="flex items-center gap-1.5"
+                                >
+                                    <span
+                                        className="inline-block h-2.5 w-2.5 rounded-full"
+                                        style={{ background: d.fill }}
+                                    />
+                                    <span className="text-muted-foreground">
+                                        {d.name}
+                                    </span>
+                                    <span className="font-semibold">
+                                        {d.value}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* IRT processed pie */}
+                    <div className="rounded-xl border bg-card p-5">
+                        <SectionTitle>Status IRT Ujian</SectionTitle>
+                        <ResponsiveContainer width="100%" height={200}>
+                            <PieChart>
+                                <Pie
+                                    data={irtData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={50}
+                                    outerRadius={80}
+                                    dataKey="value"
+                                    paddingAngle={3}
+                                >
+                                    {irtData.map((entry, i) => (
+                                        <Cell key={i} fill={entry.fill} />
+                                    ))}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="mt-2 flex justify-center gap-5 text-xs">
+                            {irtData.map((d) => (
+                                <div
+                                    key={d.name}
+                                    className="flex items-center gap-1.5"
+                                >
+                                    <span
+                                        className="inline-block h-2.5 w-2.5 rounded-full"
+                                        style={{ background: d.fill }}
+                                    />
+                                    <span className="text-muted-foreground">
+                                        {d.name}
+                                    </span>
+                                    <span className="font-semibold">
+                                        {d.value}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Skor UTBK distribution histogram */}
+                    <div className="rounded-xl border bg-card p-5">
+                        <SectionTitle>Distribusi Skor UTBK</SectionTitle>
+                        <ResponsiveContainer width="100%" height={200}>
+                            <BarChart data={skor_distribution} barSize={28}>
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    stroke="#e2e8f0"
+                                />
+                                <XAxis
+                                    dataKey="range"
+                                    tick={{ fontSize: 10 }}
+                                />
+                                <YAxis
+                                    tick={{ fontSize: 10 }}
+                                    allowDecimals={false}
+                                />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Bar
+                                    dataKey="count"
+                                    name="Siswa"
+                                    fill={BLUE}
+                                    radius={[3, 3, 0, 0]}
+                                />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* ── Exam performance bar ── */}
+                <div className="rounded-xl border bg-card p-5">
+                    <SectionTitle>Pass Rate per Ujian (5 Terbaru)</SectionTitle>
+                    <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={exam_performance} barSize={32}>
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="#e2e8f0"
+                            />
+                            <XAxis
+                                dataKey="name"
+                                tick={{ fontSize: 11 }}
+                                interval={0}
+                                angle={-20}
+                                textAnchor="end"
+                                height={55}
+                            />
+                            <YAxis
+                                tick={{ fontSize: 11 }}
+                                domain={[0, 100]}
+                                unit="%"
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Bar
+                                dataKey="pass_rate"
+                                name="Pass Rate"
+                                radius={[3, 3, 0, 0]}
                             >
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={exam_performance}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis
-                                            dataKey="name"
-                                            angle={-45}
-                                            textAnchor="end"
-                                            height={100}
-                                            interval={0}
-                                            tick={{ fontSize: 12 }}
-                                        />
-                                        <YAxis />
-                                        <ChartTooltip
-                                            content={<ChartTooltipContent />}
-                                        />
-                                        <Bar
-                                            dataKey="pass_rate"
-                                            fill="var(--color-pass_rate)"
-                                            name="Pass Rate %"
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </ChartContainer>
-                        </CardContent>
-                    </Card>
+                                {exam_performance.map((entry, i) => (
+                                    <Cell
+                                        key={i}
+                                        fill={
+                                            entry.pass_rate >= 60
+                                                ? GREEN
+                                                : entry.pass_rate >= 40
+                                                  ? AMBER
+                                                  : RED
+                                        }
+                                    />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
 
-                {/* Recent Attempts & Student Activity */}
+                {/* ── Bottom: recent attempts + exam table ── */}
                 <div className="grid gap-4 md:grid-cols-2">
-                    {/* Recent Attempts */}
-                    <Card className="border">
-                        <CardHeader>
-                            <CardTitle className="text-base">
-                                Recent Exam Attempts
-                            </CardTitle>
-                            <CardDescription>
-                                Last 5 completed attempts
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {recent_attempts.map((attempt) => (
-                                    <div
-                                        key={attempt.id}
-                                        className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
-                                    >
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-medium">
-                                                {attempt.student_name}
-                                            </p>
-                                            <p className="truncate text-xs text-muted-foreground">
-                                                {attempt.exam_name}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {attempt.completed_at}
-                                            </p>
-                                        </div>
-                                        <div className="ml-4 text-right">
-                                            <p className="text-sm font-semibold">
-                                                {attempt.percentage}%
-                                            </p>
-                                            <span
-                                                className={`rounded-full px-2 py-1 text-xs ${
-                                                    attempt.passed
-                                                        ? 'bg-green-50 text-green-700'
-                                                        : 'bg-red-50 text-red-700'
-                                                }`}
-                                            >
-                                                {attempt.passed
-                                                    ? 'Passed'
-                                                    : 'Failed'}
-                                            </span>
-                                        </div>
+                    {/* Recent attempts */}
+                    <div className="rounded-xl border bg-card p-5">
+                        <SectionTitle>Percobaan Terbaru</SectionTitle>
+                        <div className="space-y-0 divide-y">
+                            {recent_attempts.map((a) => (
+                                <Link
+                                    key={a.id}
+                                    href={`/admin/attempts/${a.id}`}
+                                    className="-mx-1 flex items-center justify-between gap-3 rounded px-1 py-3 transition-colors hover:bg-muted/40"
+                                >
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-medium">
+                                            {a.student_name}
+                                        </p>
+                                        <p className="truncate text-xs text-muted-foreground">
+                                            {a.exam_name}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {a.completed_at}
+                                        </p>
                                     </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                    <div className="shrink-0 text-right">
+                                        {a.irt_processed ? (
+                                            <p className="text-sm font-bold">
+                                                {a.skor_utbk_pct?.toFixed(2)}%
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground">
+                                                Belum IRT
+                                            </p>
+                                        )}
+                                        <span
+                                            className="rounded-full px-2 py-0.5 text-xs font-medium"
+                                            style={{
+                                                background: a.passed
+                                                    ? GREEN + '18'
+                                                    : RED + '18',
+                                                color: a.passed ? GREEN : RED,
+                                            }}
+                                        >
+                                            {a.passed ? 'Lulus' : 'Tidak Lulus'}
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
 
-                    {/* Top Students */}
-                    <Card className="border">
-                        <CardHeader>
-                            <CardTitle className="text-base">
-                                Top Student Activity
-                            </CardTitle>
-                            <CardDescription>
-                                Most active students
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {student_activity.map((student, index) => (
-                                    <div
-                                        key={index}
-                                        className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
-                                    >
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-medium">
-                                                {student.name}
-                                            </p>
-                                            <p className="truncate text-xs text-muted-foreground">
-                                                {student.email}
-                                            </p>
-                                        </div>
-                                        <div className="ml-4 text-right">
-                                            <p className="text-sm font-semibold">
-                                                {student.total_exams} exams
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {student.passed} passed,{' '}
-                                                {student.failed} failed
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* Exam summary table */}
+                    <div className="rounded-xl border bg-card p-5">
+                        <SectionTitle>Ringkasan Ujian</SectionTitle>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="border-b">
+                                        <th className="py-2 text-left font-semibold text-muted-foreground">
+                                            Ujian
+                                        </th>
+                                        <th className="py-2 text-right font-semibold text-muted-foreground">
+                                            Peserta
+                                        </th>
+                                        <th className="py-2 text-right font-semibold text-muted-foreground">
+                                            Pass Rate
+                                        </th>
+                                        <th className="py-2 text-right font-semibold text-muted-foreground">
+                                            Avg Skor
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {exam_performance.map((e, i) => (
+                                        <tr
+                                            key={i}
+                                            className="transition-colors hover:bg-muted/30"
+                                        >
+                                            <td className="max-w-[140px] py-2.5 pr-2">
+                                                <span className="block truncate">
+                                                    {e.name}
+                                                </span>
+                                                {e.irt_processed && (
+                                                    <span
+                                                        className="text-[10px] font-medium"
+                                                        style={{ color: BLUE }}
+                                                    >
+                                                        IRT ✓
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-2.5 text-right">
+                                                {e.total_attempts}
+                                            </td>
+                                            <td className="py-2.5 text-right">
+                                                <span
+                                                    className="font-semibold"
+                                                    style={{
+                                                        color:
+                                                            e.pass_rate >= 60
+                                                                ? GREEN
+                                                                : e.pass_rate >=
+                                                                    40
+                                                                  ? AMBER
+                                                                  : RED,
+                                                    }}
+                                                >
+                                                    {e.pass_rate}%
+                                                </span>
+                                            </td>
+                                            <td className="py-2.5 text-right text-muted-foreground">
+                                                {e.avg_skor_utbk !== null
+                                                    ? `${e.avg_skor_utbk}%`
+                                                    : '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </AppLayout>
