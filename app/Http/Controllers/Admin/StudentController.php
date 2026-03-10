@@ -21,6 +21,7 @@ class StudentController extends Controller
 
         $students = User::where('role', 'student')
             ->with('university', 'major', 'school')
+            ->withCount('attempts as total_exams')
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
@@ -87,7 +88,41 @@ class StudentController extends Controller
             abort(404);
         }
 
-        $attempts = $student->attempts()->with('exam')->orderByDesc('completed_at')->get();
+        $attempts = $student->attempts()
+            ->with('exam')
+            ->orderByDesc('completed_at')
+            ->get()
+            ->map(function ($attempt) use ($student) {
+                // Use irt_block_score (skor_utbk_pct) if processed
+                $skorUtbkPct = $attempt->irt_block_score;
+
+                // Passing grade from university_selections JSON, fallback to major
+                $selections   = $student->university_selections ?? [];
+                $firstMajorId = $selections[0]['majors'][0] ?? null;
+                $passingScore = $firstMajorId
+                    ? (\App\Models\Major::find($firstMajorId)?->minimum_passing_grade ?? 0)
+                    : ($student->major?->minimum_passing_grade ?? 0);
+
+                $effectiveScore = $skorUtbkPct ?? $attempt->score ?? 0;
+                $isPassed       = $attempt->status === 'submitted'
+                    ? $effectiveScore >= $passingScore
+                    : null; // null = not submitted yet
+
+                return [
+                    'id'            => $attempt->id,
+                    'status'        => $attempt->status,
+                    'skor_utbk_pct' => $skorUtbkPct !== null ? round($skorUtbkPct, 2) : null,
+                    'irt_processed' => $skorUtbkPct !== null,
+                    'passing_score' => $passingScore,
+                    'is_passed'     => $isPassed,
+                    'started_at'    => optional($attempt->started_at)->toIso8601String(),
+                    'completed_at'  => optional($attempt->completed_at)->toIso8601String(),
+                    'exam' => [
+                        'id'   => $attempt->exam->id,
+                        'name' => $attempt->exam->name,
+                    ],
+                ];
+            });
 
         return Inertia::render('admin/students/StudentShow', [
             'student' => $student->load('university', 'major', 'school'),
