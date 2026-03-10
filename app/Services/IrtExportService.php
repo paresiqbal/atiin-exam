@@ -23,7 +23,8 @@ class IrtExportService
      * Based on the example file, all blocks appear to scale to ~1000.
      * Confirm exact max values with the client if needed.
      */
-    private const MAX_SCORE = 1000.0;
+    private const MAX_SCORE     = 1000.0;
+    private const ATTIN_FORMULA = 1525.0;  // divisor for SKOR UTBK (%)
 
     public function export(Exam $exam): string
     {
@@ -208,8 +209,8 @@ class IrtExportService
             $ws->getStyle(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorUtbk) . $excelRow)
                 ->getNumberFormat()->setFormatCode('0.00');
 
-            // SKOR UTBK (%): total_skor as percentage of max possible
-            $pct = $maxTotalSkor > 0 ? round(($data['total_skor'] / ($blockCount * self::MAX_SCORE)) * 100, 2) : 0;
+            // SKOR UTBK (%): (total_skor / 1525) * 100
+            $pct = round(($skorUtbk / self::ATTIN_FORMULA) * 100, 2);
             $ws->setCellValue(
                 \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorPct) . $excelRow,
                 $pct
