@@ -425,6 +425,14 @@ class ExamController extends Controller
                 ? $adjustedScore >= $minPassing
                 : false;
 
+            $durationMinutes = null;
+            if ($attempt->started_at && $attempt->completed_at) {
+                $durationMinutes = max(
+                    0,
+                    $attempt->completed_at->diffInMinutes($attempt->started_at),
+                );
+            }
+
             return [
                 'id' => $attempt->id,
                 'score' => $displayScore,
@@ -432,6 +440,7 @@ class ExamController extends Controller
                 'irt_theta' => $thetaScore,
                 'irt_block_score' => $attempt->irt_block_score,
                 'total_score' => $totalScore,
+                'skor_utbk_pct' => $attempt->irt_block_score,
                 'adjusted_score' => (int) floor($adjustedScore),
                 'adjusted_total_score' => (int) floor($adjustedTotalScore),
                 'total_questions' => $totalQuestions,
@@ -440,6 +449,7 @@ class ExamController extends Controller
                 'is_passed' => $isPassed,
                 'status' => $attempt->status,
                 'is_frozen' => (bool) $attempt->is_frozen,
+                'duration_minutes' => $durationMinutes,
                 'started_at' => optional($attempt->started_at)->toIso8601String(),
                 'completed_at' => optional($attempt->completed_at)->toIso8601String(),
                 'student' => [

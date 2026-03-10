@@ -37,13 +37,12 @@ import type { Paginated } from '@/types/pagination';
 
 interface Attempt {
     id: number;
-    score: number;
-    total_score: number;
+    skor_utbk_pct: number | null;
+    duration_minutes?: number | null;
     adjusted_score: number;
     adjusted_total_score: number;
     total_questions: number;
     question_bank_count: number;
-    percentage: number;
     is_passed: boolean;
     started_at: string;
     completed_at: string | null;
@@ -86,6 +85,17 @@ interface Props {
         sort_dir?: SortDirection;
         per_page?: number;
     };
+}
+
+/** Format minutes into Indonesian-friendly duration string */
+function formatDuration(minutes: number): string {
+    if (minutes <= 0) return '-';
+    if (minutes > 1440) return '-';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0 && m > 0) return `${h}j ${m}m`;
+    if (h > 0) return `${h}j`;
+    return `${m}m`;
 }
 
 export default function ExamAttempts({
@@ -510,7 +520,7 @@ export default function ExamAttempts({
                                             Status Ujian
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                            Skor
+                                            Skor UTBK
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                             Waktu Pengambilan
@@ -523,54 +533,58 @@ export default function ExamAttempts({
 
                                 <tbody className="divide-y">
                                     {pageAttempts.map((attempt) => {
-                                        const rawScore = Number(
-                                            attempt.adjusted_score ??
-                                                attempt.score ??
-                                                0,
-                                        );
-                                        const totalScore = Number(
-                                            attempt.adjusted_total_score ??
-                                                attempt.total_score ??
-                                                0,
-                                        );
-                                        const percent =
-                                            totalScore > 0
-                                                ? (rawScore / totalScore) * 100
-                                                : 0;
-
-                                        const isPassed =
-                                            typeof attempt.is_passed ===
-                                            'boolean'
-                                                ? attempt.is_passed
-                                                : percent >= 60;
-
-                                        let timeTakenMinutes: number | null =
-                                            null;
-                                        if (
-                                            attempt.started_at &&
-                                            attempt.completed_at
-                                        ) {
-                                            const started = new Date(
-                                                attempt.started_at,
-                                            ).getTime();
-                                            const completed = new Date(
-                                                attempt.completed_at,
-                                            ).getTime();
-                                            timeTakenMinutes = Math.max(
-                                                0,
-                                                Math.round(
-                                                    Math.abs(
-                                                        (completed - started) /
-                                                            60000,
-                                                    ),
-                                                ),
+                                        const isPassed = Boolean(attempt.is_passed);
+                                        const skorCell = (() => {
+                                            if (
+                                                attempt.skor_utbk_pct ==
+                                                    null ||
+                                                !Number.isFinite(
+                                                    attempt.skor_utbk_pct,
+                                                )
+                                            ) {
+                                                return (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        -
+                                                    </span>
+                                                );
+                                            }
+                                            const pct = Number(
+                                                attempt.skor_utbk_pct,
                                             );
-                                        }
+                                            return (
+                                                <span
+                                                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                                                        isPassed
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-red-100 text-red-800'
+                                                    }`}
+                                                >
+                                                    {pct.toFixed(2)}%
+                                                </span>
+                                            );
+                                        })();
 
-                                        const showScore =
-                                            attempt.completed_at &&
-                                            totalScore > 0;
-
+                                        const durationCell = (() => {
+                                            const mins = attempt.duration_minutes;
+                                            if (
+                                                mins == null ||
+                                                !Number.isFinite(mins)
+                                            ) {
+                                                return (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        -
+                                                    </span>
+                                                );
+                                            }
+                                            const label = formatDuration(mins);
+                                            return label === '-'
+                                                ? (
+                                                      <span className="text-xs text-muted-foreground">
+                                                          -
+                                                      </span>
+                                                  )
+                                                : <span>{label}</span>;
+                                        })();
                                         let statusBadge = (
                                             <Badge
                                                 variant="outline"
@@ -674,37 +688,8 @@ export default function ExamAttempts({
                                                     {statusBadge}
                                                 </td>
 
-                                                <td className="px-6 py-3 text-sm">
-                                                    {showScore ? (
-                                                        <span
-                                                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                                                                isPassed
-                                                                    ? 'bg-green-100 text-green-800'
-                                                                    : 'bg-red-100 text-red-800'
-                                                            }`}
-                                                        >
-                                                            {`${rawScore}/${totalScore} (${percent.toFixed(2)}%)`}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            Belum selesai
-                                                        </span>
-                                                    )}
-                                                </td>
-
-                                                <td className="px-6 py-3 text-sm">
-                                                    {timeTakenMinutes !==
-                                                    null ? (
-                                                        <span>
-                                                            {timeTakenMinutes}{' '}
-                                                            min
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            -
-                                                        </span>
-                                                    )}
-                                                </td>
+                                                <td className="px-6 py-3">{skorCell}</td>
+                                                <td className="px-6 py-3">{durationCell}</td>
 
                                                 <td className="px-6 py-3 text-sm">
                                                     <div className="flex items-center gap-2">
