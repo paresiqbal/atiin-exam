@@ -58,20 +58,20 @@ export function AttemptQuestionList({
     }, [questions]);
 
     return (
-        <div className="overflow-x-auto rounded-lg border shadow-sm">
-            <table className="w-full text-sm">
+        <div className="rounded-lg border shadow-sm">
+            <table className="w-full table-fixed text-sm">
                 <thead className="border-b bg-accent">
                     <tr>
-                        <th className="w-12 px-2 py-2 text-left text-xs uppercase">
+                        <th className="px-2 py-2 text-left text-xs uppercase">
                             No
                         </th>
-                        <th className="px-4 py-2 text-left text-xs uppercase">
+                        <th className="px-3 py-2 text-left text-xs uppercase">
                             Soal
                         </th>
-                        <th className="w-40 px-4 py-2 text-left text-xs uppercase">
+                        <th className="px-3 py-2 text-left text-xs uppercase">
                             Tipe
                         </th>
-                        <th className="w-20 px-4 py-2 text-center text-xs uppercase">
+                        <th className="px-3 py-2 text-center text-xs uppercase">
                             Detail
                         </th>
                     </tr>
@@ -101,20 +101,20 @@ export function AttemptQuestionList({
                                     >
                                         <td className="px-2 py-3">{idx + 1}</td>
 
-                                        <td className="px-4 py-3">
+                                        <td className="px-3 py-3">
                                             <div className="flex items-start gap-2">
                                                 {q.is_correct ? (
                                                     <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
                                                 ) : (
                                                     <XCircle className="mt-0.5 h-4 w-4 text-destructive" />
                                                 )}
-                                                <p className="line-clamp-2">
+                                                <p className="line-clamp-2 break-words">
                                                     {q.cleanText}
                                                 </p>
                                             </div>
                                         </td>
 
-                                        <td className="px-4 py-3">
+                                        <td className="px-3 py-3">
                                             <Badge variant="outline">
                                                 {typeLabel(q.question_type)}
                                             </Badge>

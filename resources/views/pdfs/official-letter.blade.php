@@ -1,4 +1,3 @@
-<!-- resources/views/pdfs/official-letter.blade.php -->
 <!DOCTYPE html>
 <html>
 
@@ -13,75 +12,94 @@
             margin: 0;
             padding: 24px;
             color: #111;
+            font-size: 12px;
         }
 
+        /* ── Header ─────────────────────────────────────── */
         .header {
             text-align: center;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             border-bottom: 2px solid #111;
-            padding-bottom: 16px;
+            padding-bottom: 14px;
         }
 
         .header h1 {
-            margin: 0 0 6px 0;
-            font-size: 20px;
+            margin: 0 0 4px 0;
+            font-size: 18px;
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
 
-        .meta {
-            font-size: 12px;
+        .header .meta {
+            font-size: 11px;
             color: #555;
         }
 
+        /* ── Sections ───────────────────────────────────── */
         .section {
-            margin-top: 18px;
+            margin-top: 16px;
         }
 
         .section-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
-            margin-bottom: 8px;
-        }
-
-        .info-grid {
-            border: 1px solid #ddd;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 12px;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
             margin-bottom: 6px;
+            border-left: 3px solid #111;
+            padding-left: 7px;
         }
 
-        .info-row span:first-child {
+        /* ── Letter body ────────────────────────────────── */
+        .letter-body {
+            font-size: 12px;
+            line-height: 1.65;
+            margin-top: 10px;
+        }
+
+        .letter-body p {
+            margin: 0 0 8px 0;
+        }
+
+        /* ── Score highlight box ─────────────────────────── */
+        .score-box {
+            display: inline-block;
+            border: 1.5px solid #111;
+            border-radius: 6px;
+            padding: 8px 20px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .score-box .score-label {
+            font-size: 10px;
             color: #555;
-            width: 35%;
         }
 
+        .score-box .score-value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        /* ── Tables ─────────────────────────────────────── */
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 12px;
+            margin-top: 4px;
         }
 
         th,
         td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 7px 9px;
         }
 
         th {
             background-color: #f3f3f3;
+            font-weight: bold;
             text-align: left;
         }
 
-        td.num {
-            width: 40px;
+        td.center {
             text-align: center;
         }
 
@@ -89,248 +107,241 @@
             text-align: right;
         }
 
-        .note {
-            font-size: 12px;
-            color: #555;
-            margin-top: 14px;
-        }
-
-        .letter-body {
-            font-size: 12.5px;
-            line-height: 1.6;
-            margin-top: 12px;
-        }
-
-        .letter-body p {
-            margin: 0 0 10px 0;
-        }
-
-        .guidance-table {
-            margin-top: 8px;
-        }
-
-        .option-title {
+        .result-lulus {
+            color: #166534;
             font-weight: bold;
-            font-size: 12px;
         }
 
-        .option-list {
-            margin: 6px 0 0 0;
-            padding-left: 16px;
-            font-size: 12px;
+        .result-tl {
+            color: #991b1b;
+            font-weight: bold;
         }
 
+        /* ── Recommendation two-column ───────────────────── */
+        .rec-table td {
+            vertical-align: top;
+            width: 50%;
+        }
+
+        .rec-title {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .rec-list {
+            margin: 0;
+            padding-left: 14px;
+        }
+
+        .rec-list li {
+            margin-bottom: 3px;
+        }
+
+        .note {
+            font-size: 11px;
+            color: #666;
+            margin-top: 6px;
+        }
+
+        /* ── Signature ───────────────────────────────────── */
         .signature {
             margin-top: 28px;
             font-size: 12px;
         }
 
-        .signature-line {
-            margin-top: 6px;
-            display: flex;
-            align-items: flex-start;
-            gap: 16px;
-        }
-
-        .signature-block {
-            width: 55%;
-        }
-
         .signature-images {
             position: relative;
-            height: 120px;
-            margin-top: 6px;
+            height: 110px;
+            margin: 6px 0;
         }
 
         .signature-images img.ttd {
             position: absolute;
             left: 0;
             top: 10px;
-            width: 140px;
+            width: 130px;
         }
 
         .signature-images img.stempel {
             position: absolute;
-            left: 40px;
+            left: 35px;
             top: 0;
-            width: 120px;
+            width: 110px;
             opacity: 0.8;
         }
     </style>
 </head>
 
 <body>
+
+    {{-- ── Header ── --}}
     <div class="header">
         <h1>Surat Keterangan Hasil Ujian</h1>
         <div class="meta">{{ $exam_name }} &middot; {{ $exam_date ?? '-' }}</div>
     </div>
 
-    <div class="section">
-        <div class="letter-body">
-            <p>Yang Kami Hormati</p>
-            <p>Orang Tua/Wali dari "{{ $student_name }}"</p>
-            <p>Email Peserta : {{ $student_email }}</p>
-            <p>Nama Sekolah : {{ $school }}</p>
-            <p>Kelas : {{ $class }}</p>
-            <p>Assalamu'alaikum Warahmatullahi Wabarakatuh</p>
-            <p>
-                Segala puji bagi Allah SWT. yang telah menyambungkan silaturahim antara kami dan Bapak/Ibu
-                sekeluarga. Salam sejahtera kami sampaikan, semoga senantiasa sukses dalam menjalankan berbagai
-                aktivitas sehari-hari.
-            </p>
-            <p>
-                Dengan telah dilaksanakannya "{{ $exam_name }}" pada hari {{ $exam_date ?? '-' }}, maka kami sampaikan
-                hasilnya sebagai berikut:
-            </p>
+    {{-- ── Greeting ── --}}
+    <div class="letter-body">
+        <p>Yang Kami Hormati,</p>
+        <p>Orang Tua/Wali dari <strong>{{ $student_name }}</strong></p>
+        <p>Email Peserta &nbsp;: {{ $student_email }}<br>
+            Nama Sekolah &nbsp;: {{ $school }}<br>
+            Kelas &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: {{ $class }}</p>
+        <p><em>Assalamu'alaikum Warahmatullahi Wabarakatuh</em></p>
+        <p>
+            Segala puji bagi Allah SWT. yang telah menyambungkan silaturahim antara kami dan Bapak/Ibu
+            sekeluarga. Salam sejahtera kami sampaikan, semoga senantiasa sukses dalam menjalankan berbagai
+            aktivitas sehari-hari.
+        </p>
+        <p>
+            Dengan telah dilaksanakannya <strong>{{ $exam_name }}</strong> pada {{ $exam_date ?? '-' }},
+            maka kami sampaikan hasilnya sebagai berikut:
+        </p>
+    </div>
+
+    {{-- ── Skor UTBK highlight ── --}}
+    <div style="text-align:center; margin: 12px 0;">
+        <div class="score-box">
+            <div class="score-label">Skor UTBK</div>
+            <div class="score-value">{{ number_format($skor_utbk_pct, 2) }}</div>
+            <div class="score-label">({{ number_format($skor_utbk, 2) }} / 1.525)</div>
         </div>
     </div>
 
+    {{-- ── Block summaries ── --}}
     <div class="section">
         <div class="section-title">Rangkuman Blok Ujian</div>
         <table>
             <thead>
                 <tr>
-                    <th style="width: 40px;">No</th>
+                    <th style="width:36px;">No</th>
                     <th>Bidang Studi</th>
-                    <th style="width: 180px;">Jumlah Jawaban Benar</th>
-                    <th style="width: 160px;">Skor Siswa</th>
+                    <th style="width:170px;">Jawaban Benar</th>
+                    <th style="width:140px;">Skor Blok (/ 1000)</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($bank_summaries as $summary)
                     <tr>
-                        <td class="num">{{ $summary['index'] }}</td>
+                        <td class="center">{{ $summary['index'] }}</td>
                         <td>{{ $summary['bank_name'] }}</td>
                         <td class="right">{{ $summary['correct_count'] }} / {{ $summary['total_questions'] }}</td>
-                        <td class="right">{{ $summary['score_earned'] }} / {{ $summary['score_total'] }}</td>
+                        <td class="right">{{ number_format($summary['block_score'], 2) }}</td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4">Belum ada data blok ujian.</td>
+                        <td colspan="4" class="center">Belum ada data blok ujian.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
 
+    {{-- ── Program study choices ── --}}
     <div class="section">
         <div class="section-title">Pilihan Program Studi</div>
         <table>
             <thead>
                 <tr>
-                    <th style="width: 40px;">No</th>
-                    <th>Pilihan Universitas / Program Studi</th>
-                    <th style="width: 160px;">Minimum GPA</th>
-                    <th style="width: 140px;">Hasil</th>
+                    <th style="width:36px;">No</th>
+                    <th>Universitas / Program Studi</th>
+                    <th style="width:130px;">Skor UTBK Kamu</th>
+                    <th style="width:130px;">Minimum Skor</th>
+                    <th style="width:120px;">Hasil</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse ($selection_rows as $index => $selection)
+                @forelse ($selection_rows as $index => $row)
                     <tr>
-                        <td class="num">{{ $index + 1 }}</td>
-                        <td>{{ $selection['program'] }}</td>
-                        <td class="right">{{ $selection['minimum_grade'] }}</td>
-                        <td>{{ $selection['result'] }}</td>
+                        <td class="center">{{ $index + 1 }}</td>
+                        <td>{{ $row['program'] }}</td>
+                        <td class="right">{{ number_format($row['skor_utbk_pct'], 2) }}</td>
+                        <td class="right">{{ number_format($row['minimum_grade'], 2) }}</td>
+                        <td class="{{ $row['is_passed'] ? 'result-lulus' : 'result-tl' }}">
+                            {{ $row['result'] }}
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="4">Belum ada pilihan program studi.</td>
+                        <td colspan="5" class="center">Belum ada pilihan program studi.</td>
                     </tr>
                 @endforelse
             </tbody>
         </table>
     </div>
 
-    <div class="section">
-        <div class="section-title">Panduan Istilah</div>
-        <table class="guidance-table">
-            <thead>
-                <tr>
-                    <th style="width: 180px;">Istilah</th>
-                    <th>Keterangan</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Skor Siswa</td>
-                    <td>Nilai hasil ujian yang diperoleh peserta.</td>
-                </tr>
-                <tr>
-                    <td>Jumlah Jawaban Benar</td>
-                    <td>Total soal yang dijawab benar pada setiap blok ujian.</td>
-                </tr>
-                <tr>
-                    <td>Minimum GPA</td>
-                    <td>Ambang nilai minimal untuk dinyatakan lulus pada program studi.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="section">
-        <div class="section-title">Rekomendasi Pilihan (Maks. 5 Opsi per Kolom)</div>
-        @forelse ($selection_rows as $index => $selection)
-            <div class="note">Pilihan {{ $index + 1 }}: {{ $selection['program'] }}</div>
-            <table>
+    {{-- ── Recommendations — only if at least one selection failed ── --}}
+    @if ($any_failed)
+        <div class="section">
+            <div class="section-title">Rekomendasi Pilihan (Maks. 5 Opsi per Kolom)</div>
+            <p class="note">
+                Berdasarkan Skor UTBK kamu (<strong>{{ number_format($skor_utbk_pct, 2) }}</strong>),
+                berikut adalah pilihan program studi lain yang masih dapat kamu jangkau:
+            </p>
+            <table class="rec-table">
                 <thead>
                     <tr>
-                        <th>Based on Major Group</th>
-                        <th>PTN Group</th>
+                        <th>Jurusan Serupa (Universitas Lain)</th>
+                        <th>Jurusan Lain (Universitas yang Sama)</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td>
                             @if (count($major_group_options) > 0)
-                                <ul class="option-list">
-                                    @foreach ($major_group_options as $option)
-                                        <li>{{ $option['label'] }} (Min: {{ $option['minimum_grade'] }})</li>
+                                <ul class="rec-list">
+                                    @foreach ($major_group_options as $opt)
+                                        <li>{{ $opt['label'] }}<br>
+                                            <span style="color:#555;">Min. Skor:
+                                                {{ number_format($opt['minimum_grade'], 2) }}</span>
+                                        </li>
                                     @endforeach
                                 </ul>
                             @else
-                                <div class="note">Belum ada rekomendasi yang memenuhi kriteria.</div>
+                                <span class="note">Tidak ada rekomendasi yang memenuhi kriteria.</span>
                             @endif
                         </td>
                         <td>
                             @if (count($ptn_group_options) > 0)
-                                <ul class="option-list">
-                                    @foreach ($ptn_group_options as $option)
-                                        <li>{{ $option['label'] }} (Min: {{ $option['minimum_grade'] }})</li>
+                                <ul class="rec-list">
+                                    @foreach ($ptn_group_options as $opt)
+                                        <li>{{ $opt['label'] }}<br>
+                                            <span style="color:#555;">Min. Skor:
+                                                {{ number_format($opt['minimum_grade'], 2) }}</span>
+                                        </li>
                                     @endforeach
                                 </ul>
                             @else
-                                <div class="note">Belum ada rekomendasi yang memenuhi kriteria.</div>
+                                <span class="note">Tidak ada rekomendasi yang memenuhi kriteria.</span>
                             @endif
                         </td>
                     </tr>
                 </tbody>
             </table>
-        @empty
-            <div class="note">Belum ada rekomendasi yang memenuhi kriteria.</div>
-        @endforelse
-    </div>
+        </div>
+    @endif
 
-    <div class="letter-body">
+    {{-- ── Closing ── --}}
+    <div class="letter-body" style="margin-top:16px;">
         <p>
             Terima kasih atas kepercayaan Bapak/Ibu kepada BKB. Nurul Fikri, kami akan selalu berupaya menjaga
             kepercayaan tersebut dengan menghadirkan layanan berkualitas.
         </p>
-        <p>Wassalamu'alaikum Warahmatullahi Wabarakatuh</p>
+        <p><em>Wassalamu'alaikum Warahmatullahi Wabarakatuh</em></p>
     </div>
 
+    {{-- ── Signature ── --}}
     <div class="signature">
         <div>Manager Operational</div>
         <div>BKB. Nurul Fikri Padang</div>
-        <div class="signature-line">
-            <div class="signature-block">
-                <div class="signature-images">
-                    <img class="ttd" src="{{ public_path('assets/ttd.jpeg') }}" alt="Tanda Tangan">
-                    <img class="stempel" src="{{ public_path('assets/stempel.png') }}" alt="Stempel">
-                </div>
-                <div>Rian Eka Putra, S.Pd, M.Si</div>
-            </div>
+        <div class="signature-images">
+            <img class="ttd" src="{{ public_path('assets/ttd.jpeg') }}" alt="Tanda Tangan">
+            <img class="stempel" src="{{ public_path('assets/stempel.png') }}" alt="Stempel">
         </div>
+        <div>Rian Eka Putra, S.Pd, M.Si</div>
     </div>
+
 </body>
 
 </html>

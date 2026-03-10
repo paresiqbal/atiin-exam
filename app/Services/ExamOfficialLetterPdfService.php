@@ -10,6 +10,8 @@ use Illuminate\Support\Carbon;
 
 class ExamOfficialLetterPdfService
 {
+    private const ATTIN_FORMULA = 1525.0;
+
     public function generate(ExamAttempt $attempt)
     {
         $attempt->loadMissing([
@@ -24,122 +26,136 @@ class ExamOfficialLetterPdfService
         ]);
 
         $student = $attempt->student;
-        $exam = $attempt->exam;
+        $exam    = $attempt->exam;
 
         $sortedBanks = $exam->questionBanks
             ->sortBy(fn($bank) => $bank->pivot?->sort_order ?? 0)
             ->values();
 
+        $bankCount   = $sortedBanks->count();
+        $bankDivisor = $bankCount > 0 ? $bankCount : 1;
+
         $responsesByQuestion = $attempt->responses->keyBy('question_id');
 
+        // ── Per-bank summaries ────────────────────────────────────────────────
         $bankSummaries = $sortedBanks->map(function ($bank, $index) use ($responsesByQuestion) {
-            $questions = $bank->questions->unique('id')->values();
+            $questions    = $bank->questions->unique('id')->values();
             $correctCount = 0;
-            $earnedScore = 0;
-            $totalScore = 0;
 
             foreach ($questions as $question) {
-                $totalScore += (int) $question->points;
-                $response = $responsesByQuestion->get($question->id);
+                $response  = $responsesByQuestion->get($question->id);
                 $isCorrect = (bool) ($response?->selectedOption?->is_correct ?? false);
-
                 if ($isCorrect) {
-                    $correctCount += 1;
-                    $earnedScore += (int) $question->points;
+                    $correctCount++;
                 }
             }
 
+            $total      = $questions->count();
+            $blockScore = $total > 0 ? round(($correctCount / $total) * 1000, 2) : 0;
+
             return [
-                'index' => $index + 1,
-                'bank_name' => $bank->name ?? 'Question Bank',
-                'correct_count' => $correctCount,
-                'total_questions' => $questions->count(),
-                'score_earned' => $earnedScore,
-                'score_total' => $totalScore,
+                'index'           => $index + 1,
+                'bank_name'       => $bank->name ?? 'Bank Soal',
+                'correct_count'   => $correctCount,
+                'total_questions' => $total,
+                'block_score'     => $blockScore,   // out of 1000
             ];
         });
 
+        // ── IRT scores ────────────────────────────────────────────────────────
+        // Prefer saved irt_block_score; recalculate only if null.
+        if ($attempt->irt_block_score !== null) {
+            $skorUtbkPct = round((float) $attempt->irt_block_score, 2);
+            $totalSkor   = round($skorUtbkPct * self::ATTIN_FORMULA / 100 * $bankDivisor, 2);
+            $skorUtbk    = round($totalSkor / $bankDivisor, 2);
+        } else {
+            $totalSkor   = $bankSummaries->sum('block_score');
+            $skorUtbk    = round($totalSkor / $bankDivisor, 2);
+            $skorUtbkPct = round(($skorUtbk / self::ATTIN_FORMULA) * 100, 2);
+        }
+
+        // ── Student selections ────────────────────────────────────────────────
         [$studentSelections, $selectionFallback] = $this->buildStudentSelections($student);
 
         if (empty($studentSelections) && $selectionFallback) {
             $studentSelections[] = $selectionFallback;
         }
 
-        $bankCount = $sortedBanks->count();
-        $bankDivisor = $bankCount > 0 ? $bankCount : 1;
-        $adjustedScore = (float) ($attempt->score ?? 0) / $bankDivisor;
-
-        $selectionRows = collect($studentSelections)->map(function ($selection) use ($adjustedScore) {
+        // ── Selection rows — compare skor_utbk_pct vs minimum_passing_grade ──
+        $selectionRows = collect($studentSelections)->map(function ($selection) use ($skorUtbkPct) {
             $universityName = $selection['university']['name'] ?? '-';
-            $majorName = $selection['major']['name'] ?? '-';
-            $minimumGrade = $selection['major']['minimum_passing_grade'] ?? 0;
+            $majorName      = $selection['major']['name']      ?? '-';
+            $minimumGrade   = (float) ($selection['major']['minimum_passing_grade'] ?? 0);
+            $passed         = $skorUtbkPct >= $minimumGrade;
 
             return [
-                'program' => trim($universityName . ' - ' . $majorName),
+                'program'       => trim($universityName . ' — ' . $majorName),
                 'minimum_grade' => $minimumGrade,
-                'result' => $adjustedScore >= (float) $minimumGrade ? 'LULUS' : 'TL',
+                'skor_utbk_pct' => $skorUtbkPct,
+                'result'        => $passed ? 'LULUS' : 'TIDAK LULUS',
+                'is_passed'     => $passed,
             ];
         })->values();
 
-        $selectedMajorNames = collect($studentSelections)
-            ->pluck('major.name')
-            ->filter()
-            ->unique()
-            ->values();
-
-        $selectedUniversityId = collect($studentSelections)
-            ->pluck('university.id')
-            ->filter()
-            ->first();
-
-        if (!$selectedUniversityId && $selectionFallback) {
-            $selectedUniversityId = $selectionFallback['university']['id'] ?? null;
-        }
-
+        // ── Recommendations — only when at least one selection failed ─────────
+        // Left : same major name, different university, student qualifies
+        // Right: same university, different major, student qualifies
         $majorGroupOptions = [];
-        if ($selectedMajorNames->isNotEmpty()) {
-            $majorGroupQuery = Major::with('university')
-                ->whereIn('name', $selectedMajorNames)
-                ->where('minimum_passing_grade', '<=', $adjustedScore)
-                ->orderByDesc('minimum_passing_grade');
+        $ptnGroupOptions   = [];
+        $anyFailed         = $selectionRows->contains('is_passed', false);
 
-            if ($selectedUniversityId) {
-                $majorGroupQuery->where('university_id', '!=', $selectedUniversityId);
+        if ($anyFailed) {
+            $selectedMajorNames = collect($studentSelections)
+                ->pluck('major.name')
+                ->filter()
+                ->unique()
+                ->values();
+
+            $selectedUniversityId = collect($studentSelections)
+                ->pluck('university.id')
+                ->filter()
+                ->first();
+
+            if (!$selectedUniversityId && $selectionFallback) {
+                $selectedUniversityId = $selectionFallback['university']['id'] ?? null;
             }
 
-            $majorGroupOptions = $majorGroupQuery
-                ->limit(5)
-                ->get()
-                ->map(function (Major $major) {
-                    $university = $major->university?->name ?? '-';
-                    return [
-                        'label' => "{$major->name} - {$university}",
-                        'minimum_grade' => $major->minimum_passing_grade,
-                    ];
-                })
-                ->values()
-                ->all();
-        }
+            if ($selectedMajorNames->isNotEmpty()) {
+                $majorGroupOptions = Major::with('university')
+                    ->whereIn('name', $selectedMajorNames)
+                    ->where('minimum_passing_grade', '<=', $skorUtbkPct)
+                    ->when(
+                        $selectedUniversityId,
+                        fn($q) => $q->where('university_id', '!=', $selectedUniversityId)
+                    )
+                    ->orderByDesc('minimum_passing_grade')
+                    ->limit(5)
+                    ->get()
+                    ->map(fn(Major $m) => [
+                        'label'         => $m->name . ' — ' . ($m->university?->name ?? '-'),
+                        'minimum_grade' => $m->minimum_passing_grade,
+                    ])
+                    ->values()
+                    ->all();
+            }
 
-        $ptnGroupOptions = [];
-        if ($selectedUniversityId) {
-            $ptnGroupOptions = Major::where('university_id', $selectedUniversityId)
-                ->when(
-                    $selectedMajorNames->isNotEmpty(),
-                    fn($q) => $q->whereNotIn('name', $selectedMajorNames)
-                )
-                ->where('minimum_passing_grade', '<=', $adjustedScore)
-                ->orderByDesc('minimum_passing_grade')
-                ->limit(5)
-                ->get()
-                ->map(function (Major $major) {
-                    return [
-                        'label' => $major->name,
-                        'minimum_grade' => $major->minimum_passing_grade,
-                    ];
-                })
-                ->values()
-                ->all();
+            if ($selectedUniversityId) {
+                $ptnGroupOptions = Major::where('university_id', $selectedUniversityId)
+                    ->when(
+                        $selectedMajorNames->isNotEmpty(),
+                        fn($q) => $q->whereNotIn('name', $selectedMajorNames)
+                    )
+                    ->where('minimum_passing_grade', '<=', $skorUtbkPct)
+                    ->orderByDesc('minimum_passing_grade')
+                    ->limit(5)
+                    ->get()
+                    ->map(fn(Major $m) => [
+                        'label'         => $m->name,
+                        'minimum_grade' => $m->minimum_passing_grade,
+                    ])
+                    ->values()
+                    ->all();
+            }
         }
 
         $examDateText = $attempt->completed_at
@@ -147,17 +163,22 @@ class ExamOfficialLetterPdfService
             : null;
 
         $data = [
-            'student_name' => $student->name,
+            'student_name'  => $student->name,
             'student_email' => $student->email,
-            'school' => $student->school?->name ?? 'N/A',
-            'class' => $student->class ?? 'N/A',
+            'school'        => $student->school?->name ?? 'N/A',
+            'class'         => $student->class ?? 'N/A',
+
             'exam_name' => $exam->name,
             'exam_date' => $examDateText,
-            'score' => (int) floor($adjustedScore),
+
+            'skor_utbk'     => $skorUtbk,
+            'skor_utbk_pct' => $skorUtbkPct,
             'bank_summaries' => $bankSummaries,
-            'selection_rows' => $selectionRows,
+
+            'selection_rows'      => $selectionRows,
+            'any_failed'          => $anyFailed,
             'major_group_options' => $majorGroupOptions,
-            'ptn_group_options' => $ptnGroupOptions,
+            'ptn_group_options'   => $ptnGroupOptions,
         ];
 
         return Pdf::loadView('pdfs.official-letter', $data)
@@ -195,33 +216,33 @@ class ExamOfficialLetterPdfService
             foreach ($majors as $major) {
                 $studentSelections[] = [
                     'university' => [
-                        'id' => $university->id,
+                        'id'   => $university->id,
                         'name' => $university->name,
-                        'city' => $university->city,
+                        'city' => $university->city ?? null,
                     ],
                     'major' => [
-                        'id' => $major->id,
-                        'name' => $major->name,
+                        'id'                    => $major->id,
+                        'name'                  => $major->name,
                         'minimum_passing_grade' => $major->minimum_passing_grade,
                     ],
                 ];
             }
         }
 
-        $fallbackMajor = $student->major;
+        $fallbackMajor      = $student->major;
         $fallbackUniversity = $student->university;
-        $fallback = null;
+        $fallback           = null;
 
         if ($fallbackMajor || $fallbackUniversity) {
             $fallback = [
                 'university' => $fallbackUniversity ? [
-                    'id' => $fallbackUniversity->id,
+                    'id'   => $fallbackUniversity->id,
                     'name' => $fallbackUniversity->name,
-                    'city' => $fallbackUniversity->city,
+                    'city' => $fallbackUniversity->city ?? null,
                 ] : null,
                 'major' => $fallbackMajor ? [
-                    'id' => $fallbackMajor->id,
-                    'name' => $fallbackMajor->name,
+                    'id'                    => $fallbackMajor->id,
+                    'name'                  => $fallbackMajor->name,
                     'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
                 ] : null,
             ];
