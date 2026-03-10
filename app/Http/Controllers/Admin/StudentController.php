@@ -17,14 +17,27 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
+        $search = trim((string) $request->input('search', ''));
 
         $students = User::where('role', 'student')
             ->with('university', 'major', 'school')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhereHas('school', function ($q) use ($search) {
+                            $q->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('admin/students/StudentIndex', [
             'students' => $students,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

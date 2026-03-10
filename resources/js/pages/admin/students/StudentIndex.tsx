@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Edit2, Eye, KeyRound, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
@@ -67,6 +68,9 @@ interface Student {
 
 interface StudentPageProps extends InertiaPageProps {
     students: Paginated<Student>;
+    filters: {
+        search?: string;
+    };
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -79,15 +83,37 @@ const baseUrl = '/admin/students';
 type SchoolFilter = 'all' | number;
 
 export default function StudentIndex() {
-    const { students } = usePage<StudentPageProps>().props;
+    const { students, filters } = usePage<StudentPageProps>().props;
     const data = useMemo(() => students.data ?? [], [students.data]);
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(filters.search ?? '');
+    useEffect(() => {
+        setSearchQuery(filters.search ?? '');
+    }, [filters.search]);
+
     const [schoolFilter, setSchoolFilter] = useState<SchoolFilter>('all');
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [rowsPerPage, setRowsPerPage] = useState<number>(
         (students as Paginated<Student>).per_page ?? 10,
     );
+
+    const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const trimmedSearch = searchQuery.trim();
+
+        router.get(
+            `${baseUrl}`,
+            {
+                page: 1,
+                per_page: rowsPerPage,
+                search: trimmedSearch || undefined,
+            },
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
+    };
 
     const schoolOptions = useMemo(() => {
         const map = new Map<number, string>();
@@ -206,10 +232,15 @@ export default function StudentIndex() {
     const handleChangeRowsPerPage = (value: string) => {
         const perPage = Number(value) || 10;
         setRowsPerPage(perPage);
+        const trimmedSearch = searchQuery.trim();
 
         router.get(
             `${baseUrl}`,
-            { page: 1, per_page: perPage },
+            {
+                page: 1,
+                per_page: perPage,
+                search: trimmedSearch || undefined,
+            },
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -241,7 +272,10 @@ export default function StudentIndex() {
                 </div>
 
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
+                    <form
+                        onSubmit={handleSearchSubmit}
+                        className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2"
+                    >
                         <InputGroup className="flex-1">
                             <InputGroupAddon>
                                 <Search className="h-4 w-4 text-slate-500" />
@@ -259,7 +293,7 @@ export default function StudentIndex() {
                                 </InputGroupAddon>
                             )}
                         </InputGroup>
-                    </div>
+                    </form>
 
                     <div className="flex items-center gap-2">
                         {/* Filter by school */}
