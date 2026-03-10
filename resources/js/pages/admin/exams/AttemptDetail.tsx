@@ -1,13 +1,4 @@
 import { Head, Link } from '@inertiajs/react';
-import { useMemo } from 'react';
-
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import AppLayout from '@/layouts/app-layout';
-
-import { AttemptQuestionList } from '@/components/AttemptQuestionList';
-import { cn } from '@/lib/utils';
-import type { BreadcrumbItem } from '@/types';
 import {
     ArrowLeft,
     CheckCircle2,
@@ -15,6 +6,13 @@ import {
     FileText,
     XCircle,
 } from 'lucide-react';
+
+import { AttemptQuestionList } from '@/components/AttemptQuestionList';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
+import type { BreadcrumbItem } from '@/types';
 
 interface QuestionDetail {
     id: number;
@@ -27,12 +25,6 @@ interface QuestionDetail {
     points_earned: number;
 }
 
-interface QuestionPerformance {
-    total: number;
-    correct: number;
-    percentage: number;
-}
-
 interface Props {
     attempt: {
         id: number;
@@ -40,7 +32,6 @@ interface Props {
         total_score: number;
         irt_theta: number | null;
         irt_block_score: number | null;
-        started_at: string | null;
         completed_at: string | null;
     };
     exam: {
@@ -57,25 +48,32 @@ interface Props {
         major: { name: string | null } | null;
     };
     studentData?: {
-        university_selections: Array<{
-            university_id: string;
-            majors: string[];
-        }> | null;
         selected_university: string | null;
         selected_major: string | null;
         minimum_passing_grade: number;
     };
-    adjustedScore: number;
+    adjustedScore: number; // = irt_block_score (skor_utbk_pct) from controller
     passingScore: number;
     isPassed: boolean;
     questionDetails: QuestionDetail[];
-    questionPerformance: Record<number, QuestionPerformance>;
+    questionPerformance: Record<number, unknown>;
+}
+
+// Simple key-value row used in info sections
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+    return (
+        <div className="flex items-start justify-between gap-4 border-b py-2 last:border-0">
+            <span className="shrink-0 text-sm text-muted-foreground">
+                {label}
+            </span>
+            <span className="text-right text-sm font-medium">{value}</span>
+        </div>
+    );
 }
 
 export default function AttemptDetail({
     attempt,
     exam,
-    questionBankCount,
     student,
     studentData,
     adjustedScore,
@@ -91,280 +89,223 @@ export default function AttemptDetail({
         { title: 'Detail', href: '#' },
     ];
 
-    const displayScore = attempt.irt_block_score ?? adjustedScore;
-    const displayTotalScore = questionBankCount;
+    const irtProcessed = !!exam.irt_processed_at;
 
-    const percentage = useMemo(() => {
-        if (!displayTotalScore || displayTotalScore <= 0) return 0;
-        return (displayScore / displayTotalScore) * 100;
-    }, [displayScore, displayTotalScore]);
+    // adjustedScore is skor_utbk_pct (e.g. 42.35), passingScore is on the same scale
+    const skorUtbkPct = adjustedScore;
 
-    const timeTaken = useMemo(() => {
-        if (!attempt.started_at || !attempt.completed_at) return null;
+    const completedDate = attempt.completed_at
+        ? new Date(attempt.completed_at).toLocaleDateString('id-ID', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+          })
+        : '-';
 
-        const start = new Date(attempt.started_at);
-        const end = new Date(attempt.completed_at);
-
-        const diffMs = Math.abs(end.getTime() - start.getTime());
-        if (Number.isNaN(diffMs) || diffMs <= 0) return null;
-
-        const totalMinutes = Math.floor(diffMs / 1000 / 60);
-        const hours = Math.floor(totalMinutes / 60);
-        const minutes = totalMinutes % 60;
-
-        if (hours > 0) {
-            return `${hours}h ${minutes}m`;
-        }
-
-        return `${minutes} min`;
-    }, [attempt.started_at, attempt.completed_at]);
+    const university =
+        studentData?.selected_university ?? student.university?.name ?? '-';
+    const major = studentData?.selected_major ?? student.major?.name ?? '-';
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title={`Detail Percobaan - ${exam.name}`} />
+            <Head title={`Detail Percobaan — ${exam.name}`} />
 
-            <div className="space-y-6 p-4">
-                {/* Header */}
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="mx-auto space-y-6 p-4">
+                {/* ── Header ── */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">
+                        <h1 className="text-2xl font-bold tracking-tight">
                             Detail Percobaan
                         </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {exam.name} &mdash; {student.name}
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            {exam.name} — {student.name}
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex shrink-0 flex-wrap gap-2">
                         <Link href={`/admin/exams/${exam.id}/attempts`}>
-                            <Button variant="ghost" className="gap-2">
+                            <Button variant="ghost" size="sm" className="gap-2">
                                 <ArrowLeft className="h-4 w-4" />
-                                Kembali ke Percobaan
+                                Kembali
                             </Button>
                         </Link>
 
-                        {exam.irt_processed_at ? (
+                        {irtProcessed && (
                             <>
                                 <a
                                     href={`/admin/attempts/${attempt.id}/download-pdf`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex"
                                 >
                                     <Button
                                         variant="outline"
+                                        size="sm"
                                         className="gap-2"
-                                        type="button"
                                     >
                                         <Download className="h-4 w-4" />
                                         Unduh PDF
                                     </Button>
                                 </a>
-
                                 <a
                                     href={`/admin/attempts/${attempt.id}/download-letter`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex"
                                 >
                                     <Button
                                         variant="outline"
+                                        size="sm"
                                         className="gap-2"
-                                        type="button"
                                     >
                                         <FileText className="h-4 w-4" />
                                         Unduh Surat
                                     </Button>
                                 </a>
                             </>
-                        ) : null}
+                        )}
                     </div>
                 </div>
 
-                {/* Top Summary Card */}
-                <Card
+                {/* ── Result Banner ── */}
+                <div
                     className={cn(
-                        'overflow-hidden border-2',
+                        'flex flex-col gap-6 rounded-xl border-2 p-6 md:flex-row md:items-center',
                         isPassed
-                            ? 'border-green-500/20 bg-green-500/5'
-                            : 'border-destructive/20 bg-destructive/5',
+                            ? 'border-green-500/30 bg-green-500/5'
+                            : 'border-red-500/30 bg-red-500/5',
                     )}
                 >
-                    <CardContent className="space-y-6 p-6 md:p-8">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background shadow">
-                                    {isPassed ? (
-                                        <CheckCircle2 className="h-10 w-10 text-green-600" />
-                                    ) : (
-                                        <XCircle className="h-10 w-10 text-destructive" />
-                                    )}
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium text-muted-foreground uppercase">
-                                        Hasil Keseluruhan
-                                    </p>
-                                    <p
-                                        className={cn(
-                                            'text-2xl font-bold',
-                                            isPassed
-                                                ? 'text-green-700'
-                                                : 'text-destructive',
-                                        )}
-                                    >
-                                        {isPassed ? 'LULUS' : 'GAGAL'}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Completed on{' '}
-                                        {attempt.completed_at
-                                            ? new Date(
-                                                  attempt.completed_at,
-                                              ).toLocaleString()
-                                            : '-'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3 text-right md:grid-cols-3 md:text-left">
-                                <div className="rounded-lg border bg-background px-4 py-3 text-left">
-                                    <p className="text-xs font-medium text-muted-foreground">
-                                        Skor
-                                    </p>
-                                    <p className="text-xl font-bold">
-                                        {Math.floor(displayScore)}{' '}
-                                        <span className="text-sm font-normal text-muted-foreground">
-                                            / {Math.floor(displayTotalScore)}
-                                        </span>
-                                    </p>
-                                </div>
-
-                                <div className="rounded-lg border bg-background px-4 py-3 text-left">
-                                    <p className="text-xs font-medium text-muted-foreground">
-                                        Persentase
-                                    </p>
-                                    <p
-                                        className={cn(
-                                            'text-xl font-bold',
-                                            isPassed
-                                                ? 'text-green-600'
-                                                : 'text-destructive',
-                                        )}
-                                    >
-                                        {percentage.toFixed(2)}%
-                                    </p>
-                                </div>
-
-                                <div className="rounded-lg border bg-background px-4 py-3 text-left">
-                                    <p className="text-xs font-medium text-muted-foreground">
-                                        Passing Grade
-                                    </p>
-                                    <p className="text-xl font-bold">
-                                        {passingScore}
-                                    </p>
-                                </div>
-
-                                {timeTaken && (
-                                    <div className="rounded-lg border bg-background px-4 py-3 text-left md:col-span-3">
-                                        <p className="text-xs font-medium text-muted-foreground">
-                                            Waktu yang Dihabiskan
-                                        </p>
-                                        <p className="text-xl font-bold">
-                                            {timeTaken}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Student Info + Exam Info */}
-                <div className="grid gap-4 md:grid-cols-2">
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Informasi Siswa
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                            <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">
-                                    Nama
-                                </span>
-                                <span className="font-medium">
-                                    {student.name}
-                                </span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">
-                                    Email
-                                </span>
-                                <span className="font-medium">
-                                    {student.email}
-                                </span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">
-                                    Universitas
-                                </span>
-                                <span className="font-medium">
-                                    {studentData?.selected_university ??
-                                        student.university?.name ??
-                                        '-'}
-                                </span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">
-                                    Program Studi
-                                </span>
-                                <span className="font-medium">
-                                    {studentData?.selected_major ??
-                                        student.major?.name ??
-                                        '-'}
-                                </span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">
-                                    Nilai Kelulusan
-                                </span>
-                                <span className="font-medium">
-                                    {passingScore}
-                                </span>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Informasi Ujian
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm">
-                            <div className="flex justify-between gap-4">
-                                <span className="text-muted-foreground">
-                                    Ujian
-                                </span>
-                                <span className="font-medium">{exam.name}</span>
-                            </div>
-                            {exam.description && (
-                                <div className="pt-2 text-xs text-muted-foreground">
-                                    {exam.description}
-                                </div>
+                    {/* Status icon + label */}
+                    <div className="flex shrink-0 items-center gap-4">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-background shadow-sm">
+                            {isPassed ? (
+                                <CheckCircle2 className="h-8 w-8 text-green-600" />
+                            ) : (
+                                <XCircle className="h-8 w-8 text-red-500" />
                             )}
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                Hasil
+                            </p>
+                            <p
+                                className={cn(
+                                    'text-3xl font-bold',
+                                    isPassed
+                                        ? 'text-green-700'
+                                        : 'text-red-600',
+                                )}
+                            >
+                                {isPassed ? 'LULUS' : 'TIDAK LULUS'}
+                            </p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                Diselesaikan: {completedDate}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Score stats */}
+                    <div className="flex flex-wrap gap-3 md:ml-auto">
+                        <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
+                            <p className="mb-1 text-xs font-medium text-muted-foreground">
+                                Skor UTBK
+                            </p>
+                            <p className="text-2xl font-bold">
+                                {irtProcessed ? (
+                                    skorUtbkPct.toFixed(2)
+                                ) : (
+                                    <span className="text-base text-muted-foreground">
+                                        Belum diproses
+                                    </span>
+                                )}
+                            </p>
+                        </div>
+
+                        <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
+                            <p className="mb-1 text-xs font-medium text-muted-foreground">
+                                Passing Grade
+                            </p>
+                            <p className="text-2xl font-bold">{passingScore}</p>
+                        </div>
+
+                        {attempt.irt_theta !== null && irtProcessed && (
+                            <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
+                                <p className="mb-1 text-xs font-medium text-muted-foreground">
+                                    Theta (IRT)
+                                </p>
+                                <p className="text-2xl font-bold">
+                                    {Number(attempt.irt_theta).toFixed(3)}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── Info Grid ── */}
+                <div className="grid gap-6 md:grid-cols-2">
+                    {/* Student info — plain section, no card */}
+                    <div>
+                        <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                            Informasi Siswa
+                        </p>
+                        <div className="divide-y overflow-hidden rounded-lg border px-5">
+                            <InfoRow label="Nama" value={student.name} />
+                            <InfoRow label="Email" value={student.email} />
+                            <InfoRow label="Universitas" value={university} />
+                            <InfoRow label="Program Studi" value={major} />
+                            <InfoRow
+                                label="Passing Grade"
+                                value={passingScore}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Exam info */}
+                    <div>
+                        <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                            Informasi Ujian
+                        </p>
+                        <div className="divide-y overflow-hidden rounded-lg border px-5">
+                            <InfoRow label="Nama Ujian" value={exam.name} />
+                            <InfoRow
+                                label="Diselesaikan"
+                                value={completedDate}
+                            />
+                            <InfoRow
+                                label="Status IRT"
+                                value={
+                                    irtProcessed ? (
+                                        <span className="font-semibold text-green-600">
+                                            Sudah Diproses
+                                        </span>
+                                    ) : (
+                                        <span className="font-semibold text-amber-600">
+                                            Belum Diproses
+                                        </span>
+                                    )
+                                }
+                            />
+                            {exam.description && (
+                                <InfoRow
+                                    label="Deskripsi"
+                                    value={exam.description}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── Question Breakdown ── */}
+                <div>
+                    <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        Rincian Jawaban
+                    </p>
+                    <Card>
+                        <CardContent className="p-0">
+                            <AttemptQuestionList questions={questionDetails} />
                         </CardContent>
                     </Card>
                 </div>
-
-                {/* Question Breakdown */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Rincian Pertanyaan</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <AttemptQuestionList questions={questionDetails} />
-                    </CardContent>
-                </Card>
             </div>
         </AppLayout>
     );
