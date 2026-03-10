@@ -198,6 +198,8 @@ Route::middleware(['auth', 'role:student'])
         // Student Card
         Route::get('/card', [StudentCardController::class, 'show'])->name('student.card.show');
         Route::post('/card/photo', [StudentCardController::class, 'uploadPhoto'])->name('student.card.photo');
+        Route::get('/student-photo/{filename}', [StudentCardController::class, 'servePhoto'])
+            ->name('photo');
 
         // PRO-only pages
         Route::middleware(['pro'])->group(function () {
