@@ -38,7 +38,6 @@ import type { Paginated } from '@/types/pagination';
 interface Attempt {
     id: number;
     skor_utbk_pct: number | null;
-    duration_minutes?: number | null;
     adjusted_score: number;
     adjusted_total_score: number;
     total_questions: number;
@@ -85,17 +84,6 @@ interface Props {
         sort_dir?: SortDirection;
         per_page?: number;
     };
-}
-
-/** Format minutes into Indonesian-friendly duration string */
-function formatDuration(minutes: number): string {
-    if (minutes <= 0) return '-';
-    if (minutes > 1440) return '-';
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h > 0 && m > 0) return `${h}j ${m}m`;
-    if (h > 0) return `${h}j`;
-    return `${m}m`;
 }
 
 export default function ExamAttempts({
@@ -523,9 +511,6 @@ export default function ExamAttempts({
                                             Skor UTBK
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                            Waktu Pengambilan
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                             Aksi
                                         </th>
                                     </tr>
@@ -564,27 +549,6 @@ export default function ExamAttempts({
                                             );
                                         })();
 
-                                        const durationCell = (() => {
-                                            const mins = attempt.duration_minutes;
-                                            if (
-                                                mins == null ||
-                                                !Number.isFinite(mins)
-                                            ) {
-                                                return (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        -
-                                                    </span>
-                                                );
-                                            }
-                                            const label = formatDuration(mins);
-                                            return label === '-'
-                                                ? (
-                                                      <span className="text-xs text-muted-foreground">
-                                                          -
-                                                      </span>
-                                                  )
-                                                : <span>{label}</span>;
-                                        })();
                                         let statusBadge = (
                                             <Badge
                                                 variant="outline"
@@ -689,7 +653,6 @@ export default function ExamAttempts({
                                                 </td>
 
                                                 <td className="px-6 py-3">{skorCell}</td>
-                                                <td className="px-6 py-3">{durationCell}</td>
 
                                                 <td className="px-6 py-3 text-sm">
                                                     <div className="flex items-center gap-2">
