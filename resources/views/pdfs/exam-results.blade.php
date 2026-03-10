@@ -45,7 +45,8 @@
         }
 
         .student-info-row strong {
-            width: 25%;
+            width: 35%;
+            color: #444;
         }
 
         .score-section {
@@ -58,15 +59,49 @@
         }
 
         .score-section h2 {
-            margin: 0;
+            margin: 0 0 6px 0;
             color: {{ $is_passed ? '#28a745' : '#dc3545' }};
-            font-size: 32px;
+            font-size: 28px;
+            letter-spacing: 2px;
         }
 
-        .score-section p {
-            margin: 10px 0 0 0;
-            color: #333;
-            font-size: 14px;
+        .score-main {
+            font-size: 22px;
+            margin: 8px 0 4px 0;
+            color: #222;
+        }
+
+        .score-sub {
+            font-size: 13px;
+            color: #555;
+            margin: 4px 0;
+        }
+
+        .score-grid {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 12px;
+        }
+
+        .score-box {
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 6px;
+            padding: 8px 18px;
+            min-width: 120px;
+        }
+
+        .score-box .label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .score-box .value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #222;
         }
 
         .questions-section {
@@ -184,120 +219,145 @@
 </head>
 
 <body>
+    {{-- Header --}}
     <div class="header">
-        <h1>Exam Results</h1>
+        <h1>Hasil Ujian</h1>
         <p>{{ $exam_name }}</p>
-        <p>Date: {{ $exam_date }}</p>
+        <p>Tanggal: {{ $exam_date }}</p>
     </div>
 
+    {{-- Student Info --}}
     <div class="student-info">
         <div class="student-info-row">
-            <strong>Student Name:</strong>
+            <strong>Nama Siswa</strong>
             <span>{{ $student_name }}</span>
         </div>
         <div class="student-info-row">
-            <strong>Email:</strong>
+            <strong>Email</strong>
             <span>{{ $student_email }}</span>
         </div>
         <div class="student-info-row">
-            <strong>University/Major:</strong>
-            <span>{{ $university }} - {{ $major }}</span>
+            <strong>Universitas</strong>
+            <span>{{ $university }}</span>
         </div>
         <div class="student-info-row">
-            <strong>School/Class:</strong>
-            <span>{{ $school }} - {{ $class }}</span>
+            <strong>Jurusan</strong>
+            <span>{{ $major }}</span>
+        </div>
+        <div class="student-info-row">
+            <strong>Nilai Minimum Jurusan</strong>
+            <span>{{ $major_min_gpa }}%</span>
+        </div>
+        <div class="student-info-row">
+            <strong>Sekolah / Kelas</strong>
+            <span>{{ $school }} — {{ $class }}</span>
         </div>
     </div>
 
+    {{-- Score summary --}}
     <div class="score-section">
         <h2>{{ $status }}</h2>
-        <div style="font-size: 24px; margin: 10px 0;">
-            <strong>{{ $score }} / {{ $total_score }}</strong> ({{ $percentage }}%)
+
+        <div class="score-grid">
+            <div class="score-box">
+                <div class="label">Skor UTBK</div>
+                <div class="value">{{ number_format($skor_utbk, 2) }}</div>
+            </div>
+            <div class="score-box">
+                <div class="label">Skor UTBK (%)</div>
+                <div class="value">{{ number_format($skor_utbk_pct, 2) }}%</div>
+            </div>
+            <div class="score-box">
+                <div class="label">Nilai Minimum</div>
+                <div class="value">{{ $passing_score }}%</div>
+            </div>
+            @if ($theta !== null)
+                <div class="score-box">
+                    <div class="label">Kemampuan IRT (θ)</div>
+                    <div class="value">{{ $theta }}</div>
+                </div>
+            @endif
         </div>
-        <p>Passing Grade Required: {{ $passing_score }}</p>
     </div>
 
+    {{-- Subtest score table --}}
     <div class="questions-section">
-        <h3>Subtest Scores</h3>
-        @php
-            $totalEarned = 0;
-            $totalPossible = 0;
-            $bankDivisor = count($question_sections) > 0 ? count($question_sections) : 1;
-        @endphp
+        <h3>Skor Per Subtes</h3>
         <table class="subtest-table">
             <thead>
                 <tr>
-                    <th style="width: 40px;">NO</th>
-                    <th>SUBTES</th>
-                    <th style="width: 120px; text-align: right;">SKOR</th>
+                    <th style="width:40px;">No</th>
+                    <th>Subtes</th>
+                    <th style="width:80px; text-align:center;">Benar</th>
+                    <th style="width:80px; text-align:center;">Total Soal</th>
+                    <th style="width:120px; text-align:right;">Skor Blok</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($question_sections as $section)
-                    @php
-                        $sectionEarned = collect($section['questions'])->sum('points_earned');
-                        $sectionPossible = collect($section['questions'])->sum('points');
-                        $totalEarned += $sectionEarned;
-                        $totalPossible += $sectionPossible;
-                    @endphp
                     <tr>
                         <td class="num">{{ $section['bank_index'] }}</td>
                         <td>{{ $section['bank_name'] }}</td>
-                        <td class="score">{{ $sectionEarned }} / {{ $sectionPossible }}</td>
+                        <td style="text-align:center;">{{ $section['correct'] }}</td>
+                        <td style="text-align:center;">{{ $section['total'] }}</td>
+                        <td class="score">{{ number_format($section['block_score'], 2) }}</td>
                     </tr>
                 @endforeach
-                <tr>
-                    <th colspan="2" style="text-align: right;">TOTAL</th>
-                    <th style="text-align: right;">
-                        {{ (int) floor($totalEarned / $bankDivisor) }} / {{ (int) floor($totalPossible / $bankDivisor) }}
-                    </th>
+                <tr style="background:#f0f0f0;">
+                    <th colspan="4" style="text-align:right;">Total Skor</th>
+                    <th style="text-align:right;">{{ number_format($total_skor, 2) }}</th>
+                </tr>
+                <tr style="background:#e8f4fd;">
+                    <th colspan="4" style="text-align:right;">Skor UTBK</th>
+                    <th style="text-align:right;">{{ number_format($skor_utbk, 2) }}</th>
+                </tr>
+                <tr style="background:#e8f4fd;">
+                    <th colspan="4" style="text-align:right;">Skor UTBK (%)</th>
+                    <th style="text-align:right;">{{ number_format($skor_utbk_pct, 2) }}%</th>
                 </tr>
             </tbody>
         </table>
     </div>
 
+    {{-- Question breakdown --}}
     <div class="questions-section">
-        <h3>Question Breakdown</h3>
+        <h3>Rincian Jawaban</h3>
         @foreach ($question_sections as $section)
             <div class="bank-section">
                 <div class="bank-title">
-                    Block {{ $section['bank_index'] }}: {{ $section['bank_name'] }}
+                    Blok {{ $section['bank_index'] }}: {{ $section['bank_name'] }}
                 </div>
                 @foreach ($section['questions'] as $index => $question)
                     <div class="question-item">
                         <div class="question-header">
                             <div>
-                                <div class="question-text">Question {{ $index + 1 }}</div>
-
-                                {{-- Render question text as HTML --}}
-                                <div>
-                                    {!! $question['question_text'] !!}
-                                </div>
+                                <div class="question-text">Soal {{ $index + 1 }}</div>
+                                <div>{!! $question['question_text'] !!}</div>
                             </div>
-                            <div style="text-align: right;">
+                            <div style="text-align:right;">
                                 <span class="question-type">
                                     {{ ucfirst(str_replace('_', ' ', $question['question_type'])) }}
                                 </span>
                                 <span class="points-badge">
-                                    {{ $question['points_earned'] }}/{{ $question['points'] }} pts
+                                    {{ $question['points_earned'] }}/{{ $question['points'] }} poin
                                 </span>
                             </div>
                         </div>
 
-                        {{-- Student Answer --}}
+                        {{-- Student answer --}}
                         <div class="answer-row {{ $question['is_correct'] ? 'correct' : 'incorrect' }}">
-                            <span class="answer-label">Your Answer:</span>
+                            <span class="answer-label">Jawaban Anda:</span>
                             @if (!empty($question['student_answer']))
                                 {!! $question['student_answer'] !!}
                             @else
-                                Not answered
+                                Tidak dijawab
                             @endif
                         </div>
 
-                        {{-- Correct Answer (only when wrong) --}}
+                        {{-- Correct answer (only when wrong) --}}
                         @if (!$question['is_correct'])
                             <div class="answer-row correct">
-                                <span class="answer-label">Correct Answer:</span>
+                                <span class="answer-label">Jawaban Benar:</span>
                                 {!! $question['correct_answer'] !!}
                             </div>
                         @endif
@@ -307,9 +367,8 @@
         @endforeach
     </div>
 
-
     <div class="footer">
-        <p>This document was generated on {{ now()->format('Y-m-d H:i:s') }}</p>
+        <p>Dokumen ini dibuat secara otomatis pada {{ now()->format('d-m-Y H:i:s') }}</p>
     </div>
 </body>
 
