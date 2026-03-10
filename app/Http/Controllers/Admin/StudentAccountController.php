@@ -49,6 +49,14 @@ class StudentAccountController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
+        $students->getCollection()->transform(function ($student) {
+            $student->pro_expires_at = $student->pro_expires_at
+                ? $student->pro_expires_at->toIsoString()
+                : null;
+
+            return $student;
+        });
+
         $schools = School::orderBy('name')->get(['id', 'name']);
         $classes = User::where('role', 'student')
             ->whereNotNull('class')
