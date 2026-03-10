@@ -7,6 +7,7 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\School;
 use App\Models\User;
+use App\Services\IrtExportService;
 use App\Services\IrtRaschService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -73,6 +74,21 @@ class IrtController extends Controller
             ],
             'hasIrtProcessedAt' => $hasIrtProcessedAt,
         ]);
+    }
+
+    // ── NEW: Export results as Excel ─────────────────────────────────────────
+    public function export(Exam $exam)
+    {
+        if (! $exam->irt_processed_at) {
+            return back()->with('error', 'IRT belum diproses untuk ujian ini.');
+        }
+
+        $path     = (new IrtExportService())->export($exam);
+        $filename = 'IRT_Hasil_' . str_replace(' ', '_', $exam->name) . '.xlsx';
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     public function process(Request $request, Exam $exam)

@@ -21,7 +21,7 @@ class IrtRaschService
         ]);
 
         $questions = $exam->questionBanks
-            ->flatMap(fn ($bank) => $bank->questions->sortBy('id'))
+            ->flatMap(fn($bank) => $bank->questions->sortBy('id'))
             ->unique('id')
             ->values();
 
@@ -31,10 +31,10 @@ class IrtRaschService
         $attempts = $attemptsOverride
             ? $attemptsOverride->loadMissing(['responses.selectedOption'])->values()
             : $exam->attempts()
-                ->where('status', 'submitted')
-                ->with(['responses.selectedOption'])
-                ->get()
-                ->values();
+            ->where('status', 'submitted')
+            ->with(['responses.selectedOption'])
+            ->get()
+            ->values();
 
         if ($questions->isEmpty()) {
             return [
@@ -193,7 +193,7 @@ class IrtRaschService
         }
 
         foreach ($attempts as $index => $attempt) {
-            $score = $attempt->responses->sum(fn ($r) => $r->selectedOption?->is_correct ? 1 : 0);
+            $score = $attempt->responses->sum(fn($r) => $r->selectedOption?->is_correct ? 1 : 0);
             $blockScore = $questionBankCount > 0 ? $score / $questionBankCount : 0;
 
             $attempt->update([
@@ -208,7 +208,7 @@ class IrtRaschService
     private function probCorrect(float $theta, float $b): float
     {
         // Rasch model: P(correct | θ, b) = 1 / (1 + exp(-(θ - b)))
-        return 1.0 / (1.0 + exp(-($theta - $b)));
+        return 1.0 / (1.0 + exp(- ($theta - $b)));
     }
 
     private function clamp(float $value, float $min, float $max): float

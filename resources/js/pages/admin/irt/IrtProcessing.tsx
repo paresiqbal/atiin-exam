@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { RefreshCw, Search } from 'lucide-react';
+import { Download, RefreshCw, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -371,23 +371,39 @@ export default function IrtProcessing({
                                             </td>
                                             <td className="px-4 py-3">
                                                 {processed ? (
-                                                    // Already processed → show Reprocess button
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        disabled={isProcessing}
-                                                        onClick={() =>
-                                                            handleProcess(
-                                                                exam,
-                                                                true,
-                                                            )
-                                                        }
-                                                    >
-                                                        <RefreshCw className="mr-1 h-3 w-3" />
-                                                        {isProcessing
-                                                            ? 'Processing…'
-                                                            : 'Reprocess'}
-                                                    </Button>
+                                                    // Already processed → Reprocess + Export
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            disabled={
+                                                                isProcessing
+                                                            }
+                                                            onClick={() =>
+                                                                handleProcess(
+                                                                    exam,
+                                                                    true,
+                                                                )
+                                                            }
+                                                        >
+                                                            <RefreshCw className="mr-1 h-3 w-3" />
+                                                            {isProcessing
+                                                                ? 'Processing…'
+                                                                : 'Reprocess'}
+                                                        </Button>
+                                                        <a
+                                                            href={`/admin/irt/export/${exam.id}`}
+                                                            download
+                                                        >
+                                                            <Button
+                                                                size="sm"
+                                                                variant="default"
+                                                            >
+                                                                <Download className="mr-1 h-3 w-3" />
+                                                                Export
+                                                            </Button>
+                                                        </a>
+                                                    </div>
                                                 ) : (
                                                     // Not yet processed → normal Process button
                                                     <Button

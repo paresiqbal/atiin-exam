@@ -96,10 +96,11 @@ Route::middleware(['auth', 'verified', 'role:admin'])
 
         // IRT processing routes
         Route::prefix('irt')->group(function () {
-            Route::get('/', [IrtController::class, 'index'])->name('irt.index');
-            Route::post('/process/{exam}', [IrtController::class, 'process'])->name('irt.process');
-            Route::post('/run-bulk', [IrtController::class, 'runBulkIrt'])->name('irt.run-bulk');
-            Route::post('/process-multiple', [IrtController::class, 'processMultiple'])->name('irt.process-multiple');
+            Route::get('/',                    [IrtController::class, 'index'])->name('irt.index');
+            Route::post('/process/{exam}',     [IrtController::class, 'process'])->name('irt.process');
+            Route::post('/run-bulk',           [IrtController::class, 'runBulkIrt'])->name('irt.run-bulk');
+            Route::post('/process-multiple',   [IrtController::class, 'processMultiple'])->name('irt.process-multiple');
+            Route::get('/export/{exam}',       [IrtController::class, 'export'])->name('irt.export'); // ← NEW
         });
 
         // Major management routes
