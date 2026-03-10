@@ -148,6 +148,13 @@ export default function PaymentIndex() {
     const { students, schools, classes, filters, stats } =
         usePage<AccountsPageProps>().props;
     const data = useMemo(() => students.data ?? [], [students.data]);
+    const availableClasses = useMemo(
+        () =>
+            classes
+                .map((cls) => cls.trim())
+                .filter((cls): cls is string => cls !== ''),
+        [classes],
+    );
 
     const [search, setSearch] = useState(filters?.search ?? '');
     const [accountType, setAccountType] = useState<string>(
@@ -330,7 +337,7 @@ export default function PaymentIndex() {
                                     <SelectItem value="all">
                                         Semua Kelas
                                     </SelectItem>
-                                    {classes.map((cls) => (
+                                    {availableClasses.map((cls) => (
                                         <SelectItem key={cls} value={cls}>
                                             {cls}
                                         </SelectItem>
