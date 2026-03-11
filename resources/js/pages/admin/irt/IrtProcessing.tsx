@@ -386,7 +386,13 @@ export default function IrtProcessing({
                                                                 )
                                                             }
                                                         >
-                                                            <RefreshCw className="mr-1 h-3 w-3" />
+                                                        <RefreshCw
+                                                            className={`mr-1 h-3 w-3 ${
+                                                                isProcessing
+                                                                    ? 'animate-spin'
+                                                                    : ''
+                                                            }`}
+                                                        />
                                                             {isProcessing
                                                                 ? 'Processing…'
                                                                 : 'Reprocess'}
