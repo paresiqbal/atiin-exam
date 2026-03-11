@@ -34,6 +34,13 @@ class QuestionImportController extends Controller
                 ], 400);
             }
 
+            $columnIndexes = $this->detectColumnIndexes($header);
+            $questionTextIndex = $this->resolveColumnIndex($columnIndexes, 'question_text', 0);
+            $questionTypeIndex = $this->resolveColumnIndex($columnIndexes, 'question_type', 1);
+            $pointsIndex = $this->resolveColumnIndex($columnIndexes, 'points', 2);
+            $imageUrlIndex = $this->resolveColumnIndex($columnIndexes, 'image_url', 3);
+            $optionsIndex = $this->resolveColumnIndex($columnIndexes, 'options', 4);
+
             $preview = [];
             $errors = [];
             $rowNum = 1;
@@ -47,11 +54,11 @@ class QuestionImportController extends Controller
 
                 try {
                     $item = [
-                        'question_text' => $row[0] ?? null,
-                        'question_type' => $row[1] ?? null,
-                        'points' => $row[2] ?? null,
-                        'image_url' => $row[3] ?? null,
-                        'options' => $this->parseOptions($row, 4),
+                        'question_text' => $row[$questionTextIndex] ?? null,
+                        'question_type' => $row[$questionTypeIndex] ?? null,
+                        'points' => $row[$pointsIndex] ?? null,
+                        'image_url' => $row[$imageUrlIndex] ?? null,
+                        'options' => $this->parseOptions($row, $optionsIndex),
                     ];
 
                     $this->validateQuestion($item, $rowNum, $errors);
@@ -96,6 +103,13 @@ class QuestionImportController extends Controller
                 return back()->withErrors(['file' => 'File is empty.']);
             }
 
+            $columnIndexes = $this->detectColumnIndexes($header);
+            $questionTextIndex = $this->resolveColumnIndex($columnIndexes, 'question_text', 0);
+            $questionTypeIndex = $this->resolveColumnIndex($columnIndexes, 'question_type', 1);
+            $pointsIndex = $this->resolveColumnIndex($columnIndexes, 'points', 2);
+            $imageUrlIndex = $this->resolveColumnIndex($columnIndexes, 'image_url', 3);
+            $optionsIndex = $this->resolveColumnIndex($columnIndexes, 'options', 4);
+
             $created = 0;
             $failed = 0;
             $errors = [];
@@ -109,10 +123,10 @@ class QuestionImportController extends Controller
                 }
 
                 try {
-                    $question_text = $row[0] ?? null;
-                    $question_type = $row[1] ?? null;
-                    $points = (int)($row[2] ?? 0);
-                    $image_url = $row[3] ?? null;
+                    $question_text = $row[$questionTextIndex] ?? null;
+                    $question_type = $row[$questionTypeIndex] ?? null;
+                    $points = (int)($row[$pointsIndex] ?? 0);
+                    $image_url = $row[$imageUrlIndex] ?? null;
 
                     if (empty($question_text)) {
                         throw new \Exception('Question text is required');
@@ -126,7 +140,7 @@ class QuestionImportController extends Controller
                         throw new \Exception('Points must be between 1-45');
                     }
 
-                    $options = $this->parseOptions($row, 4);
+                    $options = $this->parseOptions($row, $optionsIndex);
 
                     if (empty($options) || count($options) < 2) {
                         throw new \Exception('At least 2 options are required');
@@ -234,11 +248,17 @@ class QuestionImportController extends Controller
 
     public function downloadTemplate()
     {
-        $headers = ['Question Text', 'Type', 'Points', 'Image URL', 'Options (use | to separate, * for correct)'];
+        $headers = [
+            'Question Text / Teks Soal',
+            'Type / Tipe',
+            'Points / Poin',
+            'Image URL / URL Gambar',
+            'Options (use | to separate, * for correct / gunakan | untuk memisahkan, * untuk jawaban benar)',
+        ];
         $rows = [
-            ['What is 2+2?', 'multiple_choice', '5', '', '*4|3|5|6'],
-            ['Is the sky blue?', 'true_false', '3', '', '*Yes|No'],
-            ['Which are fruits?', 'multiple_select', '10', '', '*Apple|Carrot|*Banana|Broccoli'],
+            ['Berapa hasil 2+2?', 'multiple_choice', '5', '', '*4|3|5|6'],
+            ['Apakah langit berwarna biru?', 'true_false', '3', '', '*Ya|Tidak'],
+            ['Mana yang merupakan buah-buahan?', 'multiple_select', '10', '', '*Apel|Wortel|*Pisang|Brokoli'],
         ];
 
         $filename = 'questions_import_template.csv';
@@ -256,5 +276,43 @@ class QuestionImportController extends Controller
         return response($csv)
             ->header('Content-Type', 'text/csv')
             ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
+    }
+
+    private function detectColumnIndexes(array $header): array
+    {
+        $aliases = [
+            'question_text' => ['question text', 'question_text', 'teks soal', 'soal', 'pertanyaan', 'pertanyaan teks'],
+            'question_type' => ['type', 'question type', 'question_type', 'tipe', 'jenis'],
+            'points' => ['points', 'point', 'poin', 'nilai', 'skor'],
+            'image_url' => ['image url', 'image_url', 'url gambar', 'gambar', 'gambar url', 'url image'],
+            'options' => [
+                'options (use | to separate, * for correct)',
+                'options',
+                'pilihan',
+                'opsi',
+                'choices',
+                'jawaban',
+                'option',
+            ],
+        ];
+
+        $normalizedHeader = array_map(fn($value) => strtolower(trim((string)$value)), $header);
+        $indexes = [];
+
+        foreach ($aliases as $key => $names) {
+            foreach ($normalizedHeader as $idx => $value) {
+                if (in_array($value, $names, true)) {
+                    $indexes[$key] = $idx;
+                    break;
+                }
+            }
+        }
+
+        return $indexes;
+    }
+
+    private function resolveColumnIndex(array $indexes, string $key, int $default): int
+    {
+        return $indexes[$key] ?? $default;
     }
 }
