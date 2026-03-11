@@ -9,6 +9,7 @@ import { type FormEvent } from 'react';
 
 interface Props {
     exam_auto_freeze: boolean;
+    exam_allow_multiple_attempts: boolean;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -18,9 +19,13 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-export default function ExamSettings({ exam_auto_freeze }: Props) {
+export default function ExamSettings({
+    exam_auto_freeze,
+    exam_allow_multiple_attempts,
+}: Props) {
     const { data, setData, put, processing, recentlySuccessful } = useForm({
         exam_auto_freeze,
+        exam_allow_multiple_attempts,
     });
 
     const handleSubmit = (event: FormEvent) => {
@@ -42,28 +47,58 @@ export default function ExamSettings({ exam_auto_freeze }: Props) {
                     />
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="flex items-start gap-3 rounded-lg border p-4">
-                            <Checkbox
-                                id="exam_auto_freeze"
-                                checked={data.exam_auto_freeze}
-                                onCheckedChange={(checked) =>
-                                    setData(
-                                        'exam_auto_freeze',
-                                        Boolean(checked),
-                                    )
-                                }
-                            />
-                            <div className="space-y-1">
-                                <label
-                                    htmlFor="exam_auto_freeze"
-                                    className="text-sm font-medium"
-                                >
-                                    Automatic freeze
-                                </label>
-                                <p className="text-sm text-muted-foreground">
-                                    Jika aktif, sistem akan membekukan ujian
-                                    otomatis ketika pelanggaran melebihi batas.
-                                </p>
+                        <div className="space-y-4">
+                            <div className="flex items-start gap-3 rounded-lg border p-4">
+                                <Checkbox
+                                    id="exam_auto_freeze"
+                                    checked={data.exam_auto_freeze}
+                                    onCheckedChange={(checked) =>
+                                        setData(
+                                            'exam_auto_freeze',
+                                            Boolean(checked),
+                                        )
+                                    }
+                                />
+                                <div className="space-y-1">
+                                    <label
+                                        htmlFor="exam_auto_freeze"
+                                        className="text-sm font-medium"
+                                    >
+                                        Automatic freeze
+                                    </label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Jika aktif, sistem akan membekukan ujian
+                                        otomatis ketika pelanggaran melebihi
+                                        batas.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-3 rounded-lg border p-4">
+                                <Checkbox
+                                    id="exam_allow_multiple_attempts"
+                                    checked={data.exam_allow_multiple_attempts}
+                                    onCheckedChange={(checked) =>
+                                        setData(
+                                            'exam_allow_multiple_attempts',
+                                            Boolean(checked),
+                                        )
+                                    }
+                                />
+                                <div className="space-y-1">
+                                    <label
+                                        htmlFor="exam_allow_multiple_attempts"
+                                        className="text-sm font-medium"
+                                    >
+                                        Testing option (multiple attempts)
+                                    </label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Aktifkan agar siswa bisa mengikuti ujian
+                                        beberapa kali. Jika dimatikan (default),
+                                        siswa hanya bisa mengikuti ujian satu
+                                        kali.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

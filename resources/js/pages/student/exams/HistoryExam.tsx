@@ -25,13 +25,13 @@ interface ExamAttempt {
         name?: string | null; // allow missing
         irt_processed_at?: string | null;
     };
-    score: number;
-    total_score: number;
-    adjusted_score?: number;
-    adjusted_total_score?: number;
-    question_bank_count?: number;
-    percentage: number;
-    is_passed: boolean;
+    score: number | null;
+    total_score: number | null;
+    irt_theta?: number | null;
+    irt_block_score?: number | null;
+    passing_score?: number;
+    percentage: number | null; // skor_utbk_pct (IRT) when ready; null when waiting
+    is_passed: boolean | null; // null when waiting for IRT
     completed_at: string;
 }
 
@@ -150,28 +150,43 @@ export default function HistoryExam() {
 
         const filtered = mapped.filter((a) => {
             const matchesSearch = a.examNameLc.includes(q);
-            if (filterStatus === 'passed') return matchesSearch && a.is_passed;
-            if (filterStatus === 'failed') return matchesSearch && !a.is_passed;
+            if (filterStatus === 'passed')
+                return matchesSearch && a.is_passed === true;
+            if (filterStatus === 'failed')
+                return matchesSearch && a.is_passed === false;
             return matchesSearch;
         });
 
         if (sortBy === 'date')
             filtered.sort((a, b) => b.completedTs - a.completedTs);
-        else filtered.sort((a, b) => b.percentage - a.percentage);
+        else
+            filtered.sort(
+                (a, b) => (b.percentage ?? -1) - (a.percentage ?? -1),
+            );
 
         return filtered;
     }, [attempts.data, searchQuery, filterStatus, sortBy]);
 
     const passedCount = useMemo(
-        () => attempts.data.filter((a) => a.is_passed).length,
+        () => attempts.data.filter((a) => a.is_passed === true).length,
         [attempts.data],
     );
-    const failedCount = attempts.data.length - passedCount;
+    const failedCount = useMemo(
+        () => attempts.data.filter((a) => a.is_passed === false).length,
+        [attempts.data],
+    );
+    const waitingCount = useMemo(
+        () => attempts.data.filter((a) => a.is_passed === null).length,
+        [attempts.data],
+    );
 
     const avgPercentage = useMemo(() => {
-        if (attempts.data.length === 0) return '0.0';
-        const sum = attempts.data.reduce((acc, a) => acc + a.percentage, 0);
-        return (sum / attempts.data.length).toFixed(1);
+        const scored = attempts.data.filter(
+            (a) => typeof a.percentage === 'number',
+        );
+        if (scored.length === 0) return '0.0';
+        const sum = scored.reduce((acc, a) => acc + (a.percentage ?? 0), 0);
+        return (sum / scored.length).toFixed(1);
     }, [attempts.data]);
 
     const handleDownloadPDF = async (attemptId: number) => {
@@ -248,7 +263,10 @@ export default function HistoryExam() {
                                     {passedCount}
                                 </div>
                                 <div className="text-[11px] text-muted-foreground">
-                                    {failedCount} gagal
+                                    {failedCount} tidak lulus
+                                    {waitingCount > 0
+                                        ? `, ${waitingCount} menunggu`
+                                        : ''}
                                 </div>
                             </CardContent>
                         </Card>
@@ -323,7 +341,7 @@ export default function HistoryExam() {
                             className="h-9 rounded-full"
                         >
                             <XCircle className="mr-1 h-4 w-4" />
-                            Gagal
+                            Tidak Lulus
                         </Button>
 
                         <div className="ml-auto flex gap-2">
@@ -355,6 +373,10 @@ export default function HistoryExam() {
                         {processed.length > 0 ? (
                             processed.map((attempt) => {
                                 const examName = attempt.examName || '-';
+                                const isWaiting =
+                                    attempt.is_passed === null ||
+                                    !attempt.exam?.irt_processed_at ||
+                                    attempt.percentage === null;
 
                                 return (
                                     <Card
@@ -378,39 +400,48 @@ export default function HistoryExam() {
                                                 <Badge
                                                     variant="outline"
                                                     className={
-                                                        attempt.is_passed
-                                                            ? 'shrink-0 border-green-200 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-200'
-                                                            : 'shrink-0 border-red-200 bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200'
+                                                        isWaiting
+                                                            ? 'shrink-0 border-slate-200 bg-slate-50 text-slate-700 dark:bg-slate-950 dark:text-slate-200'
+                                                            : attempt.is_passed
+                                                              ? 'shrink-0 border-green-200 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-200'
+                                                              : 'shrink-0 border-red-200 bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200'
                                                     }
                                                 >
-                                                    {attempt.is_passed
-                                                        ? 'Lulus'
-                                                        : 'Gagal'}
+                                                    {isWaiting
+                                                        ? 'Menunggu'
+                                                        : attempt.is_passed
+                                                          ? 'Lulus'
+                                                          : 'Tidak Lulus'}
                                                 </Badge>
                                             </div>
 
                                             <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2">
-                                            <div>
-                                                <div className="text-[11px] text-muted-foreground">
-                                                    Skor
+                                                <div>
+                                                    <div className="text-[11px] text-muted-foreground">
+                                                        Skor (IRT)
+                                                    </div>
+                                                    <div className="text-sm font-bold">
+                                                        {isWaiting
+                                                            ? 'Menunggu'
+                                                            : `${attempt.percentage?.toFixed(
+                                                                  2,
+                                                              )}%`}
+                                                    </div>
                                                 </div>
-                                                <div className="text-sm font-bold">
-                                                    {(attempt.adjusted_score ??
-                                                        attempt.score)}
-                                                    /
-                                                    {(attempt.adjusted_total_score ??
-                                                        attempt.total_score)}
-                                                </div>
-                                            </div>
                                                 <div className="text-right">
                                                     <div className="text-[11px] text-muted-foreground">
-                                                        %
+                                                        Theta
                                                     </div>
                                                     <div className="text-sm font-bold text-primary">
-                                                        {attempt.percentage.toFixed(
-                                                            1,
-                                                        )}
-                                                        %
+                                                        {isWaiting ||
+                                                        attempt.irt_theta ===
+                                                            null ||
+                                                        attempt.irt_theta ===
+                                                            undefined
+                                                            ? 'Menunggu'
+                                                            : attempt.irt_theta.toFixed(
+                                                                  3,
+                                                              )}
                                                     </div>
                                                 </div>
                                             </div>

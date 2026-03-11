@@ -126,7 +126,20 @@ class ExamController extends Controller
             ->latest()
             ->first();
 
+        $allowMultipleAttempts = Schema::hasTable('system_settings')
+            ? (SystemSetting::first()?->exam_allow_multiple_attempts ?? false)
+            : false;
+
         if ($existingAttempt) {
+            if (! $allowMultipleAttempts &&
+                $existingAttempt->status === 'submitted'
+            ) {
+                return back()->withErrors([
+                    'token' => 'Siswa hanya dapat mengikuti ujian ini satu kali. '
+                        . 'Aktifkan opsi testing di Pengaturan jika perlu mengambil ulang.',
+                ]);
+            }
+
             if ($existingAttempt->is_frozen) {
                 return redirect()->route('student.exams.take', $existingAttempt->id);
             }

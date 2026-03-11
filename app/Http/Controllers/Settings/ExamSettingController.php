@@ -15,6 +15,7 @@ class ExamSettingController extends Controller
         if (! Schema::hasTable('system_settings')) {
             return Inertia::render('settings/exam-settings', [
                 'exam_auto_freeze' => true,
+                'exam_allow_multiple_attempts' => false,
             ]);
         }
 
@@ -22,6 +23,8 @@ class ExamSettingController extends Controller
 
         return Inertia::render('settings/exam-settings', [
             'exam_auto_freeze' => $settings?->exam_auto_freeze ?? true,
+            'exam_allow_multiple_attempts' =>
+                $settings?->exam_allow_multiple_attempts ?? false,
         ]);
     }
 
@@ -33,11 +36,17 @@ class ExamSettingController extends Controller
 
         $validated = $request->validate([
             'exam_auto_freeze' => 'required|boolean',
+            'exam_allow_multiple_attempts' => 'required|boolean',
         ]);
 
         SystemSetting::updateOrCreate(
             ['id' => 1],
-            ['exam_auto_freeze' => $validated['exam_auto_freeze']],
+            [
+                'exam_auto_freeze' => $validated['exam_auto_freeze'],
+                'exam_allow_multiple_attempts' => $validated[
+                    'exam_allow_multiple_attempts'
+                ],
+            ],
         );
 
         return back()->with('success', 'Exam settings updated.');
