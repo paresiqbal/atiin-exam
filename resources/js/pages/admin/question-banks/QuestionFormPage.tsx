@@ -1,5 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 // layout
 import AppLayout from '@/layouts/app-layout';
@@ -208,15 +209,23 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
         if (isEditing && question) {
             put(`/admin/questions/${question.id}`, {
                 onSuccess: () => {
+                    toast.success('Soal berhasil diperbarui');
                     reset();
                     backToBank();
+                },
+                onError: () => {
+                    toast.error('Gagal memperbarui soal');
                 },
             });
         } else {
             post(`/admin/question-banks/${questionBank.id}/questions`, {
                 onSuccess: () => {
+                    toast.success('Soal berhasil dibuat');
                     reset();
                     backToBank();
+                },
+                onError: () => {
+                    toast.error('Gagal menyimpan soal, periksa input');
                 },
             });
         }

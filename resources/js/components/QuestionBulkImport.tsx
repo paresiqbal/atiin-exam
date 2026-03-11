@@ -16,6 +16,7 @@ import {
     Loader2,
     Upload,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import type React from 'react';
 import { type FormEvent, useMemo, useState } from 'react';
 
@@ -163,6 +164,7 @@ export default function QuestionBulkImport({
                     type: 'error',
                     text: data.message || 'Gagal melakukan preview file',
                 });
+                toast.error(data.message || 'Gagal melakukan preview file');
             }
         } catch (error) {
             console.error(error);
@@ -170,6 +172,7 @@ export default function QuestionBulkImport({
                 type: 'error',
                 text: 'Terjadi kesalahan saat mengupload file',
             });
+            toast.error('Terjadi kesalahan saat mengupload file');
         } finally {
             setLoading(false);
         }
@@ -199,6 +202,7 @@ export default function QuestionBulkImport({
             });
 
             if (response.ok) {
+                toast.success('Import soal berhasil!');
                 setMessage({
                     type: 'success',
                     text: 'Import soal berhasil!',
@@ -212,6 +216,7 @@ export default function QuestionBulkImport({
                     window.location.reload();
                 }, 1000);
             } else {
+                toast.error('Import gagal. Silakan coba lagi.');
                 setMessage({
                     type: 'error',
                     text: 'Import gagal. Silakan coba lagi.',
@@ -219,6 +224,7 @@ export default function QuestionBulkImport({
             }
         } catch (error) {
             console.error(error);
+            toast.error('Terjadi kesalahan saat proses import');
             setMessage({
                 type: 'error',
                 text: 'Terjadi kesalahan saat proses import',
