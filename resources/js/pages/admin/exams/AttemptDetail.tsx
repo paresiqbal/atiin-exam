@@ -93,6 +93,7 @@ export default function AttemptDetail({
 
     // adjustedScore is skor_utbk_pct (e.g. 42.35), passingScore is on the same scale
     const skorUtbkPct = adjustedScore;
+    const skorUtbkRaw = (skorUtbkPct / 100) * 1525;
 
     const completedDate = attempt.completed_at
         ? new Date(attempt.completed_at).toLocaleDateString('id-ID', {
@@ -212,12 +213,30 @@ export default function AttemptDetail({
                             </p>
                             <p className="text-2xl font-bold">
                                 {irtProcessed ? (
-                                    skorUtbkPct.toFixed(2)
+                                    `${skorUtbkPct.toFixed(2)}%`
                                 ) : (
                                     <span className="text-base text-muted-foreground">
                                         Belum diproses
                                     </span>
                                 )}
+                            </p>
+                        </div>
+
+                        <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
+                            <p className="mb-1 text-xs font-medium text-muted-foreground">
+                                Skor UTBK (Raw)
+                            </p>
+                            <p className="text-2xl font-bold">
+                                {irtProcessed ? (
+                                    skorUtbkRaw.toFixed(2)
+                                ) : (
+                                    <span className="text-base text-muted-foreground">
+                                        Belum diproses
+                                    </span>
+                                )}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                / 1.525
                             </p>
                         </div>
 

@@ -204,7 +204,7 @@
     <div style="text-align:center; margin: 12px 0;">
         <div class="score-box">
             <div class="score-label">Skor UTBK</div>
-            <div class="score-value">{{ number_format($skor_utbk_pct, 2) }}</div>
+            <div class="score-value">{{ number_format($skor_utbk_pct, 2) }}%</div>
             <div class="score-label">({{ number_format($skor_utbk, 2) }} / 1.525)</div>
         </div>
     </div>
