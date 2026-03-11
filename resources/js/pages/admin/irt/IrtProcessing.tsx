@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { Download, RefreshCw, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -51,6 +52,11 @@ interface Props {
         class?: string | null;
         status?: StatusFilter | null;
     };
+    hasIrtProcessedAt: boolean;
+    flash?: {
+        success?: string | null;
+        error?: string | null;
+    };
 }
 
 export default function IrtProcessing({
@@ -58,7 +64,12 @@ export default function IrtProcessing({
     schools,
     classes,
     filters,
+    hasIrtProcessedAt,
+    flash,
 }: Props) {
+    const flashSuccess = flash?.success;
+    const flashError = flash?.error;
+
     const initialSearch = filters?.search ?? '';
     const initialSchoolId = filters?.school_id
         ? String(filters.school_id)
@@ -136,15 +147,54 @@ export default function IrtProcessing({
                 { title: 'IRT', href: '/admin/irt' },
             ]}
         >
-            <Head title="IRT Processing" />
+            <Head title="Pemrosesan IRT" />
 
             <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4">
                 <div>
-                    <h1 className="text-3xl font-bold">IRT Processing</h1>
+                    <h1 className="text-3xl font-bold">Pemrosesan IRT</h1>
                     <p className="text-sm text-muted-foreground">
                         Jalankan Rasch IRT secara manual setelah ujian selesai.
                     </p>
                 </div>
+
+                {!hasIrtProcessedAt ? (
+                    <Alert variant="destructive">
+                        <AlertTitle>IRT belum siap</AlertTitle>
+                        <AlertDescription>
+                            Kolom <code>irt_processed_at</code> belum ada di
+                            tabel <code>exams</code>. Jalankan migrasi lalu
+                            coba lagi.
+                        </AlertDescription>
+                    </Alert>
+                ) : null}
+
+                {flashError ? (
+                    <Alert variant="destructive">
+                        <AlertTitle>Gagal</AlertTitle>
+                        <AlertDescription>{flashError}</AlertDescription>
+                    </Alert>
+                ) : null}
+
+                {flashSuccess ? (
+                    <Alert className="border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
+                        <AlertTitle>Sukses</AlertTitle>
+                        <AlertDescription>{flashSuccess}</AlertDescription>
+                    </Alert>
+                ) : null}
+
+                {rows.some(
+                    (exam) =>
+                        exam.end_at &&
+                        new Date(exam.end_at).getTime() > Date.now(),
+                ) ? (
+                    <Alert>
+                        <AlertTitle>Ujian belum selesai</AlertTitle>
+                        <AlertDescription>
+                            IRT hanya bisa diproses setelah waktu ujian
+                            berakhir. Ujian yang belum selesai akan dinonaktifkan.
+                        </AlertDescription>
+                    </Alert>
+                ) : null}
 
                 {/* Filters */}
                 <Card>
@@ -154,7 +204,7 @@ export default function IrtProcessing({
                                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                                 <Input
                                     className="pl-9"
-                                    placeholder="Search exam title..."
+                                    placeholder="Cari judul ujian..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     onKeyDown={(e) => {
@@ -166,7 +216,7 @@ export default function IrtProcessing({
                                 variant="outline"
                                 onClick={() => applyFilters()}
                             >
-                                Apply
+                                Terapkan
                             </Button>
                         </div>
 
@@ -179,7 +229,7 @@ export default function IrtProcessing({
                                 }}
                             >
                                 <SelectTrigger className="w-[220px]">
-                                    <SelectValue placeholder="Filter School" />
+                                    <SelectValue placeholder="Filter Sekolah" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">
@@ -204,7 +254,7 @@ export default function IrtProcessing({
                                 }}
                             >
                                 <SelectTrigger className="w-[200px]">
-                                    <SelectValue placeholder="Filter Class" />
+                                    <SelectValue placeholder="Filter Kelas" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">
@@ -233,10 +283,10 @@ export default function IrtProcessing({
                                         Semua Status
                                     </SelectItem>
                                     <SelectItem value="processed">
-                                        Processed
+                                        Sudah Diproses
                                     </SelectItem>
                                     <SelectItem value="not_processed">
-                                        Not Processed
+                                        Belum Diproses
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
@@ -252,18 +302,38 @@ export default function IrtProcessing({
                     <div className="flex gap-2">
                         <Button
                             variant="outline"
-                            disabled={selectedIds.length === 0}
+                            disabled={
+                                selectedIds.length === 0 ||
+                                !hasIrtProcessedAt ||
+                                rows.some(
+                                    (exam) =>
+                                        selectedIds.includes(exam.id) &&
+                                        exam.end_at &&
+                                        new Date(exam.end_at).getTime() >
+                                            Date.now(),
+                                )
+                            }
                             onClick={() => handleProcessSelected(false)}
                         >
-                            Process Selected
+                            Proses Terpilih
                         </Button>
                         <Button
                             variant="destructive"
-                            disabled={selectedIds.length === 0}
+                            disabled={
+                                selectedIds.length === 0 ||
+                                !hasIrtProcessedAt ||
+                                rows.some(
+                                    (exam) =>
+                                        selectedIds.includes(exam.id) &&
+                                        exam.end_at &&
+                                        new Date(exam.end_at).getTime() >
+                                            Date.now(),
+                                )
+                            }
                             onClick={() => handleProcessSelected(true)}
                         >
                             <RefreshCw className="mr-2 h-4 w-4" />
-                            Force Reprocess Selected
+                            Paksa Proses Ulang
                         </Button>
                     </div>
                 </div>
@@ -286,19 +356,19 @@ export default function IrtProcessing({
                                     />
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    Exam
+                                    Ujian
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    School
+                                    Sekolah
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    Attempts
+                                    Percobaan
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    IRT Status
+                                    Status IRT
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                    Action
+                                    Aksi
                                 </th>
                             </tr>
                         </thead>
@@ -320,6 +390,12 @@ export default function IrtProcessing({
                                         exam.attempts_count;
                                     const isProcessing =
                                         processingId === exam.id;
+                                    const isEnded =
+                                        !exam.end_at ||
+                                        new Date(exam.end_at).getTime() <=
+                                            Date.now();
+                                    const canProcess =
+                                        hasIrtProcessedAt && isEnded;
 
                                     return (
                                         <tr key={exam.id}>
@@ -361,13 +437,21 @@ export default function IrtProcessing({
                                             <td className="px-4 py-3">
                                                 {processed ? (
                                                     <Badge variant="default">
-                                                        Processed
+                                                        Sudah Diproses
                                                     </Badge>
                                                 ) : (
                                                     <Badge variant="outline">
-                                                        Not Processed
+                                                        Belum Diproses
                                                     </Badge>
                                                 )}
+                                                {!isEnded ? (
+                                                    <Badge
+                                                        variant="outline"
+                                                        className="ml-2"
+                                                    >
+                                                        Belum Selesai
+                                                    </Badge>
+                                                ) : null}
                                             </td>
                                             <td className="px-4 py-3">
                                                 {processed ? (
@@ -377,7 +461,8 @@ export default function IrtProcessing({
                                                             size="sm"
                                                             variant="outline"
                                                             disabled={
-                                                                isProcessing
+                                                                isProcessing ||
+                                                                !canProcess
                                                             }
                                                             onClick={() =>
                                                                 handleProcess(
@@ -394,8 +479,8 @@ export default function IrtProcessing({
                                                             }`}
                                                         />
                                                             {isProcessing
-                                                                ? 'Processing…'
-                                                                : 'Reprocess'}
+                                                                ? 'Memproses…'
+                                                                : 'Proses Ulang'}
                                                         </Button>
                                                         <a
                                                             href={`/admin/irt/export/${exam.id}`}
@@ -406,7 +491,7 @@ export default function IrtProcessing({
                                                                 variant="default"
                                                             >
                                                                 <Download className="mr-1 h-3 w-3" />
-                                                                Export
+                                                                Ekspor
                                                             </Button>
                                                         </a>
                                                     </div>
@@ -414,7 +499,10 @@ export default function IrtProcessing({
                                                     // Not yet processed → normal Process button
                                                     <Button
                                                         size="sm"
-                                                        disabled={isProcessing}
+                                                        disabled={
+                                                            isProcessing ||
+                                                            !canProcess
+                                                        }
                                                         onClick={() =>
                                                             handleProcess(
                                                                 exam,
@@ -423,8 +511,8 @@ export default function IrtProcessing({
                                                         }
                                                     >
                                                         {isProcessing
-                                                            ? 'Processing…'
-                                                            : 'Process'}
+                                                            ? 'Memproses…'
+                                                            : 'Proses'}
                                                     </Button>
                                                 )}
                                             </td>

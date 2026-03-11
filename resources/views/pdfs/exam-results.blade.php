@@ -246,7 +246,7 @@
         </div>
         <div class="student-info-row">
             <strong>Nilai Minimum Jurusan</strong>
-            <span>{{ $major_min_gpa }}%</span>
+            <span>{{ number_format((float) $major_min_gpa, 2) }}</span>
         </div>
         <div class="student-info-row">
             <strong>Sekolah / Kelas</strong>
@@ -269,7 +269,7 @@
             </div>
             <div class="score-box">
                 <div class="label">Nilai Minimum</div>
-                <div class="value">{{ $passing_score }}%</div>
+                <div class="value">{{ number_format((float) $passing_score, 2) }}</div>
             </div>
             @if ($theta !== null)
                 <div class="score-box">

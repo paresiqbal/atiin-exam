@@ -73,6 +73,10 @@ class IrtController extends Controller
                 'status'    => $request->input('status'),
             ],
             'hasIrtProcessedAt' => $hasIrtProcessedAt,
+            'flash' => [
+                'success' => session('success'),
+                'error' => session('error'),
+            ],
         ]);
     }
 
