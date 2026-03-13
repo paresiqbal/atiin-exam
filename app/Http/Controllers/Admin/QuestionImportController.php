@@ -6,62 +6,50 @@ use App\Models\QuestionBank;
 use App\Models\QuestionOption;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class QuestionImportController extends Controller
 {
+    // ── Public endpoints ──────────────────────────────────────────────────────
+
     public function preview(Request $request, QuestionBank $questionBank)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt|max:2048',
+            'file' => 'required|file|max:5120|mimes:csv,txt,xls,xlsx,ods',
         ]);
 
         try {
-            $path = $this->toUtf8TempFile($request->file('file'));
-            $handle = fopen($path, 'r');
+            $rows   = $this->readFile($request->file('file'));
+            $header = array_shift($rows);
 
-            if (!$handle) {
-                return response()->json(['success' => false, 'message' => 'Could not open the file.'], 400);
-            }
-
-            $header = fgetcsv($handle);
-            if ($header === false) {
-                fclose($handle);
+            if (!$header) {
                 return response()->json(['success' => false, 'message' => 'File is empty.'], 400);
             }
 
-            $columnIndexes     = $this->detectColumnIndexes($header);
-            $questionTextIndex = $this->resolveColumnIndex($columnIndexes, 'question_text', 0);
-            $questionTypeIndex = $this->resolveColumnIndex($columnIndexes, 'question_type', 1);
-            $pointsIndex       = $this->resolveColumnIndex($columnIndexes, 'points', 2);
-            $imageUrlIndex     = $this->resolveColumnIndex($columnIndexes, 'image_url', 3);
-            $optionsIndex      = $this->resolveColumnIndex($columnIndexes, 'options', 4);
+            [$qtIdx, $typeIdx, $ptsIdx, $imgIdx, $optIdx] = $this->resolveIndexes($header);
 
             $preview = [];
             $errors  = [];
             $rowNum  = 1;
 
-            while (($row = fgetcsv($handle)) !== false) {
+            foreach ($rows as $row) {
                 $rowNum++;
-                if (empty(array_filter($row))) continue;
+                if (empty(array_filter($row, fn($v) => $v !== null && $v !== ''))) continue;
 
                 try {
                     $item = [
-                        'question_text' => $row[$questionTextIndex] ?? null,
-                        'question_type' => $row[$questionTypeIndex] ?? null,
-                        'points'        => $row[$pointsIndex] ?? null,
-                        'image_url'     => $row[$imageUrlIndex] ?? null,
-                        'options'       => $this->parseOptions($row, $optionsIndex),
+                        'question_text' => $row[$qtIdx]   ?? null,
+                        'question_type' => $row[$typeIdx] ?? null,
+                        'points'        => $row[$ptsIdx]  ?? null,
+                        'image_url'     => $row[$imgIdx]  ?? null,
+                        'options'       => $this->parseOptions($row, $optIdx),
                     ];
-
                     $this->validateQuestion($item, $rowNum, $errors);
                     $preview[] = array_merge(['row' => $rowNum], $item);
                 } catch (\Exception $e) {
                     $errors[] = "Row {$rowNum}: {$e->getMessage()}";
                 }
             }
-
-            fclose($handle);
-            @unlink($path);
 
             return response()->json([
                 'success'    => true,
@@ -77,66 +65,46 @@ class QuestionImportController extends Controller
     public function import(Request $request, QuestionBank $questionBank)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt|max:2048',
+            'file' => 'required|file|max:5120|mimes:csv,txt,xls,xlsx,ods',
         ]);
 
         try {
-            $path   = $this->toUtf8TempFile($request->file('file'));
-            $handle = fopen($path, 'r');
+            $rows   = $this->readFile($request->file('file'));
+            $header = array_shift($rows);
 
-            if (!$handle) {
-                return back()->withErrors(['file' => 'Could not open the file.']);
-            }
-
-            $header = fgetcsv($handle);
-            if ($header === false) {
-                fclose($handle);
+            if (!$header) {
                 return back()->withErrors(['file' => 'File is empty.']);
             }
 
-            $columnIndexes     = $this->detectColumnIndexes($header);
-            $questionTextIndex = $this->resolveColumnIndex($columnIndexes, 'question_text', 0);
-            $questionTypeIndex = $this->resolveColumnIndex($columnIndexes, 'question_type', 1);
-            $pointsIndex       = $this->resolveColumnIndex($columnIndexes, 'points', 2);
-            $imageUrlIndex     = $this->resolveColumnIndex($columnIndexes, 'image_url', 3);
-            $optionsIndex      = $this->resolveColumnIndex($columnIndexes, 'options', 4);
+            [$qtIdx, $typeIdx, $ptsIdx, $imgIdx, $optIdx] = $this->resolveIndexes($header);
 
             $created = 0;
             $failed  = 0;
             $errors  = [];
             $rowNum  = 1;
 
-            while (($row = fgetcsv($handle)) !== false) {
+            foreach ($rows as $row) {
                 $rowNum++;
-                if (empty(array_filter($row))) continue;
+                if (empty(array_filter($row, fn($v) => $v !== null && $v !== ''))) continue;
 
                 try {
-                    $question_text = $row[$questionTextIndex] ?? null;
-                    $question_type = $row[$questionTypeIndex] ?? null;
-                    $points        = (int) ($row[$pointsIndex] ?? 0);
-                    $image_url     = $row[$imageUrlIndex] ?? null;
+                    $question_text = $row[$qtIdx]   ?? null;
+                    $question_type = $row[$typeIdx] ?? null;
+                    $points        = (int) ($row[$ptsIdx] ?? 0);
+                    $image_url     = $row[$imgIdx]  ?? null;
 
-                    if (empty($question_text)) {
-                        throw new \Exception('Question text is required');
-                    }
+                    if (empty($question_text)) throw new \Exception('Question text is required');
 
                     if (!in_array($question_type, ['multiple_choice', 'multiple_select', 'true_false'])) {
                         throw new \Exception('Invalid question type: ' . $question_type);
                     }
 
-                    if ($points < 1 || $points > 45) {
-                        throw new \Exception('Points must be between 1-45');
-                    }
+                    if ($points < 1 || $points > 45) throw new \Exception('Points must be 1–45');
 
-                    $options = $this->parseOptions($row, $optionsIndex);
+                    $options = $this->parseOptions($row, $optIdx);
 
-                    if (empty($options) || count($options) < 2) {
-                        throw new \Exception('At least 2 options are required');
-                    }
-
-                    if (!collect($options)->contains(fn($o) => $o['is_correct'])) {
-                        throw new \Exception('At least one correct answer required');
-                    }
+                    if (count($options) < 2)                                   throw new \Exception('At least 2 options required');
+                    if (!collect($options)->contains(fn($o) => $o['is_correct'])) throw new \Exception('At least one correct answer required');
 
                     $question = $questionBank->questions()->create([
                         'question_text' => $question_text,
@@ -145,12 +113,12 @@ class QuestionImportController extends Controller
                         'image_url'     => $image_url,
                     ]);
 
-                    foreach ($options as $opt_index => $option) {
+                    foreach ($options as $i => $opt) {
                         QuestionOption::create([
                             'question_id'  => $question->id,
-                            'option_text'  => $option['text'],
-                            'is_correct'   => $option['is_correct'],
-                            'option_order' => $opt_index,
+                            'option_text'  => $opt['text'],
+                            'is_correct'   => $opt['is_correct'],
+                            'option_order' => $i,
                         ]);
                     }
 
@@ -161,121 +129,138 @@ class QuestionImportController extends Controller
                 }
             }
 
-            fclose($handle);
-            @unlink($path);
-
             return redirect()
                 ->route('admin.question-banks.show', $questionBank->id)
-                ->with('success', "Import completed! Created: {$created}, Failed: {$failed}")
+                ->with('success', "Import selesai! Berhasil: {$created}, Gagal: {$failed}")
                 ->with('import_errors', $errors);
         } catch (\Exception $e) {
             return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    public function downloadTemplate()
+    {
+        $headers = [
+            'Question Text / Teks Soal',
+            'Type / Tipe',
+            'Points / Poin',
+            'Image URL / URL Gambar',
+            'Options (use | to separate, * for correct / gunakan | untuk memisahkan, * untuk jawaban benar)',
+        ];
+
+        $rows = [
+            ['Berapa hasil 2+2?',               'multiple_choice', 5,  '', '*4|3|5|6'],
+            ['Apakah langit berwarna biru?',     'true_false',      3,  '', '*Ya|Tidak'],
+            ['Mana yang merupakan buah-buahan?', 'multiple_select', 10, '', '*Apel|Wortel|*Pisang|Brokoli'],
+        ];
+
+        $handle = fopen('php://memory', 'w');
+        fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM so Excel opens correctly
+        fputcsv($handle, $headers);
+        foreach ($rows as $row) fputcsv($handle, $row);
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+
+        return response($csv)
+            ->header('Content-Type', 'text/csv; charset=UTF-8')
+            ->header('Content-Disposition', 'attachment; filename="questions_import_template.csv"');
+    }
+
+    // ── Core file reader ──────────────────────────────────────────────────────
 
     /**
-     * Read the uploaded file, detect its encoding, convert to UTF-8,
-     * strip any BOM, and write to a temp file. Returns the temp path.
+     * Read any supported format (CSV, XLS, XLSX, ODS) and return
+     * a 2-D array of strings. All values are cast to string so downstream
+     * code never receives typed PHP values (int, float, bool) from spreadsheet cells.
      */
-    private function toUtf8TempFile(\Illuminate\Http\UploadedFile $file): string
+    private function readFile(\Illuminate\Http\UploadedFile $file): array
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if (in_array($extension, ['xls', 'xlsx', 'ods'])) {
+            return $this->readSpreadsheet($file);
+        }
+
+        // CSV / TXT — handle encoding first
+        return $this->readCsv($file);
+    }
+
+    private function readSpreadsheet(\Illuminate\Http\UploadedFile $file): array
+    {
+        $spreadsheet = IOFactory::load($file->getRealPath());
+        $sheet       = $spreadsheet->getActiveSheet();
+        $rows        = [];
+
+        foreach ($sheet->getRowIterator() as $row) {
+            $cells = [];
+            foreach ($row->getCellIterator() as $cell) {
+                // Use formatted value so dates/numbers look like what the user typed
+                $cells[] = (string) $cell->getFormattedValue();
+            }
+
+            // Trim trailing empty cells but keep at least one element
+            while (count($cells) > 1 && end($cells) === '') {
+                array_pop($cells);
+            }
+
+            $rows[] = $cells;
+        }
+
+        return $rows;
+    }
+
+    private function readCsv(\Illuminate\Http\UploadedFile $file): array
     {
         $raw = file_get_contents($file->getRealPath());
 
-        // Strip UTF-8 BOM if present
+        // Strip UTF-8 BOM
         if (str_starts_with($raw, "\xEF\xBB\xBF")) {
             $raw = substr($raw, 3);
         }
 
-        // Detect encoding and convert to UTF-8
+        // Convert non-UTF-8 encodings (common with Excel-saved CSVs on Windows)
         if (!mb_check_encoding($raw, 'UTF-8')) {
-            // Try common Windows/Excel encodings in order of likelihood
-            $candidates = ['Windows-1252', 'ISO-8859-1', 'Windows-1254', 'UTF-16'];
-            $detected   = mb_detect_encoding($raw, $candidates, true);
-            $from       = $detected ?: 'Windows-1252'; // safe fallback
-
-            $converted = mb_convert_encoding($raw, 'UTF-8', $from);
-
-            // If conversion produced garbled output, fall back to
-            // a byte-safe sanitize (replace invalid sequences)
-            if (!mb_check_encoding($converted, 'UTF-8')) {
-                $converted = mb_convert_encoding($raw, 'UTF-8', 'Windows-1252');
-            }
-
-            $raw = $converted;
+            $detected = mb_detect_encoding($raw, ['Windows-1252', 'ISO-8859-1', 'Windows-1254'], true);
+            $raw      = mb_convert_encoding($raw, 'UTF-8', $detected ?: 'Windows-1252');
         }
 
-        // Write sanitized UTF-8 content to a temp file
-        $tmp = tempnam(sys_get_temp_dir(), 'csv_import_');
+        $tmp = tempnam(sys_get_temp_dir(), 'qimport_');
         file_put_contents($tmp, $raw);
 
-        return $tmp;
+        $rows   = [];
+        $handle = fopen($tmp, 'r');
+        while (($row = fgetcsv($handle)) !== false) {
+            $rows[] = array_map('strval', $row);
+        }
+        fclose($handle);
+        @unlink($tmp);
+
+        return $rows;
     }
 
-    private function parseOptions($row, $startIndex): array
+    // ── Column detection ──────────────────────────────────────────────────────
+
+    private function resolveIndexes(array $header): array
     {
-        $options       = [];
-        $optionsString = $row[$startIndex] ?? '';
+        $indexes   = $this->detectColumnIndexes($header);
 
-        if (empty($optionsString)) {
-            return [];
-        }
-
-        foreach (explode('|', $optionsString) as $part) {
-            $part = trim($part);
-            if ($part === '') continue;
-
-            $is_correct = false;
-            if (str_starts_with($part, '*')) {
-                $is_correct = true;
-                $part       = substr($part, 1);
-            }
-
-            $options[] = ['text' => $part, 'is_correct' => $is_correct];
-        }
-
-        return $options;
-    }
-
-    private function validateQuestion(array $question, int $rowNum, array &$errors): void
-    {
-        if (empty($question['question_text'])) {
-            throw new \Exception('Question text is required');
-        }
-
-        if (!in_array($question['question_type'], ['multiple_choice', 'multiple_select', 'true_false'])) {
-            throw new \Exception('Invalid type: ' . $question['question_type']);
-        }
-
-        if ((int) $question['points'] < 1 || (int) $question['points'] > 45) {
-            throw new \Exception('Points must be 1-45');
-        }
-
-        if (count($question['options']) < 2) {
-            throw new \Exception('Need at least 2 options');
-        }
-
-        $hasCorrect = false;
-        foreach ($question['options'] as $opt) {
-            if ($opt['is_correct']) {
-                $hasCorrect = true;
-                break;
-            }
-        }
-
-        if (!$hasCorrect) {
-            throw new \Exception('At least one correct answer required');
-        }
+        return [
+            $this->resolveColumnIndex($indexes, 'question_text', 0),
+            $this->resolveColumnIndex($indexes, 'question_type', 1),
+            $this->resolveColumnIndex($indexes, 'points',        2),
+            $this->resolveColumnIndex($indexes, 'image_url',     3),
+            $this->resolveColumnIndex($indexes, 'options',       4),
+        ];
     }
 
     private function detectColumnIndexes(array $header): array
     {
         $aliases = [
-            'question_text' => ['question text', 'question_text', 'teks soal', 'soal', 'pertanyaan', 'pertanyaan teks'],
+            'question_text' => ['question text', 'question_text', 'teks soal', 'soal', 'pertanyaan'],
             'question_type' => ['type', 'question type', 'question_type', 'tipe', 'jenis'],
             'points'        => ['points', 'point', 'poin', 'nilai', 'skor'],
-            'image_url'     => ['image url', 'image_url', 'url gambar', 'gambar', 'gambar url', 'url image'],
+            'image_url'     => ['image url', 'image_url', 'url gambar', 'gambar', 'url image'],
             'options'       => [
                 'options (use | to separate, * for correct / gunakan | untuk memisahkan, * untuk jawaban benar)',
                 'options (use | to separate, * for correct)',
@@ -288,11 +273,11 @@ class QuestionImportController extends Controller
             ],
         ];
 
-        $normalizedHeader = array_map(fn($v) => strtolower(trim((string) $v)), $header);
-        $indexes          = [];
+        $normalized = array_map(fn($v) => strtolower(trim($v)), $header);
+        $indexes    = [];
 
         foreach ($aliases as $key => $names) {
-            foreach ($normalizedHeader as $idx => $value) {
+            foreach ($normalized as $idx => $value) {
                 if (in_array($value, $names, true)) {
                     $indexes[$key] = $idx;
                     break;
@@ -308,36 +293,45 @@ class QuestionImportController extends Controller
         return $indexes[$key] ?? $default;
     }
 
-    public function downloadTemplate()
+    // ── Option parser ─────────────────────────────────────────────────────────
+
+    private function parseOptions(array $row, int $startIndex): array
     {
-        $headers = [
-            'Question Text / Teks Soal',
-            'Type / Tipe',
-            'Points / Poin',
-            'Image URL / URL Gambar',
-            'Options (use | to separate, * for correct / gunakan | untuk memisahkan, * untuk jawaban benar)',
-        ];
+        $raw = trim($row[$startIndex] ?? '');
+        if ($raw === '') return [];
 
-        $rows = [
-            ['Berapa hasil 2+2?',                   'multiple_choice', '5',  '', '*4|3|5|6'],
-            ['Apakah langit berwarna biru?',         'true_false',      '3',  '', '*Ya|Tidak'],
-            ['Mana yang merupakan buah-buahan?',     'multiple_select', '10', '', '*Apel|Wortel|*Pisang|Brokoli'],
-        ];
+        $options = [];
+        foreach (explode('|', $raw) as $part) {
+            $part = trim($part);
+            if ($part === '') continue;
 
-        $handle = fopen('php://memory', 'w');
-        // Write UTF-8 BOM so Excel opens it correctly without re-encoding
-        fwrite($handle, "\xEF\xBB\xBF");
-        fputcsv($handle, $headers);
-        foreach ($rows as $row) {
-            fputcsv($handle, $row);
+            $is_correct = str_starts_with($part, '*');
+            if ($is_correct) $part = substr($part, 1);
+
+            $options[] = ['text' => $part, 'is_correct' => $is_correct];
         }
 
-        rewind($handle);
-        $csv = stream_get_contents($handle);
-        fclose($handle);
+        return $options;
+    }
 
-        return response($csv)
-            ->header('Content-Type', 'text/csv; charset=UTF-8')
-            ->header('Content-Disposition', 'attachment; filename="questions_import_template.csv"');
+    // ── Validator ─────────────────────────────────────────────────────────────
+
+    private function validateQuestion(array $q, int $rowNum, array &$errors): void
+    {
+        if (empty($q['question_text'])) throw new \Exception('Question text is required');
+
+        if (!in_array($q['question_type'], ['multiple_choice', 'multiple_select', 'true_false'])) {
+            throw new \Exception('Invalid type: ' . $q['question_type']);
+        }
+
+        if ((int) $q['points'] < 1 || (int) $q['points'] > 45) {
+            throw new \Exception('Points must be 1–45');
+        }
+
+        if (count($q['options']) < 2) throw new \Exception('Need at least 2 options');
+
+        if (!collect($q['options'])->contains(fn($o) => $o['is_correct'])) {
+            throw new \Exception('At least one correct answer required');
+        }
     }
 }
