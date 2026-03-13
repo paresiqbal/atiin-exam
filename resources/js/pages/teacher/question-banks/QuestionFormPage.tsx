@@ -201,26 +201,20 @@ export default function QuestionFormPage({ questionBank, question }: Props) {
             put(`/teacher/questions/${question.id}`, {
                 onSuccess: () => {
                     reset();
-                    router.visit(
-                        `/teacher/question-banks/${questionBank.id}`,
-                        {
-                            replace: true,
-                            preserveState: false,
-                        },
-                    );
+                    router.visit(`/teacher/question-banks/${questionBank.id}`, {
+                        replace: true,
+                        preserveState: false,
+                    });
                 },
             });
         } else {
             post(`/teacher/question-banks/${questionBank.id}/questions`, {
                 onSuccess: () => {
                     reset();
-                    router.visit(
-                        `/teacher/question-banks/${questionBank.id}`,
-                        {
-                            replace: true,
-                            preserveState: false,
-                        },
-                    );
+                    router.visit(`/teacher/question-banks/${questionBank.id}`, {
+                        replace: true,
+                        preserveState: false,
+                    });
                 },
             });
         }
