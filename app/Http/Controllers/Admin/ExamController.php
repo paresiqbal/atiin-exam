@@ -20,14 +20,33 @@ use Inertia\Response;
 
 class ExamController extends Controller
 {
+    /**
+     * irt_block_score stores skor_utbk_pct (percentage, e.g. 45.41).
+     * minimum_passing_grade is on the raw UTBK scale (e.g. 651).
+     * Use this constant to convert: skor_utbk_raw = pct * ATTIN_FORMULA / 100
+     */
+    private const ATTIN_FORMULA = 1525.0;
+
+    /**
+     * Convert skor_utbk_pct → raw UTBK score (same scale as minimum_passing_grade).
+     */
+    private function pctToRaw(?float $pct): ?float
+    {
+        return $pct !== null
+            ? round($pct * self::ATTIN_FORMULA / 100, 2)
+            : null;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CRUD
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function index(Request $request): Response
     {
         $perPage = (int) $request->input('per_page', 10);
 
         $exams = Exam::query()
-            ->with([
-                'questionBanks:id,name',
-            ])
+            ->with(['questionBanks:id,name'])
             ->withCount('attempts')
             ->orderByDesc('created_at')
             ->paginate($perPage);
@@ -43,8 +62,7 @@ class ExamController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $schools = School::orderBy('name')
-            ->get(['id', 'name']);
+        $schools = School::orderBy('name')->get(['id', 'name']);
 
         $classes = User::where('role', 'student')
             ->whereNotNull('class')
@@ -54,66 +72,63 @@ class ExamController extends Controller
 
         return Inertia::render('admin/exams/CreateExam', [
             'questionBanks' => $questionBanks,
-            'schools' => $schools,
-            'classes' => $classes,
+            'schools'       => $schools,
+            'classes'       => $classes,
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_at' => 'required|date',
-            'end_at' => 'required|date|after_or_equal:start_at',
-            'shuffle_questions' => 'boolean',
-            'allow_review' => 'boolean',
-            'school_id' => 'required|exists:schools,id',
-
-            'question_banks' => 'required|array|min:1',
-            'question_banks.*.id' => 'required|integer|exists:question_banks,id',
-            'question_banks.*.duration_minutes' => 'required|integer|min:1|max:300',
-            'question_banks.*.sort_order' => 'nullable|integer|min:0',
+            'name'                                  => 'required|string|max:255',
+            'description'                           => 'nullable|string',
+            'start_at'                              => 'required|date',
+            'end_at'                                => 'required|date|after_or_equal:start_at',
+            'shuffle_questions'                     => 'boolean',
+            'allow_review'                          => 'boolean',
+            'school_id'                             => 'required|exists:schools,id',
+            'question_banks'                        => 'required|array|min:1',
+            'question_banks.*.id'                   => 'required|integer|exists:question_banks,id',
+            'question_banks.*.duration_minutes'     => 'required|integer|min:1|max:300',
+            'question_banks.*.sort_order'           => 'nullable|integer|min:0',
         ]);
 
-        $admin = auth()->user();
-
         $exam = Exam::create([
-            'admin_id' => $admin->id,
-            'school_id' => $validated['school_id'],
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'start_at' => $validated['start_at'],
-            'end_at' => $validated['end_at'],
+            'admin_id'     => auth()->id(),
+            'school_id'    => $validated['school_id'],
+            'name'         => $validated['name'],
+            'description'  => $validated['description'] ?? null,
+            'start_at'     => $validated['start_at'],
+            'end_at'       => $validated['end_at'],
             'is_published' => false,
         ]);
 
-        $syncData = [];
+        $syncData     = [];
         $totalMinutes = 0;
 
         foreach ($validated['question_banks'] as $i => $qb) {
-            $minutes = (int) $qb['duration_minutes'];
+            $minutes       = (int) $qb['duration_minutes'];
             $totalMinutes += $minutes;
 
             $syncData[$qb['id']] = [
                 'duration_minutes' => $minutes,
-                'sort_order' => (int) ($qb['sort_order'] ?? ($i + 1)),
+                'sort_order'       => (int) ($qb['sort_order'] ?? ($i + 1)),
             ];
         }
 
         $exam->questionBanks()->sync($syncData);
 
         ExamSetting::create([
-            'exam_id' => $exam->id,
+            'exam_id'            => $exam->id,
             'time_limit_minutes' => $totalMinutes,
-            'shuffle_questions' => $validated['shuffle_questions'] ?? true,
-            'allow_review' => $validated['allow_review'] ?? true,
-            'max_attempts' => 1,
+            'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
+            'allow_review'       => $validated['allow_review'] ?? true,
+            'max_attempts'       => 1,
         ]);
 
         ExamToken::create([
             'exam_id' => $exam->id,
-            'token' => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
+            'token'   => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
         ]);
 
         return redirect()
@@ -149,7 +164,7 @@ class ExamController extends Controller
 
         ExamToken::create([
             'exam_id' => $exam->id,
-            'token' => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
+            'token'   => strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6)),
         ]);
 
         return back()->with('success', 'Token regenerated successfully');
@@ -180,9 +195,9 @@ class ExamController extends Controller
             ->get(['id', 'name']);
 
         return Inertia::render('admin/exams/EditExam', [
-            'exam' => $exam,
+            'exam'          => $exam,
             'questionBanks' => $questionBanks,
-            'schools' => $schools,
+            'schools'       => $schools,
         ]);
     }
 
@@ -193,38 +208,37 @@ class ExamController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
-            'start_at' => ['required', 'date'],
-            'end_at' => ['required', 'date', 'after_or_equal:start_at'],
-            'shuffle_questions' => ['boolean'],
-            'allow_review' => ['boolean'],
-            'school_id' => ['required', 'exists:schools,id'],
-
-            'question_banks' => ['required', 'array', 'min:1'],
-            'question_banks.*.id' => ['required', 'integer', 'exists:question_banks,id'],
+            'name'                              => ['required', 'string', 'max:255'],
+            'description'                       => ['nullable', 'string'],
+            'start_at'                          => ['required', 'date'],
+            'end_at'                            => ['required', 'date', 'after_or_equal:start_at'],
+            'shuffle_questions'                 => ['boolean'],
+            'allow_review'                      => ['boolean'],
+            'school_id'                         => ['required', 'exists:schools,id'],
+            'question_banks'                    => ['required', 'array', 'min:1'],
+            'question_banks.*.id'               => ['required', 'integer', 'exists:question_banks,id'],
             'question_banks.*.duration_minutes' => ['required', 'integer', 'min:1', 'max:300'],
-            'question_banks.*.sort_order' => ['nullable', 'integer', 'min:0'],
+            'question_banks.*.sort_order'       => ['nullable', 'integer', 'min:0'],
         ]);
 
         $exam->update([
-            'name' => $validated['name'],
+            'name'        => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'start_at' => $validated['start_at'],
-            'end_at' => $validated['end_at'],
-            'school_id' => $validated['school_id'],
+            'start_at'    => $validated['start_at'],
+            'end_at'      => $validated['end_at'],
+            'school_id'   => $validated['school_id'],
         ]);
 
-        $syncData = [];
+        $syncData     = [];
         $totalMinutes = 0;
 
         foreach ($validated['question_banks'] as $i => $qb) {
-            $minutes = (int) $qb['duration_minutes'];
+            $minutes       = (int) $qb['duration_minutes'];
             $totalMinutes += $minutes;
 
             $syncData[$qb['id']] = [
                 'duration_minutes' => $minutes,
-                'sort_order' => (int) ($qb['sort_order'] ?? ($i + 1)),
+                'sort_order'       => (int) ($qb['sort_order'] ?? ($i + 1)),
             ];
         }
 
@@ -232,8 +246,8 @@ class ExamController extends Controller
 
         $exam->settings()->update([
             'time_limit_minutes' => $totalMinutes,
-            'shuffle_questions' => $validated['shuffle_questions'] ?? true,
-            'allow_review' => $validated['allow_review'] ?? true,
+            'shuffle_questions'  => $validated['shuffle_questions'] ?? true,
+            'allow_review'       => $validated['allow_review'] ?? true,
         ]);
 
         return redirect()
@@ -273,7 +287,7 @@ class ExamController extends Controller
             ->pluck('id')
             ->all();
 
-        if (! empty($deletableIds)) {
+        if (!empty($deletableIds)) {
             Exam::whereIn('id', $deletableIds)->delete();
         }
 
@@ -316,26 +330,27 @@ class ExamController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $exam->update([
-            'end_at' => now(),
-        ]);
+        $exam->update(['end_at' => now()]);
 
         return back()->with('success', 'Exam ended successfully.');
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Attempts list
+    // ─────────────────────────────────────────────────────────────────────────
+
     public function attempts(Exam $exam)
     {
-        $totalQuestions = $this->getExamQuestions($exam)->count();
+        $totalQuestions    = $this->getExamQuestions($exam)->count();
         $questionBankCount = $exam->questionBanks()->count();
-        $bankDivisor = $questionBankCount > 0 ? $questionBankCount : 1;
+        $bankDivisor       = $questionBankCount > 0 ? $questionBankCount : 1;
 
         $perPage = (int) request()->input('per_page', 15);
-        $query = request();
-        $q = $query->input('q');
-        $status = $query->input('status');
-        $sortBy = $query->input('sort_by', 'date');
-        $sortDir = $query->input('sort_dir', 'desc');
-        $freeze = $query->input('freeze', 'all');
+        $q       = request()->input('q');
+        $status  = request()->input('status');
+        $sortBy  = request()->input('sort_by', 'date');
+        $sortDir = request()->input('sort_dir', 'desc');
+        $freeze  = request()->input('freeze', 'all');
 
         $attemptsQuery = $exam->attempts()
             ->select('exam_attempts.*')
@@ -343,195 +358,187 @@ class ExamController extends Controller
             ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id')
             ->leftJoin('majors', 'majors.id', '=', 'students.major_id');
 
-        if (! empty($q)) {
-            $attemptsQuery->where(function ($searchQuery) use ($q) {
-                $searchQuery
-                    ->where('students.name', 'like', '%' . $q . '%')
-                    ->orWhere('students.email', 'like', '%' . $q . '%');
+        if (!empty($q)) {
+            $attemptsQuery->where(function ($sq) use ($q) {
+                $sq->where('students.name', 'like', "%{$q}%")
+                    ->orWhere('students.email', 'like', "%{$q}%");
             });
         }
 
+        // Status filter — compare raw UTBK (irt_block_score × 1525 / 100) vs minimum_passing_grade
         if ($status === 'passed') {
             $attemptsQuery
                 ->where('exam_attempts.status', 'submitted')
-                ->whereRaw('exam_attempts.score >= COALESCE(majors.minimum_passing_grade, 0)');
+                ->whereNotNull('exam_attempts.irt_block_score')
+                ->whereRaw(
+                    '(exam_attempts.irt_block_score * ? / 100) >= COALESCE(majors.minimum_passing_grade, 0)',
+                    [self::ATTIN_FORMULA]
+                );
         }
 
         if ($status === 'failed') {
             $attemptsQuery
                 ->where('exam_attempts.status', 'submitted')
-                ->whereRaw('exam_attempts.score < COALESCE(majors.minimum_passing_grade, 0)');
+                ->where(function ($fq) {
+                    $fq->whereNull('exam_attempts.irt_block_score')
+                        ->orWhereRaw(
+                            '(exam_attempts.irt_block_score * ? / 100) < COALESCE(majors.minimum_passing_grade, 0)',
+                            [self::ATTIN_FORMULA]
+                        );
+                });
         }
 
         if ($freeze === 'frozen') {
-            $attemptsQuery->where(function ($freezeQuery) {
-                $freezeQuery
-                    ->where('exam_attempts.is_frozen', true)
+            $attemptsQuery->where(function ($fq) {
+                $fq->where('exam_attempts.is_frozen', true)
                     ->orWhere('exam_attempts.status', 'frozen');
             });
         }
 
         if ($freeze === 'not_frozen') {
-            $attemptsQuery->where(function ($freezeQuery) {
-                $freezeQuery
-                    ->where(function ($notFrozenQuery) {
-                        $notFrozenQuery
-                            ->where('exam_attempts.is_frozen', false)
-                            ->orWhereNull('exam_attempts.is_frozen');
-                    })
-                    ->where('exam_attempts.status', '!=', 'frozen');
+            $attemptsQuery->where(function ($fq) {
+                $fq->where(function ($nfq) {
+                    $nfq->where('exam_attempts.is_frozen', false)
+                        ->orWhereNull('exam_attempts.is_frozen');
+                })->where('exam_attempts.status', '!=', 'frozen');
             });
         }
 
         if ($sortBy === 'name') {
             $attemptsQuery->orderBy('students.name', $sortDir);
         } elseif ($sortBy === 'score') {
-            $attemptsQuery->orderBy('exam_attempts.score', $sortDir);
+            $attemptsQuery->orderBy('exam_attempts.irt_block_score', $sortDir);
         } else {
             $attemptsQuery->orderBy('exam_attempts.started_at', $sortDir);
         }
 
         $attempts = $attemptsQuery->paginate($perPage)->withQueryString();
 
-        $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) use ($totalQuestions, $questionBankCount, $bankDivisor) {
-            $rawScore = (float) ($attempt->score ?? 0);
-            $totalScore = (float) ($attempt->total_score ?? 0);
-            $thetaScore = $attempt->irt_theta;
-            $displayScore = $thetaScore ?? $rawScore;
-            $blockScore = $attempt->irt_block_score;
-            $adjustedScore = $blockScore ?? ($rawScore / $bankDivisor);
+        $attemptsTransformed = $attempts->through(function (ExamAttempt $attempt) use (
+            $totalQuestions,
+            $questionBankCount,
+            $bankDivisor
+        ) {
+            $rawScore    = (float) ($attempt->score ?? 0);
+            $totalScore  = (float) ($attempt->total_score ?? 0);
+            $blockScore  = $attempt->irt_block_score;   // pct, e.g. 45.41
+
+            // Convert to raw UTBK score for pass/fail comparison
+            $skorUtbk           = $this->pctToRaw($blockScore);   // e.g. 692.35
+            $adjustedScore      = $blockScore ?? ($rawScore / $bankDivisor);
             $adjustedTotalScore = $totalScore / $bankDivisor;
 
-            $percentage = ($totalQuestions > 0 && $attempt->status === 'submitted')
-                ? round(($rawScore / $totalQuestions) * 100, 2)
-                : 0;
-
-            $selections = $attempt->student->university_selections ?? [];
-            $firstSelection = $selections[0] ?? null;
+            $selections        = $attempt->student->university_selections ?? [];
+            $firstSelection    = $selections[0] ?? null;
             $firstUniversityId = $firstSelection['university_id'] ?? null;
-            $firstMajorId = $firstSelection['majors'][0] ?? null;
+            $firstMajorId      = $firstSelection['majors'][0] ?? null;
 
             $selectedUniversity = $firstUniversityId
                 ? \App\Models\University::find($firstUniversityId)?->name
                 : null;
-            $selectedMajor = $firstMajorId
-                ? \App\Models\Major::find($firstMajorId)?->name
-                : null;
-            $minPassing = $firstMajorId
-                ? \App\Models\Major::find($firstMajorId)?->minimum_passing_grade ?? 0
-                : ($attempt->student->major->minimum_passing_grade ?? 0);
 
-            $isPassed = $attempt->status === 'submitted'
-                ? $adjustedScore >= $minPassing
+            $selectedMajorModel = $firstMajorId
+                ? \App\Models\Major::find($firstMajorId)
+                : null;
+
+            $selectedMajorName = $selectedMajorModel?->name;
+            $minPassing        = $selectedMajorModel?->minimum_passing_grade
+                ?? $attempt->student->major?->minimum_passing_grade
+                ?? 0;
+
+            // raw vs raw
+            $isPassed = $attempt->status === 'submitted' && $skorUtbk !== null
+                ? $skorUtbk >= $minPassing
                 : false;
 
             $durationMinutes = null;
             if ($attempt->started_at && $attempt->completed_at) {
                 $durationMinutes = max(
                     0,
-                    $attempt->completed_at->diffInMinutes($attempt->started_at),
+                    $attempt->completed_at->diffInMinutes($attempt->started_at)
                 );
             }
 
             return [
-                'id' => $attempt->id,
-                'score' => $displayScore,
-                'raw_score' => $rawScore,
-                'irt_theta' => $thetaScore,
-                'irt_block_score' => $attempt->irt_block_score,
-                'total_score' => $totalScore,
-                'skor_utbk_pct' => $attempt->irt_block_score,
-                'adjusted_score' => (int) floor($adjustedScore),
+                'id'                   => $attempt->id,
+                'skor_utbk_pct'        => $blockScore,      // percentage — display only
+                'skor_utbk'            => $skorUtbk,        // raw — for comparisons
+                'adjusted_score'       => (int) floor($adjustedScore),
                 'adjusted_total_score' => (int) floor($adjustedTotalScore),
-                'total_questions' => $totalQuestions,
-                'question_bank_count' => $questionBankCount,
-                'percentage' => $percentage,
-                'is_passed' => $isPassed,
-                'status' => $attempt->status,
-                'is_frozen' => (bool) $attempt->is_frozen,
-                'duration_minutes' => $durationMinutes,
-                'started_at' => optional($attempt->started_at)->toIso8601String(),
-                'completed_at' => optional($attempt->completed_at)->toIso8601String(),
+                'total_questions'      => $totalQuestions,
+                'question_bank_count'  => $questionBankCount,
+                'is_passed'            => $isPassed,
+                'status'               => $attempt->status,
+                'is_frozen'            => (bool) $attempt->is_frozen,
+                'duration_minutes'     => $durationMinutes,
+                'started_at'           => optional($attempt->started_at)->toIso8601String(),
+                'completed_at'         => optional($attempt->completed_at)->toIso8601String(),
                 'student' => [
-                    'id' => $attempt->student->id,
-                    'name' => $attempt->student->name,
-                    'email' => $attempt->student->email,
+                    'id'         => $attempt->student->id,
+                    'name'       => $attempt->student->name,
+                    'email'      => $attempt->student->email,
                     'university' => [
-                        'name' => $selectedUniversity ?? $attempt->student->university->name ?? '-',
+                        'name' => $selectedUniversity ?? $attempt->student->university?->name ?? '-',
                     ],
                     'major' => [
-                        'name' => $selectedMajor ?? $attempt->student->major->name ?? '-',
+                        'name'                  => $selectedMajorName ?? $attempt->student->major?->name ?? '-',
                         'minimum_passing_grade' => $minPassing,
                     ],
                 ],
             ];
         });
 
+        // ── Analytics ─────────────────────────────────────────────────────────
         $submittedAttempts = $exam->attempts()
             ->where('status', 'submitted')
             ->get();
 
         $totalAttempts = $submittedAttempts->count();
 
-        $passed = $submittedAttempts
-            ->filter(function ($attempt) {
-                $selections = $attempt->student->university_selections ?? [];
-                $firstSelection = $selections[0] ?? null;
-                $firstMajorId = $firstSelection['majors'][0] ?? null;
+        $passed = $submittedAttempts->filter(function ($attempt) {
+            $selections   = $attempt->student->university_selections ?? [];
+            $firstMajorId = ($selections[0]['majors'][0] ?? null);
+            $minPassing   = $firstMajorId
+                ? \App\Models\Major::find($firstMajorId)?->minimum_passing_grade ?? 0
+                : ($attempt->student->major?->minimum_passing_grade ?? 0);
 
-                $minPassing = $firstMajorId
-                    ? \App\Models\Major::find($firstMajorId)?->minimum_passing_grade ?? 0
-                    : ($attempt->student->major->minimum_passing_grade ?? 0);
+            $skorUtbk = $this->pctToRaw($attempt->irt_block_score);
 
-                $adjustedScore = $attempt->irt_block_score ?? 0;
+            return $skorUtbk !== null && $skorUtbk >= $minPassing;
+        })->count();
 
-                return $adjustedScore >= $minPassing;
-            })
-            ->count();
-
-        $averagePercentage = $totalQuestions > 0
-            ? ($submittedAttempts
-                ->map(fn($a) => (($a->irt_block_score ?? 0) / $totalQuestions) * 100)
-                ->avg() ?? 0)
-            : 0;
+        // Average raw UTBK score across IRT-processed attempts
+        $averageRaw = $submittedAttempts
+            ->filter(fn($a) => $a->irt_block_score !== null)
+            ->map(fn($a) => $this->pctToRaw($a->irt_block_score))
+            ->avg() ?? 0;
 
         return Inertia::render('admin/exams/ExamAttempts', [
             'exam' => [
-                'id' => $exam->id,
-                'name' => $exam->name,
+                'id'               => $exam->id,
+                'name'             => $exam->name,
                 'irt_processed_at' => optional($exam->irt_processed_at)->toIso8601String(),
             ],
-            'attempts' => $attemptsTransformed,
+            'attempts'  => $attemptsTransformed,
             'analytics' => [
                 'total_attempts' => $totalAttempts,
-                'passed' => $passed,
-                'average_score' => round($averagePercentage, 2),
+                'passed'         => $passed,
+                'average_score'  => round($averageRaw, 2),
             ],
             'filters' => [
-                'q' => $q,
-                'status' => $status,
-                'sort_by' => $sortBy,
+                'q'        => $q,
+                'status'   => $status,
+                'sort_by'  => $sortBy,
                 'sort_dir' => $sortDir,
-                'freeze' => $freeze,
+                'freeze'   => $freeze,
                 'per_page' => $perPage,
             ],
         ]);
     }
 
-    private function getExamQuestions(Exam $exam): Collection
-    {
-        $exam->loadMissing([
-            'questionBanks' => function ($q) {
-                $q->withPivot(['sort_order'])->orderBy('exam_question_bank.sort_order');
-            },
-            'questionBanks.questions.options',
-        ]);
-
-        return $exam->questionBanks
-            ->flatMap(fn($qb) => $qb->questions->sortBy('id'))
-            ->unique('id')
-            ->values();
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // Attempt detail
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function attemptDetail(ExamAttempt $attempt)
     {
@@ -545,37 +552,48 @@ class ExamController extends Controller
             'responses.selectedOption',
         ]);
 
-        $selections = $attempt->student->university_selections ?? [];
+        $selections     = $attempt->student->university_selections ?? [];
         $firstSelection = $selections[0] ?? null;
-        $firstMajorId = $firstSelection['majors'][0] ?? null;
+        $firstMajorId   = $firstSelection['majors'][0] ?? null;
 
         $selectedMajor = $firstMajorId
             ? \App\Models\Major::find($firstMajorId)
             : null;
-        $passingScore = $selectedMajor?->minimum_passing_grade ?? $attempt->student?->major?->minimum_passing_grade ?? 0;
 
-        $adjustedScore = $attempt->irt_block_score ?? 0;
-        $isPassed = $adjustedScore >= $passingScore;
+        $passingScore = $selectedMajor?->minimum_passing_grade
+            ?? $attempt->student?->major?->minimum_passing_grade
+            ?? 0;
+
+        // irt_block_score stores skor_utbk_pct (percentage, e.g. 45.41)
+        $skorUtbkPct = $attempt->irt_block_score !== null
+            ? round((float) $attempt->irt_block_score, 2)
+            : null;
+
+        // Convert to raw UTBK score (same scale as minimum_passing_grade, e.g. 692.35)
+        $skorUtbk = $this->pctToRaw($skorUtbkPct);
+
+        // Compare raw vs raw — this is the fixed comparison
+        $isPassed = $skorUtbk !== null
+            ? $skorUtbk >= $passingScore
+            : false;
 
         $questions = $this->getExamQuestions($attempt->exam);
 
         $questionDetails = $questions->map(function ($question) use ($attempt) {
-            $response = $attempt->responses->firstWhere('question_id', $question->id);
-            $selected = $response?->selectedOption;
-
-            // single-correct assumption
+            $response      = $attempt->responses->firstWhere('question_id', $question->id);
+            $selected      = $response?->selectedOption;
             $correctOption = $question->options->firstWhere('is_correct', true);
 
             return [
-                'id' => $question->id,
-                'question_text' => $question->question_text,
-                'question_type' => $question->question_type,
-                'points' => $question->points,
+                'id'             => $question->id,
+                'question_text'  => $question->question_text,
+                'question_type'  => $question->question_type,
+                'points'         => $question->points,
                 'student_answer' => $selected?->option_text,
                 'correct_answer' => $correctOption?->option_text,
-                'is_correct' => (bool) ($selected?->is_correct ?? false),
-                'points_earned' => $response
-                    ? ((bool) ($selected?->is_correct ?? false) ? $question->points : 0)
+                'is_correct'     => (bool) ($selected?->is_correct ?? false),
+                'points_earned'  => $response && ($selected?->is_correct ?? false)
+                    ? $question->points
                     : 0,
             ];
         });
@@ -588,41 +606,47 @@ class ExamController extends Controller
             ->flatMap(fn($att) => $att->responses)
             ->groupBy('question_id')
             ->map(function ($responses) {
-                $total = $responses->count();
+                $total   = $responses->count();
                 $correct = $responses->filter(fn($r) => (bool) ($r->selectedOption?->is_correct ?? false))->count();
 
                 return [
-                    'total' => $total,
-                    'correct' => $correct,
+                    'total'      => $total,
+                    'correct'    => $correct,
                     'percentage' => $total > 0 ? ($correct / $total) * 100 : 0,
                 ];
             });
 
         return Inertia::render('admin/exams/AttemptDetail', [
             'attempt' => $attempt,
-            'exam' => [
-                'id' => $attempt->exam->id,
-                'name' => $attempt->exam->name,
-                'description' => $attempt->exam->description,
+            'exam'    => [
+                'id'               => $attempt->exam->id,
+                'name'             => $attempt->exam->name,
+                'description'      => $attempt->exam->description,
                 'irt_processed_at' => optional($attempt->exam->irt_processed_at)->toIso8601String(),
             ],
-            'student' => $attempt->student,
+            'student'     => $attempt->student,
             'studentData' => [
                 'university_selections' => $selections,
-                'selected_university' => $firstSelection
+                'selected_university'   => $firstSelection
                     ? \App\Models\University::find($firstSelection['university_id'])?->name
                     : null,
-                'selected_major' => $selectedMajor?->name,
+                'selected_major'        => $selectedMajor?->name,
                 'minimum_passing_grade' => $passingScore,
             ],
             'questionBankCount' => $attempt->exam->questionBanks->count(),
-            'adjustedScore' => $adjustedScore,
-            'passingScore' => $passingScore,
-            'isPassed' => $isPassed,
-            'questionDetails' => $questionDetails,
-            'questionPerformance' => $questionPerformance,
+            'skorUtbkPct'       => $skorUtbkPct,        // e.g. 45.41  — percentage, display only
+            'skorUtbk'          => $skorUtbk,            // e.g. 692.35 — raw, same scale as passingScore
+            'adjustedScore'     => $skorUtbk ?? 0,      // legacy alias kept for safety
+            'passingScore'      => $passingScore,
+            'isPassed'          => $isPassed,
+            'questionDetails'        => $questionDetails,
+            'questionPerformance'    => $questionPerformance,
         ]);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Export / download
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function exportResults(Exam $exam)
     {
@@ -646,19 +670,20 @@ class ExamController extends Controller
             $questions = $bank->questions->unique('id')->values();
 
             return [
-                'index' => $index + 1,
-                'name' => $bank->name ?? 'Question Bank',
+                'index'     => $index + 1,
+                'name'      => $bank->name ?? 'Question Bank',
                 'questions' => $questions,
             ];
         });
 
         $baseHeaders = ['Name', 'Email', 'School', 'Class', 'University', 'Major'];
-        $headerRow1 = $baseHeaders;
-        $headerRow2 = $baseHeaders;
+        $headerRow1  = $baseHeaders;
+        $headerRow2  = $baseHeaders;
 
         foreach ($banks as $bank) {
             $questions = $bank['questions'];
-            $count = $questions->count();
+            $count     = $questions->count();
+
             for ($i = 0; $i < $count; $i++) {
                 $headerRow1[] = $i === 0
                     ? "Block {$bank['index']} - {$bank['name']}"
@@ -669,12 +694,12 @@ class ExamController extends Controller
             }
         }
 
-        $headerRow1[] = 'Total Score';
+        $headerRow1[] = 'Skor UTBK';
         $headerRow1[] = 'Status';
-        $headerRow2[] = 'Total Score';
+        $headerRow2[] = 'Skor UTBK';
         $headerRow2[] = 'Status';
 
-        $rows = [];
+        $rows   = [];
         $rows[] = $headerRow1;
         $rows[] = $headerRow2;
 
@@ -682,34 +707,36 @@ class ExamController extends Controller
             $student = $attempt->student;
 
             $row = [
-                $student?->name ?? 'N/A',
-                $student?->email ?? 'N/A',
-                $student?->school?->name ?? 'N/A',
-                $student?->class ?? 'N/A',
-                $student?->university?->name ?? 'N/A',
-                $student?->major?->name ?? 'N/A',
+                $student?->name               ?? 'N/A',
+                $student?->email              ?? 'N/A',
+                $student?->school?->name      ?? 'N/A',
+                $student?->class              ?? 'N/A',
+                $student?->university?->name  ?? 'N/A',
+                $student?->major?->name       ?? 'N/A',
             ];
 
             $byQuestion = $attempt->responses->keyBy('question_id');
 
             foreach ($banks as $bank) {
                 foreach ($bank['questions'] as $question) {
-                    $response = $byQuestion->get($question->id);
+                    $response  = $byQuestion->get($question->id);
                     $isCorrect = (bool) ($response?->selectedOption?->is_correct ?? false);
-
-                    $row[] = $isCorrect ? 'Correct' : 'Wrong';
+                    $row[]     = $isCorrect ? 'Correct' : 'Wrong';
                 }
             }
 
-            $row[] = "{$attempt->score}/{$attempt->total_score}";
+            // Use raw UTBK score in export — same scale as passing grade
+            $skorUtbk     = $this->pctToRaw($attempt->irt_block_score);
             $passingScore = $student?->major?->minimum_passing_grade ?? 0;
-            $row[] = ((float) ($attempt->score ?? 0) >= (float) $passingScore) ? 'PASSED' : 'FAILED';
+
+            $row[] = $skorUtbk !== null ? number_format($skorUtbk, 2) : '-';
+            $row[] = $skorUtbk !== null && $skorUtbk >= $passingScore ? 'LULUS' : 'TIDAK LULUS';
 
             $rows[] = $row;
         }
 
         $filename = 'exam-results-' . $exam->id . '-' . now()->format('Y-m-d') . '.csv';
-        $handle = fopen('php://memory', 'w');
+        $handle   = fopen('php://memory', 'w');
 
         foreach ($rows as $row) {
             fputcsv($handle, $row);
@@ -721,30 +748,28 @@ class ExamController extends Controller
 
         return response($csv)
             ->header('Content-Type', 'text/csv')
-            ->header('Content-Disposition', "attachment; filename=\"$filename\"");
+            ->header('Content-Disposition', "attachment; filename=\"{$filename}\"");
     }
 
     public function exportIrtResults(Exam $exam)
     {
-        if (! $exam->irt_processed_at) {
+        if (!$exam->irt_processed_at) {
             return back()->with('error', 'IRT belum diproses untuk ujian ini.');
         }
 
-        $attempts = $exam->attempts()
-            ->with(['student', 'responses.selectedOption'])
-            ->get();
-
+        $attempts  = $exam->attempts()->with(['student', 'responses.selectedOption'])->get();
         $questions = $this->getExamQuestions($exam);
 
         $tempDir = storage_path('app/tmp');
-        if (! is_dir($tempDir)) {
+        if (!is_dir($tempDir)) {
             mkdir($tempDir, 0755, true);
         }
 
-        $studentsPath = $tempDir . DIRECTORY_SEPARATOR . 'students_theta.csv';
+        $studentsPath  = $tempDir . DIRECTORY_SEPARATOR . 'students_theta.csv';
         $questionsPath = $tempDir . DIRECTORY_SEPARATOR . 'questions_difficulty.csv';
-        $matrixPath = $tempDir . DIRECTORY_SEPARATOR . 'response_matrix.csv';
+        $matrixPath    = $tempDir . DIRECTORY_SEPARATOR . 'response_matrix.csv';
 
+        // students_theta.csv
         $studentsHandle = fopen($studentsPath, 'w');
         fputcsv($studentsHandle, [
             'student_id',
@@ -757,9 +782,9 @@ class ExamController extends Controller
         ]);
 
         foreach ($attempts as $attempt) {
-            $rawScore = (float) ($attempt->score ?? 0);
+            $rawScore   = (float) ($attempt->score ?? 0);
             $totalScore = (float) ($attempt->total_score ?? 0);
-            $percent = $totalScore > 0 ? round(($rawScore / $totalScore) * 100, 2) : 0;
+            $percent    = $totalScore > 0 ? round(($rawScore / $totalScore) * 100, 2) : 0;
 
             fputcsv($studentsHandle, [
                 $attempt->student_id,
@@ -771,31 +796,24 @@ class ExamController extends Controller
                 $attempt->irt_block_score,
             ]);
         }
-
         fclose($studentsHandle);
 
+        // questions_difficulty.csv
         $questionsHandle = fopen($questionsPath, 'w');
-        fputcsv($questionsHandle, [
-            'question_id',
-            'difficulty_b',
-            'difficulty_level',
-        ]);
+        fputcsv($questionsHandle, ['question_id', 'difficulty_b', 'difficulty_level']);
 
         foreach ($questions as $question) {
-            $b = $question->irt_b;
-            $level = $this->difficultyLevel($b);
-
             fputcsv($questionsHandle, [
                 $question->id,
-                $b,
-                $level,
+                $question->irt_b,
+                $this->difficultyLevel($question->irt_b),
             ]);
         }
-
         fclose($questionsHandle);
 
+        // response_matrix.csv
         $matrixHandle = fopen($matrixPath, 'w');
-        $header = ['student_id'];
+        $header       = ['student_id'];
         foreach ($questions as $question) {
             $header[] = 'Q' . $question->id;
         }
@@ -803,22 +821,22 @@ class ExamController extends Controller
 
         foreach ($attempts as $attempt) {
             $byQuestion = $attempt->responses->keyBy('question_id');
-            $row = [$attempt->student_id];
+            $row        = [$attempt->student_id];
 
             foreach ($questions as $question) {
-                $response = $byQuestion->get($question->id);
+                $response  = $byQuestion->get($question->id);
                 $isCorrect = (bool) ($response?->selectedOption?->is_correct ?? false);
-                $row[] = $isCorrect ? 1 : 0;
+                $row[]     = $isCorrect ? 1 : 0;
             }
 
             fputcsv($matrixHandle, $row);
         }
-
         fclose($matrixHandle);
 
+        // Bundle into ZIP
         $zipName = 'exam_' . $exam->id . '_irt_results.zip';
         $zipPath = $tempDir . DIRECTORY_SEPARATOR . $zipName;
-        $zip = new \ZipArchive;
+        $zip     = new \ZipArchive;
         $zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
         $zip->addFile($studentsPath, 'students_theta.csv');
         $zip->addFile($questionsPath, 'questions_difficulty.csv');
@@ -839,9 +857,9 @@ class ExamController extends Controller
         }
 
         $service = new IrtRaschService;
-        $result = $service->scoreExam($exam);
+        $result  = $service->scoreExam($exam);
 
-        if (! $result['success']) {
+        if (!$result['success']) {
             return back()->with('error', $result['message']);
         }
 
@@ -860,34 +878,36 @@ class ExamController extends Controller
     public function downloadAttemptPdf(ExamAttempt $attempt)
     {
         $attempt->loadMissing('exam');
-        if (! $attempt->exam?->irt_processed_at) {
+
+        if (!$attempt->exam?->irt_processed_at) {
             return back()->with('error', 'IRT belum diproses untuk ujian ini.');
         }
 
-        $pdfService = new ExamResultsPdfService;
-        $pdf = $pdfService->generate($attempt);
-
-        return $pdf->download('exam-attempt-' . $attempt->id . '.pdf');
+        return (new ExamResultsPdfService)->generate($attempt)
+            ->download('exam-attempt-' . $attempt->id . '.pdf');
     }
 
     public function downloadAttemptLetter(ExamAttempt $attempt)
     {
         $attempt->loadMissing('exam');
-        if (! $attempt->exam?->irt_processed_at) {
+
+        if (!$attempt->exam?->irt_processed_at) {
             return back()->with('error', 'IRT belum diproses untuk ujian ini.');
         }
 
-        $pdfService = new ExamOfficialLetterPdfService;
-        $pdf = $pdfService->generate($attempt);
-
-        return $pdf->download('exam-letter-' . $attempt->id . '.pdf');
+        return (new ExamOfficialLetterPdfService)->generate($attempt)
+            ->download('exam-letter-' . $attempt->id . '.pdf');
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Unfreeze
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function unfreezeAttempt(ExamAttempt $attempt)
     {
         $attempt->update([
-            'is_frozen' => false,
-            'frozen_at' => null,
+            'is_frozen'     => false,
+            'frozen_at'     => null,
             'frozen_reason' => null,
         ]);
 
@@ -899,7 +919,7 @@ class ExamController extends Controller
     public function bulkUnfreezeAttempts(Request $request, Exam $exam)
     {
         $validated = $request->validate([
-            'attempt_ids' => 'required|array|min:1',
+            'attempt_ids'   => 'required|array|min:1',
             'attempt_ids.*' => 'integer',
         ]);
 
@@ -913,8 +933,8 @@ class ExamController extends Controller
 
         ExamAttempt::whereIn('id', $attempts->pluck('id'))
             ->update([
-                'is_frozen' => false,
-                'frozen_at' => null,
+                'is_frozen'     => false,
+                'frozen_at'     => null,
                 'frozen_reason' => null,
             ]);
 
@@ -925,27 +945,32 @@ class ExamController extends Controller
         return back()->with('success', 'Semua percobaan terpilih berhasil dibuka.');
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Private helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function getExamQuestions(Exam $exam): Collection
+    {
+        $exam->loadMissing([
+            'questionBanks' => function ($q) {
+                $q->withPivot(['sort_order'])->orderBy('exam_question_bank.sort_order');
+            },
+            'questionBanks.questions.options',
+        ]);
+
+        return $exam->questionBanks
+            ->flatMap(fn($qb) => $qb->questions->sortBy('id'))
+            ->unique('id')
+            ->values();
+    }
+
     private function difficultyLevel(?float $b): string
     {
-        if ($b === null) {
-            return '';
-        }
-
-        if ($b < -2) {
-            return 'Very Easy';
-        }
-
-        if ($b < -1) {
-            return 'Easy';
-        }
-
-        if ($b <= 1) {
-            return 'Medium';
-        }
-
-        if ($b <= 2) {
-            return 'Hard';
-        }
+        if ($b === null) return '';
+        if ($b < -2)    return 'Very Easy';
+        if ($b < -1)    return 'Easy';
+        if ($b <= 1)    return 'Medium';
+        if ($b <= 2)    return 'Hard';
 
         return 'Very Hard';
     }

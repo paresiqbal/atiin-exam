@@ -52,14 +52,16 @@ interface Props {
         selected_major: string | null;
         minimum_passing_grade: number;
     };
-    adjustedScore: number; // = irt_block_score (skor_utbk_pct) from controller
-    passingScore: number;
-    isPassed: boolean;
+    // Controller sends both; skorUtbk is raw (e.g. 692.35) same scale as passingScore
+    skorUtbkPct: number | null; // percentage, e.g. 45.41 — display only
+    skorUtbk: number | null; // raw UTBK score, e.g. 692.35
+    adjustedScore: number; // legacy alias = skorUtbk ?? 0
+    passingScore: number; // raw scale, e.g. 651
+    isPassed: boolean; // computed raw vs raw in controller
     questionDetails: QuestionDetail[];
     questionPerformance: Record<number, unknown>;
 }
 
-// Simple key-value row used in info sections
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
     return (
         <div className="flex items-start justify-between gap-4 border-b py-2 last:border-0">
@@ -76,6 +78,8 @@ export default function AttemptDetail({
     exam,
     student,
     studentData,
+    skorUtbkPct,
+    skorUtbk,
     adjustedScore,
     passingScore,
     isPassed,
@@ -91,9 +95,15 @@ export default function AttemptDetail({
 
     const irtProcessed = !!exam.irt_processed_at;
 
-    // adjustedScore is skor_utbk_pct (e.g. 42.35), passingScore is on the same scale
-    const skorUtbkPct = adjustedScore;
-    const skorUtbkRaw = (skorUtbkPct / 100) * 1525;
+    // Use raw UTBK score (same scale as passingScore).
+    // If controller already sends skorUtbk, use it directly.
+    // Otherwise derive from pct: raw = pct * 1525 / 100.
+    // adjustedScore may be pct (old controller) or raw (new controller) — don't rely on it.
+    const rawScore =
+        skorUtbk ??
+        (skorUtbkPct !== null ? (skorUtbkPct * 1525) / 100 : adjustedScore);
+    const displayPct =
+        skorUtbkPct ?? (skorUtbk !== null ? (skorUtbk / 1525) * 100 : null);
 
     const completedDate = attempt.completed_at
         ? new Date(attempt.completed_at).toLocaleDateString('id-ID', {
@@ -123,7 +133,6 @@ export default function AttemptDetail({
                             {exam.name} — {student.name}
                         </p>
                     </div>
-
                     <div className="flex shrink-0 flex-wrap gap-2">
                         <Link href={`/admin/exams/${exam.id}/attempts`}>
                             <Button variant="ghost" size="sm" className="gap-2">
@@ -131,7 +140,6 @@ export default function AttemptDetail({
                                 Kembali
                             </Button>
                         </Link>
-
                         {irtProcessed && (
                             <>
                                 <a
@@ -176,7 +184,7 @@ export default function AttemptDetail({
                             : 'border-red-500/30 bg-red-500/5',
                     )}
                 >
-                    {/* Status icon + label */}
+                    {/* Status */}
                     <div className="flex shrink-0 items-center gap-4">
                         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-background shadow-sm">
                             {isPassed ? (
@@ -205,48 +213,40 @@ export default function AttemptDetail({
                         </div>
                     </div>
 
-                    {/* Score stats */}
+                    {/* Score stat boxes */}
                     <div className="flex flex-wrap gap-3 md:ml-auto">
-                        <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
+                        {/* Skor UTBK — raw value, directly comparable to Min. Nilai Prodi */}
+                        <div className="min-w-[140px] rounded-lg border bg-background px-5 py-3">
                             <p className="mb-1 text-xs font-medium text-muted-foreground">
                                 Skor UTBK
                             </p>
-                            <p className="text-2xl font-bold">
-                                {irtProcessed ? (
-                                    `${skorUtbkPct.toFixed(2)}%`
-                                ) : (
-                                    <span className="text-base text-muted-foreground">
-                                        Belum diproses
-                                    </span>
-                                )}
-                            </p>
+                            {irtProcessed ? (
+                                <>
+                                    <p className="text-2xl font-bold">
+                                        {rawScore.toFixed(2)}
+                                    </p>
+                                    {displayPct !== null && (
+                                        <p className="mt-0.5 text-xs text-muted-foreground">
+                                            {displayPct.toFixed(1)}% dari 1.525
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <p className="text-base text-muted-foreground">
+                                    Belum diproses
+                                </p>
+                            )}
                         </div>
 
+                        {/* Min. Nilai Prodi — same raw scale */}
                         <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
                             <p className="mb-1 text-xs font-medium text-muted-foreground">
-                                Skor UTBK (Raw)
-                            </p>
-                            <p className="text-2xl font-bold">
-                                {irtProcessed ? (
-                                    skorUtbkRaw.toFixed(2)
-                                ) : (
-                                    <span className="text-base text-muted-foreground">
-                                        Belum diproses
-                                    </span>
-                                )}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                / 1.525
-                            </p>
-                        </div>
-
-                        <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
-                            <p className="mb-1 text-xs font-medium text-muted-foreground">
-                                Passing Grade
+                                Min. Nilai Prodi
                             </p>
                             <p className="text-2xl font-bold">{passingScore}</p>
                         </div>
 
+                        {/* Theta */}
                         {attempt.irt_theta !== null && irtProcessed && (
                             <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
                                 <p className="mb-1 text-xs font-medium text-muted-foreground">
@@ -262,7 +262,6 @@ export default function AttemptDetail({
 
                 {/* ── Info Grid ── */}
                 <div className="grid gap-6 md:grid-cols-2">
-                    {/* Student info — plain section, no card */}
                     <div>
                         <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                             Informasi Siswa
@@ -273,13 +272,12 @@ export default function AttemptDetail({
                             <InfoRow label="Universitas" value={university} />
                             <InfoRow label="Program Studi" value={major} />
                             <InfoRow
-                                label="Passing Grade"
+                                label="Min. Nilai Prodi"
                                 value={passingScore}
                             />
                         </div>
                     </div>
 
-                    {/* Exam info */}
                     <div>
                         <p className="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                             Informasi Ujian

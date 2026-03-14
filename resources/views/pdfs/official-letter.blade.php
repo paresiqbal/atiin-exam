@@ -200,12 +200,12 @@
         </p>
     </div>
 
-    {{-- ── Skor UTBK highlight ── --}}
+    {{-- ── Skor UTBK highlight — raw score is the main value ── --}}
     <div style="text-align:center; margin: 12px 0;">
         <div class="score-box">
             <div class="score-label">Skor UTBK</div>
-            <div class="score-value">{{ number_format($skor_utbk_pct, 2) }}%</div>
-            <div class="score-label">({{ number_format($skor_utbk, 2) }} / 1.525)</div>
+            <div class="score-value">{{ number_format($skor_utbk, 2) }}</div>
+            <div class="score-label">{{ number_format($skor_utbk_pct, 2) }}% dari 1.525</div>
         </div>
     </div>
 
@@ -238,7 +238,7 @@
         </table>
     </div>
 
-    {{-- ── Program study choices ── --}}
+    {{-- ── Program study choices — compare raw skor_utbk vs minimum_grade (both raw scale) ── --}}
     <div class="section">
         <div class="section-title">Pilihan Program Studi</div>
         <table>
@@ -256,7 +256,7 @@
                     <tr>
                         <td class="center">{{ $index + 1 }}</td>
                         <td>{{ $row['program'] }}</td>
-                        <td class="right">{{ number_format($row['skor_utbk_pct'], 2) }}</td>
+                        <td class="right">{{ number_format($row['skor_utbk'], 2) }}</td>
                         <td class="right">{{ number_format($row['minimum_grade'], 2) }}</td>
                         <td class="{{ $row['is_passed'] ? 'result-lulus' : 'result-tl' }}">
                             {{ $row['result'] }}
@@ -276,7 +276,7 @@
         <div class="section">
             <div class="section-title">Rekomendasi Pilihan (Maks. 5 Opsi per Kolom)</div>
             <p class="note">
-                Berdasarkan Skor UTBK kamu (<strong>{{ number_format($skor_utbk_pct, 2) }}</strong>),
+                Berdasarkan Skor UTBK kamu (<strong>{{ number_format($skor_utbk, 2) }}</strong>),
                 berikut adalah pilihan program studi lain yang masih dapat kamu jangkau:
             </p>
             <table class="rec-table">
