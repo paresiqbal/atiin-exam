@@ -58,9 +58,10 @@ interface Student {
 interface ExamAttempt {
     id: number;
     status: string;
-    skor_utbk_pct: number | null; // null = IRT not processed
+    skor_utbk_pct: number | null; // percentage (e.g. 42.35) — display only
+    skor_utbk: number | null; // raw UTBK score (e.g. 646.3) — same scale as passing_score
     irt_processed: boolean;
-    passing_score: number;
+    passing_score: number; // raw UTBK scale (e.g. 550)
     is_passed: boolean | null; // null = not submitted
     started_at?: string | null;
     completed_at?: string | null;
@@ -119,12 +120,12 @@ export default function StudentShow() {
             );
 
             const irtAttempts = submitted.filter(
-                (a) => a.irt_processed && a.skor_utbk_pct !== null,
+                (a) => a.irt_processed && a.skor_utbk !== null,
             );
             const avg =
                 irtAttempts.length > 0
                     ? irtAttempts.reduce(
-                          (sum, a) => sum + (a.skor_utbk_pct ?? 0),
+                          (sum, a) => sum + (a.skor_utbk ?? 0),
                           0,
                       ) / irtAttempts.length
                     : null;
@@ -162,7 +163,7 @@ export default function StudentShow() {
         <AppLayout breadcrumbs={breadcrumbs(student)}>
             <Head title={`Detail Siswa — ${student.name}`} />
 
-            <div className="space-y-6 p-4">
+            <div className="mx-auto max-w-5xl space-y-6 p-4">
                 {/* ── Header ── */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
@@ -267,7 +268,7 @@ export default function StudentShow() {
                                     </p>
                                     <p className="text-3xl font-bold">
                                         {avgSkorUtbk !== null ? (
-                                            `${avgSkorUtbk.toFixed(2)}%`
+                                            avgSkorUtbk.toFixed(2)
                                         ) : (
                                             <span className="text-base text-muted-foreground">
                                                 Belum IRT
@@ -354,7 +355,7 @@ export default function StudentShow() {
                                                     Skor UTBK
                                                 </TableHead>
                                                 <TableHead className="text-center">
-                                                    Passing Grade
+                                                    Min. Grade
                                                 </TableHead>
                                                 <TableHead className="text-center">
                                                     Status
@@ -382,17 +383,28 @@ export default function StudentShow() {
                                                         )}
                                                     </TableCell>
 
-                                                    {/* Skor UTBK */}
+                                                    {/* Skor UTBK — raw scale, same as Min. Grade */}
                                                     <TableCell className="text-center">
                                                         {attempt.irt_processed &&
-                                                        attempt.skor_utbk_pct !==
+                                                        attempt.skor_utbk !==
                                                             null ? (
-                                                            <span className="font-semibold">
-                                                                {attempt.skor_utbk_pct.toFixed(
-                                                                    2,
+                                                            <div>
+                                                                <span className="font-semibold">
+                                                                    {attempt.skor_utbk.toFixed(
+                                                                        2,
+                                                                    )}
+                                                                </span>
+                                                                {attempt.skor_utbk_pct !==
+                                                                    null && (
+                                                                    <span className="block text-[11px] text-muted-foreground">
+                                                                        (
+                                                                        {attempt.skor_utbk_pct.toFixed(
+                                                                            1,
+                                                                        )}
+                                                                        %)
+                                                                    </span>
                                                                 )}
-                                                                %
-                                                            </span>
+                                                            </div>
                                                         ) : (
                                                             <span className="text-xs text-muted-foreground">
                                                                 {attempt.status ===

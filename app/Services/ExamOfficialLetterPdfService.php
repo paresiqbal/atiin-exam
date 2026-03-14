@@ -81,17 +81,18 @@ class ExamOfficialLetterPdfService
             $studentSelections[] = $selectionFallback;
         }
 
-        // ── Selection rows — compare skor_utbk_pct vs minimum_passing_grade ──
-        $selectionRows = collect($studentSelections)->map(function ($selection) use ($skorUtbkPct) {
+        // ── Selection rows — compare skor_utbk (raw) vs minimum_passing_grade ──
+        $selectionRows = collect($studentSelections)->map(function ($selection) use ($skorUtbk, $skorUtbkPct) {
             $universityName = $selection['university']['name'] ?? '-';
             $majorName      = $selection['major']['name']      ?? '-';
             $minimumGrade   = (float) ($selection['major']['minimum_passing_grade'] ?? 0);
-            $passed         = $skorUtbkPct >= $minimumGrade;
+            $passed         = $skorUtbk >= $minimumGrade;  // raw vs raw
 
             return [
                 'program'       => trim($universityName . ' — ' . $majorName),
                 'minimum_grade' => $minimumGrade,
-                'skor_utbk_pct' => $skorUtbkPct,
+                'skor_utbk'     => $skorUtbk,      // raw score for comparison display
+                'skor_utbk_pct' => $skorUtbkPct,   // kept for display only
                 'result'        => $passed ? 'LULUS' : 'TIDAK LULUS',
                 'is_passed'     => $passed,
             ];
@@ -123,7 +124,7 @@ class ExamOfficialLetterPdfService
             if ($selectedMajorNames->isNotEmpty()) {
                 $majorGroupOptions = Major::with('university')
                     ->whereIn('name', $selectedMajorNames)
-                    ->where('minimum_passing_grade', '<=', $skorUtbkPct)
+                    ->where('minimum_passing_grade', '<=', $skorUtbk)  // raw vs raw
                     ->when(
                         $selectedUniversityId,
                         fn($q) => $q->where('university_id', '!=', $selectedUniversityId)
@@ -145,7 +146,7 @@ class ExamOfficialLetterPdfService
                         $selectedMajorNames->isNotEmpty(),
                         fn($q) => $q->whereNotIn('name', $selectedMajorNames)
                     )
-                    ->where('minimum_passing_grade', '<=', $skorUtbkPct)
+                    ->where('minimum_passing_grade', '<=', $skorUtbk)  // raw vs raw
                     ->orderByDesc('minimum_passing_grade')
                     ->limit(5)
                     ->get()

@@ -93,25 +93,33 @@ class StudentController extends Controller
             ->orderByDesc('completed_at')
             ->get()
             ->map(function ($attempt) use ($student) {
-                // Use irt_block_score (skor_utbk_pct) if processed
                 $skorUtbkPct = $attempt->irt_block_score;
 
+                // Convert pct back to raw UTBK score for comparison
+                // skor_utbk = skor_utbk_pct * 1525 / 100
+                $skorUtbk = $skorUtbkPct !== null
+                    ? round((float) $skorUtbkPct * 1525.0 / 100, 2)
+                    : null;
+
                 // Passing grade from university_selections JSON, fallback to major
+                // minimum_passing_grade is on the RAW UTBK scale (e.g. 550, 640)
                 $selections   = $student->university_selections ?? [];
                 $firstMajorId = $selections[0]['majors'][0] ?? null;
                 $passingScore = $firstMajorId
                     ? (\App\Models\Major::find($firstMajorId)?->minimum_passing_grade ?? 0)
                     : ($student->major?->minimum_passing_grade ?? 0);
 
-                $effectiveScore = $skorUtbkPct ?? $attempt->score ?? 0;
+                // Compare raw vs raw
+                $effectiveScore = $skorUtbk ?? $attempt->score ?? 0;
                 $isPassed       = $attempt->status === 'submitted'
                     ? $effectiveScore >= $passingScore
-                    : null; // null = not submitted yet
+                    : null;
 
                 return [
                     'id'            => $attempt->id,
                     'status'        => $attempt->status,
                     'skor_utbk_pct' => $skorUtbkPct !== null ? round($skorUtbkPct, 2) : null,
+                    'skor_utbk'     => $skorUtbk,   // raw score — same scale as passing_score
                     'irt_processed' => $skorUtbkPct !== null,
                     'passing_score' => $passingScore,
                     'is_passed'     => $isPassed,
