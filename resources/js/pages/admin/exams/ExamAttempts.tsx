@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowUpDown, Download, Eye, Search, Unlock } from 'lucide-react';
+import { ArrowUpDown, Download, Eye, FileText, Loader2, Search, Unlock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import ActionIconTooltip from '@/components/ActionIconTooltip';
@@ -19,7 +19,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-
 import {
     Pagination,
     PaginationContent,
@@ -29,15 +28,15 @@ import {
     PaginationPrevious,
 } from '@/components/ui/pagination';
 import { getPaginationRange } from '@/lib/pagination';
-
 import { UnfreezeAttemptDialog } from '@/components/UnfreezeAttemptDialog';
 import AppLayout from '@/layouts/app-layout';
-
+import { toast } from 'sonner';
 import type { Paginated } from '@/types/pagination';
 
 interface Attempt {
     id: number;
     skor_utbk_pct: number | null;
+    skor_utbk: number | null;   // null = IRT not yet processed
     adjusted_score: number;
     adjusted_total_score: number;
     total_questions: number;
@@ -74,8 +73,6 @@ interface Props {
     exam: { id: number; name: string; irt_processed_at?: string | null };
     attempts: Paginated<Attempt>;
     analytics: Analytics;
-
-    // OPTIONAL tapi recommended: backend kirim query aktif biar state konsisten
     filters?: {
         q?: string;
         status?: StatusFilter;
@@ -86,13 +83,30 @@ interface Props {
     };
 }
 
-export default function ExamAttempts({
-    exam,
-    attempts,
-    analytics,
-    filters,
-}: Props) {
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Format a duration in minutes as "Xj Ym" or "Ym" */
+function formatDuration(minutes: number): string {
+    if (minutes <= 0) return '-';
+    // If > 24 hours, the data is almost certainly wrong (timezone mismatch etc.)
+    if (minutes > 1440) return '-';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0 && m > 0) return `${h}j ${m}m`;
+    if (h > 0) return `${h}j`;
+    return `${m}m`;
+}
+
+/** Parse ISO datetime string safely — returns null on failure */
+function parseDate(iso: string | null | undefined): Date | null {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+export default function ExamAttempts({ exam, attempts, analytics, filters }: Props) {
     const baseUrl = `/admin/exams/${exam.id}/attempts`;
+    const irtProcessed = !!exam.irt_processed_at;
 
     const averageScore = Number(analytics.average_score ?? 0);
     const passRate =
@@ -100,58 +114,68 @@ export default function ExamAttempts({
             ? (analytics.passed / analytics.total_attempts) * 100
             : 0;
 
-    // state init dari filters (biar reload / pagination tetap konsisten)
-    const [searchQuery, setSearchQuery] = useState(filters?.q ?? '');
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>(
-        filters?.status ?? 'all',
-    );
-    const [freezeFilter, setFreezeFilter] = useState<FreezeFilter>(
-        filters?.freeze ?? 'all',
-    );
-    const [sortBy, setSortBy] = useState<SortBy>(filters?.sort_by ?? 'date');
-    const [sortDirection, setSortDirection] = useState<SortDirection>(
-        filters?.sort_dir ?? 'desc',
-    );
-
-    const [rowsPerPage, setRowsPerPage] = useState<number>(
+    const [searchQuery, setSearchQuery]     = useState(filters?.q ?? '');
+    const [statusFilter, setStatusFilter]   = useState<StatusFilter>(filters?.status ?? 'all');
+    const [freezeFilter, setFreezeFilter]   = useState<FreezeFilter>(filters?.freeze ?? 'all');
+    const [sortBy, setSortBy]               = useState<SortBy>(filters?.sort_by ?? 'date');
+    const [sortDirection, setSortDirection] = useState<SortDirection>(filters?.sort_dir ?? 'desc');
+    const [rowsPerPage, setRowsPerPage]     = useState<number>(
         filters?.per_page ?? (attempts as Paginated<Attempt>).per_page ?? 10,
     );
 
-    // State for unfreeze dialog
     const [unfreezeDialogOpen, setUnfreezeDialogOpen] = useState(false);
-    const [selectedAttempt, setSelectedAttempt] = useState<Attempt | null>(
-        null,
-    );
+    const [selectedAttempt, setSelectedAttempt]       = useState<Attempt | null>(null);
     const [selectedAttemptIds, setSelectedAttemptIds] = useState<number[]>([]);
+    const [downloadingLetterId, setDownloadingLetterId] = useState<number | null>(null);
 
-    // helper buat fetch dengan query yang konsisten
+    const handleDownloadLetter = async (attemptId: number) => {
+        setDownloadingLetterId(attemptId);
+        try {
+            const response = await fetch(`/admin/attempts/${attemptId}/download-letter`, {
+                method: 'GET',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                toast.error(text || 'Gagal mengunduh surat.');
+                return;
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `surat-ujian-${attemptId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.success('Surat berhasil diunduh.');
+        } catch {
+            toast.error('Gagal mengunduh surat. Periksa koneksi internet.');
+        } finally {
+            setDownloadingLetterId(null);
+        }
+    };
+
     const pushQuery = (
         next: Partial<{
-            page: number;
-            per_page: number;
-            q: string;
-            status: StatusFilter;
-            sort_by: SortBy;
-            sort_dir: SortDirection;
-            freeze: FreezeFilter;
+            page: number; per_page: number; q: string;
+            status: StatusFilter; sort_by: SortBy;
+            sort_dir: SortDirection; freeze: FreezeFilter;
         }>,
     ) => {
         router.get(
             baseUrl,
             {
-                page: next.page ?? attempts.current_page ?? 1,
+                page:     next.page     ?? attempts.current_page ?? 1,
                 per_page: next.per_page ?? rowsPerPage,
-                q: next.q ?? searchQuery,
-                status: next.status ?? statusFilter,
-                sort_by: next.sort_by ?? sortBy,
+                q:        next.q        ?? searchQuery,
+                status:   next.status   ?? statusFilter,
+                sort_by:  next.sort_by  ?? sortBy,
                 sort_dir: next.sort_dir ?? sortDirection,
-                freeze: next.freeze ?? freezeFilter,
+                freeze:   next.freeze   ?? freezeFilter,
             },
-            {
-                preserveScroll: true,
-                preserveState: true,
-                replace: true,
-            },
+            { preserveScroll: true, preserveState: true, replace: true },
         );
     };
 
@@ -161,33 +185,19 @@ export default function ExamAttempts({
         pushQuery({ page: 1, sort_dir: nextDir });
     };
 
-    const handleChangeRowsPerPage = (value: string) => {
-        const perPage = Number(value) || 10;
-        setRowsPerPage(perPage);
-        pushQuery({ page: 1, per_page: perPage });
-    };
+    const pageAttempts = useMemo(() => attempts.data ?? [], [attempts.data]);
+    const allSelected  =
+        pageAttempts.length > 0 &&
+        pageAttempts.every((a) => selectedAttemptIds.includes(a.id));
+    const selectedFrozenIds = useMemo(
+        () => selectedAttemptIds.filter((id) =>
+            pageAttempts.some((a) => a.id === id && (a.is_frozen || a.status === 'frozen')),
+        ),
+        [pageAttempts, selectedAttemptIds],
+    );
 
-    const handleStatusChange = (val: StatusFilter) => {
-        setStatusFilter(val);
-        pushQuery({ page: 1, status: val });
-    };
+    useEffect(() => { setSelectedAttemptIds([]); }, [pageAttempts]);
 
-    const handleSortByChange = (val: SortBy) => {
-        setSortBy(val);
-        pushQuery({ page: 1, sort_by: val });
-    };
-
-    const handleFreezeChange = (val: FreezeFilter) => {
-        setFreezeFilter(val);
-        pushQuery({ page: 1, freeze: val });
-    };
-
-    // (opsional) biar search ga request tiap ketik, pakai Enter saja
-    const handleSearchSubmit = () => {
-        pushQuery({ page: 1, q: searchQuery });
-    };
-
-    // Open dialog with selected attempt
     const handleUnfreezeClick = (attempt: Attempt) => {
         setSelectedAttempt(attempt);
         setUnfreezeDialogOpen(true);
@@ -195,47 +205,12 @@ export default function ExamAttempts({
 
     const handleConfirmUnfreeze = () => {
         if (!selectedAttempt) return;
-
         router.post(
             `/admin/exams/attempts/${selectedAttempt.id}/unfreeze`,
             {},
-            {
-                preserveScroll: true,
-                onFinish: () => {
-                    setUnfreezeDialogOpen(false);
-                    setSelectedAttempt(null);
-                },
-            },
+            { preserveScroll: true, onFinish: () => { setUnfreezeDialogOpen(false); setSelectedAttempt(null); } },
         );
     };
-
-    const handleUnfreezeDialogOpenChange = (open: boolean) => {
-        setUnfreezeDialogOpen(open);
-        if (!open) setSelectedAttempt(null);
-    };
-
-    // IMPORTANT: table harus render attempts.data (page current)
-    const pageAttempts = useMemo(() => attempts.data ?? [], [attempts.data]);
-    const allSelected =
-        pageAttempts.length > 0 &&
-        pageAttempts.every((attempt) =>
-            selectedAttemptIds.includes(attempt.id),
-        );
-    const selectedFrozenIds = useMemo(
-        () =>
-            selectedAttemptIds.filter((id) =>
-                pageAttempts.some(
-                    (attempt) =>
-                        attempt.id === id &&
-                        (attempt.is_frozen || attempt.status === 'frozen'),
-                ),
-            ),
-        [pageAttempts, selectedAttemptIds],
-    );
-
-    useEffect(() => {
-        setSelectedAttemptIds([]);
-    }, [pageAttempts]);
 
     return (
         <AppLayout
@@ -251,132 +226,70 @@ export default function ExamAttempts({
                 {/* Header + Export */}
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold">
-                            Percobaan - {exam.name}
-                        </h1>
+                        <h1 className="text-3xl font-bold">Percobaan — {exam.name}</h1>
                         <p className="text-sm text-muted-foreground">
-                            Pantau kinerja siswa dan data percobaan secara
-                            rinci.
+                            Pantau kinerja siswa dan data percobaan secara rinci.
                         </p>
                     </div>
-
                     <div className="flex flex-wrap items-center gap-2">
-                        <a
-                            href={`/admin/exams/${exam.id}/export-results`}
-                            className="inline-flex items-center gap-2"
-                        >
+                        <a href={`/admin/exams/${exam.id}/export-results`}>
                             <Button variant="outline">
                                 <Download className="mr-2 h-4 w-4" />
                                 Ekspor Nilai (CSV)
                             </Button>
                         </a>
-
-                        {exam.irt_processed_at ? (
-                            <a
-                                href={`/admin/exams/${exam.id}/irt-export`}
-                                className="inline-flex items-center gap-2"
-                            >
+                        {irtProcessed && (
+                            <a href={`/admin/exams/${exam.id}/irt-export`}>
                                 <Button variant="outline">
                                     <Download className="mr-2 h-4 w-4" />
                                     Download IRT Results
                                 </Button>
                             </a>
-                        ) : null}
+                        )}
                     </div>
                 </div>
 
                 {/* Analytics Cards */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Total Percobaan (Selesai)
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">
-                                {analytics.total_attempts}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Lulus
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold text-green-600">
-                                {analytics.passed}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Tingkat Kelulusan
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">
-                                {passRate.toFixed(1)}%
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                Skor Rata-rata
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-3xl font-bold">
-                                {averageScore.toFixed(2)}
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {[
+                        { label: 'Total Percobaan (Selesai)', value: analytics.total_attempts, color: '' },
+                        { label: 'Lulus', value: analytics.passed, color: 'text-green-600' },
+                        { label: 'Tingkat Kelulusan', value: `${passRate.toFixed(1)}%`, color: '' },
+                        { label: 'Skor Rata-rata', value: averageScore.toFixed(2), color: '' },
+                    ].map(({ label, value, color }) => (
+                        <Card key={label}>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className={`text-3xl font-bold ${color}`}>{value}</div>
+                            </CardContent>
+                        </Card>
+                    ))}
                 </div>
 
-                {/* Filters / Search / Sort */}
+                {/* Filters */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    {/* Search */}
                     <div className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2">
                         <InputGroup className="flex-1">
                             <InputGroupAddon>
                                 <Search className="h-4 w-4 text-slate-500" />
                             </InputGroupAddon>
-
                             <InputGroupInput
-                                placeholder="Search by student name or email..."
+                                placeholder="Cari nama atau email siswa..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSearchSubmit();
-                                }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') pushQuery({ page: 1, q: searchQuery }); }}
                             />
-
                             {searchQuery !== '' && (
-                                <InputGroupAddon align="inline-end">
-                                    Tekan Enter
-                                </InputGroupAddon>
+                                <InputGroupAddon align="inline-end">Tekan Enter</InputGroupAddon>
                             )}
                         </InputGroup>
                     </div>
 
                     <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                        {/* Status filter */}
-                        <Select
-                            value={statusFilter}
-                            onValueChange={(val) =>
-                                handleStatusChange(val as StatusFilter)
-                            }
-                        >
-                            <SelectTrigger className="w-[150px]">
-                                <SelectValue placeholder="Status hasil" />
-                            </SelectTrigger>
+                        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as StatusFilter); pushQuery({ page: 1, status: v as StatusFilter }); }}>
+                            <SelectTrigger className="w-[150px]"><SelectValue placeholder="Status hasil" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Semua Hasil</SelectItem>
                                 <SelectItem value="passed">Lulus</SelectItem>
@@ -384,75 +297,42 @@ export default function ExamAttempts({
                             </SelectContent>
                         </Select>
 
-                        {/* Freeze filter */}
-                        <Select
-                            value={freezeFilter}
-                            onValueChange={(val) =>
-                                handleFreezeChange(val as FreezeFilter)
-                            }
-                        >
-                            <SelectTrigger className="w-[170px]">
-                                <SelectValue placeholder="Status freeze" />
-                            </SelectTrigger>
+                        <Select value={freezeFilter} onValueChange={(v) => { setFreezeFilter(v as FreezeFilter); pushQuery({ page: 1, freeze: v as FreezeFilter }); }}>
+                            <SelectTrigger className="w-[170px]"><SelectValue placeholder="Status freeze" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Semua</SelectItem>
-                                <SelectItem value="frozen">
-                                    Dibekukan
-                                </SelectItem>
-                                <SelectItem value="not_frozen">
-                                    Tidak Dibekukan
-                                </SelectItem>
+                                <SelectItem value="frozen">Dibekukan</SelectItem>
+                                <SelectItem value="not_frozen">Tidak Dibekukan</SelectItem>
                             </SelectContent>
                         </Select>
 
-                        {/* Sort */}
                         <div className="flex items-center gap-2">
-                            <Select
-                                value={sortBy}
-                                onValueChange={(val) =>
-                                    handleSortByChange(val as SortBy)
-                                }
-                            >
-                                <SelectTrigger className="w-[150px]">
-                                    <SelectValue placeholder="Sort by" />
-                                </SelectTrigger>
+                            <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortBy); pushQuery({ page: 1, sort_by: v as SortBy }); }}>
+                                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Sort by" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="date">
-                                        Waktu Mulai
-                                    </SelectItem>
-                                    <SelectItem value="name">
-                                        Nama Siswa
-                                    </SelectItem>
+                                    <SelectItem value="date">Waktu Mulai</SelectItem>
+                                    <SelectItem value="name">Nama Siswa</SelectItem>
                                     <SelectItem value="score">Skor</SelectItem>
                                 </SelectContent>
                             </Select>
-
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={toggleSortDirection}
-                                className="shrink-0"
-                            >
+                            <Button variant="outline" size="icon" onClick={toggleSortDirection} className="shrink-0">
                                 <ArrowUpDown className="h-4 w-4" />
                             </Button>
                         </div>
                     </div>
                 </div>
 
-                {/* Attempts Table */}
+                {/* Table */}
                 {pageAttempts.length === 0 ? (
                     <Card>
                         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                            Tidak ada percobaan yang ditemukan dengan filter
-                            saat ini.
+                            Tidak ada percobaan yang ditemukan dengan filter saat ini.
                         </CardContent>
                     </Card>
                 ) : (
                     <div className="space-y-3">
                         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                            <div className="text-sm text-muted-foreground">
-                                {selectedAttemptIds.length} dipilih
-                            </div>
+                            <div className="text-sm text-muted-foreground">{selectedAttemptIds.length} dipilih</div>
                             <Button
                                 variant="outline"
                                 disabled={selectedFrozenIds.length === 0}
@@ -460,11 +340,7 @@ export default function ExamAttempts({
                                     router.post(
                                         `/admin/exams/${exam.id}/attempts/unfreeze-bulk`,
                                         { attempt_ids: selectedFrozenIds },
-                                        {
-                                            preserveScroll: true,
-                                            onFinish: () =>
-                                                setSelectedAttemptIds([]),
-                                        },
+                                        { preserveScroll: true, onFinish: () => setSelectedAttemptIds([]) },
                                     )
                                 }
                             >
@@ -479,63 +355,36 @@ export default function ExamAttempts({
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                             <Checkbox
                                                 checked={allSelected}
-                                                onCheckedChange={() => {
-                                                    if (allSelected) {
-                                                        setSelectedAttemptIds(
-                                                            [],
-                                                        );
-                                                        return;
-                                                    }
-                                                    setSelectedAttemptIds(
-                                                        pageAttempts.map(
-                                                            (attempt) =>
-                                                                attempt.id,
-                                                        ),
-                                                    );
-                                                }}
+                                                onCheckedChange={() =>
+                                                    setSelectedAttemptIds(allSelected ? [] : pageAttempts.map((a) => a.id))
+                                                }
                                             />
                                         </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Nama Siswa</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Universitas</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Jurusan</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Status Ujian</th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                            Nama Siswa
+                                            Skor UTBK {!irtProcessed && <span className="text-muted-foreground font-normal">(belum diproses)</span>}
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                            Universitas
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                            Jurusan
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                            Status Ujian
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                            Skor UTBK
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                            Aksi
-                                        </th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Waktu Pengambilan</th>
+                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Aksi</th>
                                     </tr>
                                 </thead>
 
                                 <tbody className="divide-y">
                                     {pageAttempts.map((attempt) => {
-                                        const isPassed = Boolean(attempt.is_passed);
+                                        const isPassed = attempt.is_passed;
+
+                                        // ── Score ─────────────────────────────────────────────────
+                                        // Show skor_utbk_pct if IRT processed, else "-"
                                         const skorCell = (() => {
-                                            if (
-                                                attempt.skor_utbk_pct ==
-                                                    null ||
-                                                !Number.isFinite(
-                                                    attempt.skor_utbk_pct,
-                                                )
-                                            ) {
+                                            if (!irtProcessed || attempt.skor_utbk_pct == null) {
                                                 return (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        -
-                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">-</span>
                                                 );
                                             }
-                                            const pct = Number(
-                                                attempt.skor_utbk_pct,
-                                            );
+                                            const pct = Number(attempt.skor_utbk_pct);
                                             return (
                                                 <span
                                                     className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
@@ -549,138 +398,93 @@ export default function ExamAttempts({
                                             );
                                         })();
 
-                                        let statusBadge = (
-                                            <Badge
-                                                variant="outline"
-                                                className="text-xs"
-                                            >
-                                                {attempt.status}
-                                            </Badge>
-                                        );
+                                        // ── Duration ──────────────────────────────────────────────
+                                        const startedDate   = parseDate(attempt.started_at);
+                                        const completedDate = parseDate(attempt.completed_at);
+                                        const durationCell  = (() => {
+                                            if (!startedDate || !completedDate) {
+                                                return <span className="text-xs text-muted-foreground">-</span>;
+                                            }
+                                            const mins = Math.round(
+                                                Math.abs(completedDate.getTime() - startedDate.getTime()) / 60000,
+                                            );
+                                            const label = formatDuration(mins);
+                                            return label === '-'
+                                                ? <span className="text-xs text-muted-foreground">-</span>
+                                                : <span>{label}</span>;
+                                        })();
 
-                                        if (
-                                            attempt.is_frozen ||
-                                            attempt.status === 'frozen'
-                                        ) {
-                                            statusBadge = (
-                                                <Badge
-                                                    variant="destructive"
-                                                    className="text-xs"
-                                                >
-                                                    Dibekukan
-                                                </Badge>
-                                            );
-                                        } else if (
-                                            attempt.status === 'in_progress'
-                                        ) {
-                                            statusBadge = (
-                                                <Badge
-                                                    variant="outline"
-                                                    className="text-xs"
-                                                >
-                                                    Sedang dikerjakan
-                                                </Badge>
-                                            );
-                                        } else if (
-                                            attempt.status === 'submitted'
-                                        ) {
-                                            statusBadge = (
-                                                <Badge
-                                                    variant="default"
-                                                    className="text-xs"
-                                                >
-                                                    Selesai
-                                                </Badge>
-                                            );
+                                        // ── Status badge ──────────────────────────────────────────
+                                        let statusBadge = (
+                                            <Badge variant="outline" className="text-xs">{attempt.status}</Badge>
+                                        );
+                                        if (attempt.is_frozen || attempt.status === 'frozen') {
+                                            statusBadge = <Badge variant="destructive" className="text-xs">Dibekukan</Badge>;
+                                        } else if (attempt.status === 'in_progress') {
+                                            statusBadge = <Badge variant="outline" className="text-xs">Sedang dikerjakan</Badge>;
+                                        } else if (attempt.status === 'submitted') {
+                                            statusBadge = <Badge variant="default" className="text-xs">Selesai</Badge>;
                                         }
 
                                         return (
-                                            <tr
-                                                key={attempt.id}
-                                                className="transition-colors hover:bg-foreground/5"
-                                            >
-                                                <td className="px-6 py-3 text-sm">
+                                            <tr key={attempt.id} className="transition-colors hover:bg-foreground/5">
+                                                <td className="px-6 py-3">
                                                     <Checkbox
-                                                        checked={selectedAttemptIds.includes(
-                                                            attempt.id,
-                                                        )}
-                                                        onCheckedChange={() => {
-                                                            setSelectedAttemptIds(
-                                                                (prev) =>
-                                                                    prev.includes(
-                                                                        attempt.id,
-                                                                    )
-                                                                        ? prev.filter(
-                                                                              (
-                                                                                  id,
-                                                                              ) =>
-                                                                                  id !==
-                                                                                  attempt.id,
-                                                                          )
-                                                                        : [
-                                                                              ...prev,
-                                                                              attempt.id,
-                                                                          ],
-                                                            );
-                                                        }}
+                                                        checked={selectedAttemptIds.includes(attempt.id)}
+                                                        onCheckedChange={() =>
+                                                            setSelectedAttemptIds((prev) =>
+                                                                prev.includes(attempt.id)
+                                                                    ? prev.filter((id) => id !== attempt.id)
+                                                                    : [...prev, attempt.id],
+                                                            )
+                                                        }
                                                     />
                                                 </td>
-                                                <td className="px-6 py-3 text-sm">
-                                                    <div className="font-medium">
-                                                        {attempt.student.name}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {attempt.student.email}
-                                                    </div>
+                                                <td className="px-6 py-3">
+                                                    <div className="font-medium">{attempt.student.name}</div>
+                                                    <div className="text-xs text-muted-foreground">{attempt.student.email}</div>
                                                 </td>
-
-                                                <td className="px-6 py-3 text-sm">
-                                                    {attempt.student.university
-                                                        ?.name ?? (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            -
-                                                        </span>
+                                                <td className="px-6 py-3">
+                                                    {attempt.student.university?.name ?? (
+                                                        <span className="text-xs text-muted-foreground">-</span>
                                                     )}
                                                 </td>
-
-                                                <td className="px-6 py-3 text-sm">
-                                                    {attempt.student.major
-                                                        ?.name ?? '-'}
+                                                <td className="px-6 py-3">
+                                                    {attempt.student.major?.name ?? '-'}
                                                 </td>
-
-                                                <td className="px-6 py-3 text-sm">
-                                                    {statusBadge}
-                                                </td>
-
+                                                <td className="px-6 py-3">{statusBadge}</td>
                                                 <td className="px-6 py-3">{skorCell}</td>
-
-                                                <td className="px-6 py-3 text-sm">
+                                                <td className="px-6 py-3">{durationCell}</td>
+                                                <td className="px-6 py-3">
                                                     <div className="flex items-center gap-2">
                                                         <ActionIconTooltip label="Detail">
-                                                            <Button
-                                                                asChild
-                                                                variant="outline"
-                                                                size="icon"
-                                                            >
-                                                                <Link
-                                                                    href={`/admin/attempts/${attempt.id}`}
-                                                                >
+                                                            <Button asChild variant="outline" size="icon">
+                                                                <Link href={`/admin/attempts/${attempt.id}`}>
                                                                     <Eye className="h-4 w-4" />
                                                                 </Link>
                                                             </Button>
                                                         </ActionIconTooltip>
 
-                                                        {(attempt.is_frozen ||
-                                                            attempt.status ===
-                                                                'frozen') && (
+                                                        {exam.irt_processed_at && (
+                                                            <ActionIconTooltip label="Unduh Surat">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="icon"
+                                                                    disabled={downloadingLetterId === attempt.id}
+                                                                    onClick={() => handleDownloadLetter(attempt.id)}
+                                                                >
+                                                                    {downloadingLetterId === attempt.id
+                                                                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                                                                        : <FileText className="h-4 w-4" />
+                                                                    }
+                                                                </Button>
+                                                            </ActionIconTooltip>
+                                                        )}
+                                                        {(attempt.is_frozen || attempt.status === 'frozen') && (
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                onClick={() =>
-                                                                    handleUnfreezeClick(
-                                                                        attempt,
-                                                                    )
-                                                                }
+                                                                onClick={() => handleUnfreezeClick(attempt)}
                                                                 className="inline-flex items-center"
                                                             >
                                                                 <Unlock className="mr-1 h-4 w-4" />
@@ -698,92 +502,47 @@ export default function ExamAttempts({
                     </div>
                 )}
 
-                {/* Footer: rows per page + pagination (IndexExam style) */}
+                {/* Footer pagination */}
                 <div className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
                     <div className="text-sm text-muted-foreground">
-                        Menampilkan {pageAttempts.length} dari {attempts.total}{' '}
-                        data.
+                        Menampilkan {pageAttempts.length} dari {attempts.total} data.
                     </div>
-
                     <div className="flex flex-col items-center gap-3 md:flex-row md:gap-4">
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">
-                                Baris per halaman:
-                            </span>
+                            <span className="text-sm text-muted-foreground">Baris per halaman:</span>
                             <Select
                                 value={String(rowsPerPage)}
-                                onValueChange={handleChangeRowsPerPage}
+                                onValueChange={(v) => { const n = Number(v) || 10; setRowsPerPage(n); pushQuery({ page: 1, per_page: n }); }}
                             >
-                                <SelectTrigger className="w-[80px]">
-                                    <SelectValue />
-                                </SelectTrigger>
+                                <SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="20">20</SelectItem>
-                                    <SelectItem value="30">30</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
+                                    {[10, 20, 30, 50].map((n) => (
+                                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
-
                         <Pagination>
                             <PaginationContent>
                                 <PaginationItem>
                                     {attempts.current_page > 1 ? (
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                pushQuery({
-                                                    page:
-                                                        attempts.current_page -
-                                                        1,
-                                                })
-                                            }
-                                            className="cursor-pointer"
-                                        >
+                                        <button type="button" onClick={() => pushQuery({ page: attempts.current_page - 1 })} className="cursor-pointer">
                                             <PaginationPrevious />
                                         </button>
                                     ) : (
                                         <PaginationPrevious className="pointer-events-none opacity-50" />
                                     )}
                                 </PaginationItem>
-
-                                {getPaginationRange(
-                                    attempts.current_page,
-                                    attempts.last_page,
-                                ).map((page) => (
+                                {getPaginationRange(attempts.current_page, attempts.last_page).map((page) => (
                                     <PaginationItem key={page}>
-                                        <button
-                                            type="button"
-                                            onClick={() => pushQuery({ page })}
-                                            className="cursor-pointer"
-                                        >
-                                            <PaginationLink
-                                                isActive={
-                                                    page ===
-                                                    attempts.current_page
-                                                }
-                                            >
-                                                {page}
-                                            </PaginationLink>
+                                        <button type="button" onClick={() => pushQuery({ page })} className="cursor-pointer">
+                                            <PaginationLink isActive={page === attempts.current_page}>{page}</PaginationLink>
                                         </button>
                                     </PaginationItem>
                                 ))}
-
                                 <PaginationItem>
-                                    {attempts.current_page <
-                                    attempts.last_page ? (
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                pushQuery({
-                                                    page:
-                                                        attempts.current_page +
-                                                        1,
-                                                })
-                                            }
-                                            className="cursor-pointer"
-                                        >
+                                    {attempts.current_page < attempts.last_page ? (
+                                        <button type="button" onClick={() => pushQuery({ page: attempts.current_page + 1 })} className="cursor-pointer">
                                             <PaginationNext />
                                         </button>
                                     ) : (
@@ -797,7 +556,7 @@ export default function ExamAttempts({
 
                 <UnfreezeAttemptDialog
                     open={unfreezeDialogOpen}
-                    onOpenChange={handleUnfreezeDialogOpenChange}
+                    onOpenChange={(open) => { setUnfreezeDialogOpen(open); if (!open) setSelectedAttempt(null); }}
                     studentName={selectedAttempt?.student.name}
                     onConfirm={handleConfirmUnfreeze}
                 />
