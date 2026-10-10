@@ -67,6 +67,7 @@ class ExamResultsPdfService
                     'question_text'  => $question->question_text,
                     'question_type'  => $question->question_type,
                     'points'         => $question->points,
+                    'image_url'      => $question->image_url,
                     'student_answer' => $response?->selectedOption?->option_text,
                     'correct_answer' => $correctOption?->option_text,
                     'is_correct'     => $isCorrect,
