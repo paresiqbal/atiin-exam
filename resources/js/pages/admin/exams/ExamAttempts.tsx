@@ -41,6 +41,7 @@ interface Attempt {
     skor_utbk: number | null;   // null = IRT not yet processed
     adjusted_score: number;
     adjusted_total_score: number;
+    score_percentage: number | null;
     total_questions: number;
     question_bank_count: number;
     is_passed: boolean | null;
@@ -267,7 +268,7 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                                   { label: 'Tingkat Kelulusan', value: `${passRate.toFixed(1)}%`, color: '' },
                               ]
                             : []),
-                        { label: 'Skor Rata-rata', value: averageScore.toFixed(2), color: '' },
+                        { label: exam.type === 'cbt' ? 'Persentase Rata-rata' : 'Skor Rata-rata', value: averageScore.toFixed(2) + (exam.type === 'cbt' ? '%' : ''), color: '' },
                     ].map(({ label, value, color }) => (
                         <Card key={label}>
                             <CardHeader className="pb-2">
@@ -381,7 +382,7 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                                                 ? 'Skor UTBK'
                                                 : exam.type === 'tka'
                                                   ? 'Skor IRT'
-                                                  : 'Nilai'}{' '}
+                                                  : 'Nilai (poin / %)'}{' '}
                                             {exam.type !== 'cbt' && !irtProcessed ? (
                                                 <span className="text-muted-foreground font-normal">(belum diproses)</span>
                                             ) : null}
@@ -400,9 +401,10 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                                         const skorCell = (() => {
                                             if (exam.type === 'cbt') {
                                                 return (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {attempt.raw_score ?? 0} / {attempt.total_score ?? 0}
-                                                    </span>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        <div>{attempt.raw_score ?? 0} / {attempt.total_score ?? 0} poin</div>
+                                                        <div>{attempt.status === 'submitted' ? `${(attempt.score_percentage ?? 0).toFixed(2)}%` : '-'}</div>
+                                                    </div>
                                                 );
                                             }
                                             if (!irtProcessed || attempt.skor_utbk_pct == null) {

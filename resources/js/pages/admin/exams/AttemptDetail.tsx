@@ -107,6 +107,10 @@ export default function AttemptDetail({
         (skorUtbkPct !== null ? (skorUtbkPct * 1525) / 100 : adjustedScore);
     const displayPct =
         skorUtbkPct ?? (skorUtbk !== null ? (skorUtbk / 1525) * 100 : null);
+    const cbtPercentage =
+        attempt.total_score > 0
+            ? ((attempt.score / attempt.total_score) * 100).toFixed(2)
+            : '0.00';
 
     const completedDate = attempt.completed_at
         ? new Date(attempt.completed_at).toLocaleDateString('id-ID', {
@@ -238,9 +242,16 @@ export default function AttemptDetail({
                                     <p className="text-base text-muted-foreground">Belum diproses</p>
                                 )
                             ) : (
-                                <p className="text-2xl font-bold">
-                                    {attempt.score} / {attempt.total_score}
-                                </p>
+                                <>
+                                    <p className="text-2xl font-bold">
+                                        {attempt.score} / {attempt.total_score}
+                                    </p>
+                                    {exam.type === 'cbt' && (
+                                        <p className="mt-0.5 text-xs text-muted-foreground">
+                                            {cbtPercentage}% ({attempt.score} / {attempt.total_score} poin)
+                                        </p>
+                                    )}
+                                </>
                             )}
                         </div>
 

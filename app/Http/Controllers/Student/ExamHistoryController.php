@@ -23,12 +23,17 @@ class ExamHistoryController extends Controller
             $irtProcessed = $examType?->usesIrt()
                 && (bool) $attempt->exam?->irt_processed_at
                 && $attempt->irt_block_score !== null;
+            $hasSubmittedCbtAttempt = $examType === ExamType::CBT
+                && $attempt->status === 'submitted';
 
             $attempt->percentage = match (true) {
                 $irtProcessed => (float) $attempt->irt_block_score,
-                $examType === ExamType::CBT && (float) $attempt->total_score > 0 => ((float) $attempt->score / (float) $attempt->total_score) * 100,
+                $hasSubmittedCbtAttempt && (float) $attempt->total_score > 0 => ((float) $attempt->score / (float) $attempt->total_score) * 100,
+                $hasSubmittedCbtAttempt => 0,
                 default => null,
             };
+            $attempt->raw_score = $hasSubmittedCbtAttempt ? $attempt->score : null;
+            $attempt->total_score = $hasSubmittedCbtAttempt ? $attempt->total_score : null;
             $attempt->is_passed = null;
             if (! $examType?->usesIrt()) {
                 $attempt->irt_theta = null;

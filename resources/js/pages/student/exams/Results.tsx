@@ -44,10 +44,16 @@ interface Props {
 export default function Results({ attempt, exam, questionDetails }: Props) {
     const page = usePage<{ auth: { user: { is_pro?: boolean } | null } }>();
     const isPro = !!page.props.auth.user?.is_pro;
+    const isCbt = exam.type === 'cbt';
     const blockCount = Number(attempt.question_block_count ?? 0) || 1;
-    const rawScore = attempt.raw_score / blockCount;
-    const totalScore = attempt.total_score / blockCount;
-    const percentage = totalScore > 0 ? Math.round((rawScore / totalScore) * 100) : 0;
+    const rawScore = isCbt ? attempt.raw_score : attempt.raw_score / blockCount;
+    const totalScore = isCbt ? attempt.total_score : attempt.total_score / blockCount;
+    const percentage =
+        totalScore > 0
+            ? isCbt
+                ? ((rawScore / totalScore) * 100).toFixed(2)
+                : Math.round((rawScore / totalScore) * 100).toString()
+            : '0';
     const hasIrt = typeof attempt.irt_theta === 'number';
 
     if (!isPro) {
@@ -100,9 +106,9 @@ export default function Results({ attempt, exam, questionDetails }: Props) {
                             </p>
                         </div>
                         <div className="grid grid-cols-1 gap-4 pt-4 md:grid-cols-3">
-                            <ScoreCard label={hasIrt ? 'Skor IRT (Theta)' : 'Nilai Kamu'} value={hasIrt ? attempt.irt_theta!.toFixed(2) : Math.floor(rawScore).toString()} />
-                            <ScoreCard label="Skor Mentah" value={`${Math.floor(rawScore)} / ${Math.floor(totalScore)}`} />
-                            <ScoreCard label="Persentase Benar" value={`${percentage}%`} />
+                            <ScoreCard label={hasIrt ? 'Skor IRT (Theta)' : isCbt ? 'Nilai Kamu (poin)' : 'Nilai Kamu'} value={hasIrt ? attempt.irt_theta!.toFixed(2) : Math.floor(rawScore).toString()} />
+                            <ScoreCard label={isCbt ? 'Poin Diperoleh / Maksimum' : 'Skor Mentah'} value={`${Math.floor(rawScore)} / ${Math.floor(totalScore)}`} />
+                            <ScoreCard label={isCbt ? 'Persentase Nilai' : 'Persentase Benar'} value={`${percentage}%`} />
                         </div>
                     </CardContent>
                 </Card>

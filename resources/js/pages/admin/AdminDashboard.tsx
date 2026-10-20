@@ -57,6 +57,7 @@ interface RecentAttempt {
     exam_name: string;
     raw_score: number | null;
     total_score: number | null;
+    percentage: number | null;
     skor_utbk_pct: number | null;
     exam_type: 'utbk' | 'tka' | 'cbt';
     uses_irt: boolean;
@@ -449,9 +450,14 @@ export default function AdminDashboard({
                                                 Belum IRT
                                             </p>
                                         ) : (
-                                            <p className="text-sm font-bold">
-                                                {a.raw_score ?? 0} / {a.total_score ?? 0}
-                                            </p>
+                                            <div className="text-sm font-bold">
+                                                <p>{a.raw_score ?? 0} / {a.total_score ?? 0}</p>
+                                                {a.exam_type === 'cbt' && (
+                                                    <p className="text-xs font-normal text-muted-foreground">
+                                                        {(a.percentage ?? 0).toFixed(2)}%
+                                                    </p>
+                                                )}
+                                            </div>
                                         )}
                                         {a.exam_type === 'utbk' && a.passed !== null ? (
                                             <span

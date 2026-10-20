@@ -389,6 +389,7 @@ class ExamController extends Controller
         }
 
         $isUtbk = $exam->type === ExamType::UTBK;
+        $isCbt = $exam->type === ExamType::CBT;
 
         if ($isUtbk && $status === 'passed') {
             $attemptsQuery
@@ -431,7 +432,10 @@ class ExamController extends Controller
         if ($sortBy === 'name') {
             $attemptsQuery->orderBy('students.name', $sortDir);
         } elseif ($sortBy === 'score') {
-            $attemptsQuery->orderBy('exam_attempts.irt_block_score', $sortDir);
+            $attemptsQuery->orderBy(
+                $isCbt ? 'exam_attempts.score' : 'exam_attempts.irt_block_score',
+                $sortDir
+            );
         } else {
             $attemptsQuery->orderBy('exam_attempts.started_at', $sortDir);
         }
@@ -442,16 +446,20 @@ class ExamController extends Controller
             $totalQuestions,
             $questionBankCount,
             $bankDivisor,
-            $isUtbk
+            $isUtbk,
+            $isCbt
         ) {
             $rawScore = (float) ($attempt->score ?? 0);
             $totalScore = (float) ($attempt->total_score ?? 0);
             $blockScore = $attempt->irt_block_score;   // pct, e.g. 45.41
+            $scorePercentage = $totalScore > 0
+                ? round(($rawScore / $totalScore) * 100, 2)
+                : 0;
 
             // Convert to raw UTBK score for pass/fail comparison
             $skorUtbk = $this->pctToRaw($blockScore);   // e.g. 692.35
-            $adjustedScore = $blockScore ?? ($rawScore / $bankDivisor);
-            $adjustedTotalScore = $totalScore / $bankDivisor;
+            $adjustedScore = $isCbt ? $rawScore : ($blockScore ?? ($rawScore / $bankDivisor));
+            $adjustedTotalScore = $isCbt ? $totalScore : ($totalScore / $bankDivisor);
 
             $selections = $isUtbk ? ($attempt->student->university_selections ?? []) : [];
             $firstSelection = $selections[0] ?? null;
@@ -493,6 +501,7 @@ class ExamController extends Controller
                 'skor_utbk' => $skorUtbk,        // raw — for comparisons
                 'adjusted_score' => (int) floor($adjustedScore),
                 'adjusted_total_score' => (int) floor($adjustedTotalScore),
+                'score_percentage' => $isCbt ? $scorePercentage : null,
                 'total_questions' => $totalQuestions,
                 'question_bank_count' => $questionBankCount,
                 'is_passed' => $isPassed,
@@ -540,6 +549,15 @@ class ExamController extends Controller
             ->filter(fn ($a) => $a->irt_block_score !== null)
             ->map(fn ($a) => $this->pctToRaw($a->irt_block_score))
             ->avg() ?? 0;
+        $averageScore = $isCbt
+            ? $submittedAttempts->avg(function ($attempt) {
+                $totalScore = (float) ($attempt->total_score ?? 0);
+
+                return $totalScore > 0
+                    ? ((float) ($attempt->score ?? 0) / $totalScore) * 100
+                    : 0;
+            }) ?? 0
+            : $averageRaw;
 
         return Inertia::render('admin/exams/ExamAttempts', [
             'exam' => [
@@ -552,7 +570,7 @@ class ExamController extends Controller
             'analytics' => [
                 'total_attempts' => $totalAttempts,
                 'passed' => $passed,
-                'average_score' => round($averageRaw, 2),
+                'average_score' => round($averageScore, 2),
             ],
             'filters' => [
                 'q' => $q,
@@ -747,8 +765,15 @@ class ExamController extends Controller
             array_push($headerRow1, 'Theta (IRT)', 'Skor IRT (%)');
             array_push($headerRow2, 'Theta (IRT)', 'Skor IRT (%)');
         } else {
-            array_push($headerRow1, 'Nilai Mentah', 'Nilai Maksimum');
-            array_push($headerRow2, 'Nilai Mentah', 'Nilai Maksimum');
+            if ($exam->type === ExamType::CBT) {
+                array_push($headerRow1, 'Poin Diperoleh', 'Poin Maksimum');
+                array_push($headerRow2, 'Poin Diperoleh', 'Poin Maksimum');
+                $headerRow1[] = 'Persentase';
+                $headerRow2[] = 'Persentase';
+            } else {
+                array_push($headerRow1, 'Nilai Mentah', 'Nilai Maksimum');
+                array_push($headerRow2, 'Nilai Mentah', 'Nilai Maksimum');
+            }
         }
 
         $rows = [];
@@ -790,6 +815,15 @@ class ExamController extends Controller
             } else {
                 $row[] = $attempt->score ?? '-';
                 $row[] = $attempt->total_score ?? '-';
+                if ($exam->type === ExamType::CBT) {
+                    $totalScore = (float) ($attempt->total_score ?? 0);
+                    $percentage = $totalScore > 0
+                        ? round(((float) ($attempt->score ?? 0) / $totalScore) * 100, 2)
+                        : 0;
+                    $row[] = $attempt->status === 'submitted'
+                        ? number_format($percentage, 2).'%'
+                        : '-';
+                }
             }
 
             $rows[] = $row;
