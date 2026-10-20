@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\School;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 
 class UserImportController extends Controller
 {
@@ -39,8 +40,8 @@ class UserImportController extends Controller
             }
 
             $preview = [];
-            $errors  = [];
-            $rowNum  = 1; // header row
+            $errors = [];
+            $rowNum = 1; // header row
 
             // Rows: name, email, school_id, class, password
             while (($row = fgetcsv($handle)) !== false) {
@@ -52,12 +53,12 @@ class UserImportController extends Controller
                 }
 
                 $student = [
-                    'name'      => $row[0] ?? null,
-                    'email'     => $row[1] ?? null,
+                    'name' => $row[0] ?? null,
+                    'email' => $row[1] ?? null,
                     'school_id' => $row[2] ?? null,
-                    'class'     => $row[3] ?? null,
-                    'password'  => $row[4] ?? null,
-                    'role'      => 'student',
+                    'class' => $row[3] ?? null,
+                    'password' => $row[4] ?? null,
+                    'role' => 'student',
                 ];
 
                 $error = $this->validateRow($student);
@@ -72,9 +73,9 @@ class UserImportController extends Controller
             fclose($handle);
 
             return response()->json([
-                'success'    => true,
-                'preview'    => $preview,
-                'errors'     => $errors,
+                'success' => true,
+                'preview' => $preview,
+                'errors' => $errors,
                 'total_rows' => count($preview),
             ]);
         } catch (\Exception $e) {
@@ -107,9 +108,9 @@ class UserImportController extends Controller
             }
 
             $created = 0;
-            $failed  = 0;
-            $errors  = [];
-            $rowNum  = 1;
+            $failed = 0;
+            $errors = [];
+            $rowNum = 1;
 
             while (($row = fgetcsv($handle)) !== false) {
                 $rowNum++;
@@ -119,12 +120,12 @@ class UserImportController extends Controller
                 }
 
                 $student = [
-                    'name'      => $row[0] ?? null,
-                    'email'     => $row[1] ?? null,
+                    'name' => $row[0] ?? null,
+                    'email' => $row[1] ?? null,
                     'school_id' => $row[2] ?? null,
-                    'class'     => $row[3] ?? null,
-                    'password'  => $row[4] ?? null,
-                    'role'      => 'student',
+                    'class' => $row[3] ?? null,
+                    'password' => $row[4] ?? null,
+                    'role' => 'student',
                 ];
 
                 $error = $this->validateRow($student);
@@ -132,6 +133,7 @@ class UserImportController extends Controller
                 if ($error) {
                     $failed++;
                     $errors[] = "Row {$rowNum}: {$error}";
+
                     continue;
                 }
 
@@ -172,8 +174,13 @@ class UserImportController extends Controller
             return 'Password is required';
         }
 
-        if (strlen($data['password']) < 8) {
-            return 'Password must be at least 8 characters';
+        $passwordValidator = Validator::make(
+            ['password' => $data['password']],
+            ['password' => ['required', 'string', Password::min(6)]]
+        );
+
+        if ($passwordValidator->fails()) {
+            return $passwordValidator->errors()->first('password');
         }
 
         if (! empty($data['school_id']) && ! School::where('id', $data['school_id'])->exists()) {
@@ -199,7 +206,7 @@ class UserImportController extends Controller
             '# required, must be unique & valid email',
             '# optional, use ID from school list',
             '# optional, e.g. 10A, 9B',
-            '# required, min 8 chars',
+            '# required, min 6 chars',
         ]);
 
         $exampleSchoolId = School::value('id') ?? 1;

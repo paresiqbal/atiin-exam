@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
 class PasswordResetTest extends TestCase
@@ -83,5 +84,20 @@ class PasswordResetTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('email');
+    }
+
+    public function test_admin_cannot_reset_password_to_a_weak_value()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $token = Password::broker()->createToken($admin);
+
+        $response = $this->post(route('password.update'), [
+            'token' => $token,
+            'email' => $admin->email,
+            'password' => 'admin123',
+            'password_confirmation' => 'admin123',
+        ]);
+
+        $response->assertSessionHasErrors('password');
     }
 }

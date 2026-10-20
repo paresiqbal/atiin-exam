@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
@@ -14,7 +15,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'admin',
             'university_id' => null,
             'major_id' => null,
@@ -26,7 +27,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Falah Izudin',
             'email' => 'teacher@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'teacher',
             'university_id' => null,
             'major_id' => null,
@@ -38,7 +39,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Pahreza Iqbal Prastowo',
             'email' => 'student@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -52,7 +53,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Budi Santoso',
             'email' => 'budi@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -64,7 +65,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Siti Aminah',
             'email' => 'siti@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -76,7 +77,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Rudi Hartono',
             'email' => 'rudi@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -88,7 +89,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Dewi Lestari',
             'email' => 'dewi@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -100,7 +101,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Agus Setiawan',
             'email' => 'agus@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -113,7 +114,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Rina Putri',
             'email' => 'rina.sma2@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -124,7 +125,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Ahmad Fauzi',
             'email' => 'ahmad.sma2@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -135,7 +136,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Nina Lestari',
             'email' => 'nina.sma2@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -146,7 +147,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Dimas Pratama',
             'email' => 'dimas.sma2@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,
@@ -157,7 +158,7 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Sari Wulandari',
             'email' => 'sari.sma2@example.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make(Str::password(16)),
             'role' => 'student',
             'university_id' => 1,
             'major_id' => 1,

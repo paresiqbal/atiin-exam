@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Models\User;
+use App\Models\Major;
 use App\Models\School;
+use App\Models\User;
+use App\Services\StudentCardsPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
-use App\Services\StudentCardsPdfService;
-
 
 class StudentController extends Controller
 {
@@ -54,7 +55,7 @@ class StudentController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
-            'password' => 'required|string|min:8',
+            'password' => ['required', 'string', Password::min(6)],
             'school_id' => 'nullable|exists:schools,id',
             'class' => 'required|string|max:255',
         ]);
@@ -103,30 +104,30 @@ class StudentController extends Controller
 
                 // Passing grade from university_selections JSON, fallback to major
                 // minimum_passing_grade is on the RAW UTBK scale (e.g. 550, 640)
-                $selections   = $student->university_selections ?? [];
+                $selections = $student->university_selections ?? [];
                 $firstMajorId = $selections[0]['majors'][0] ?? null;
                 $passingScore = $firstMajorId
-                    ? (\App\Models\Major::find($firstMajorId)?->minimum_passing_grade ?? 0)
+                    ? (Major::find($firstMajorId)?->minimum_passing_grade ?? 0)
                     : ($student->major?->minimum_passing_grade ?? 0);
 
                 // Compare raw vs raw
                 $effectiveScore = $skorUtbk ?? $attempt->score ?? 0;
-                $isPassed       = $attempt->status === 'submitted'
+                $isPassed = $attempt->status === 'submitted'
                     ? $effectiveScore >= $passingScore
                     : null;
 
                 return [
-                    'id'            => $attempt->id,
-                    'status'        => $attempt->status,
+                    'id' => $attempt->id,
+                    'status' => $attempt->status,
                     'skor_utbk_pct' => $skorUtbkPct !== null ? round($skorUtbkPct, 2) : null,
-                    'skor_utbk'     => $skorUtbk,   // raw score — same scale as passing_score
+                    'skor_utbk' => $skorUtbk,   // raw score — same scale as passing_score
                     'irt_processed' => $skorUtbkPct !== null,
                     'passing_score' => $passingScore,
-                    'is_passed'     => $isPassed,
-                    'started_at'    => optional($attempt->started_at)->toIso8601String(),
-                    'completed_at'  => optional($attempt->completed_at)->toIso8601String(),
+                    'is_passed' => $isPassed,
+                    'started_at' => optional($attempt->started_at)->toIso8601String(),
+                    'completed_at' => optional($attempt->completed_at)->toIso8601String(),
                     'exam' => [
-                        'id'   => $attempt->exam->id,
+                        'id' => $attempt->exam->id,
                         'name' => $attempt->exam->name,
                     ],
                 ];
@@ -158,13 +159,14 @@ class StudentController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $student->id,
+            'email' => 'required|email|unique:users,email,'.$student->id,
             'school_id' => 'nullable|exists:schools,id',
             'class' => 'nullable|string|max:255',
+            'password' => ['nullable', 'string', Password::min(6)],
         ]);
 
-        if ($request->filled('password')) {
-            $validated['password'] = Hash::make($request->password);
+        if (! empty($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
         }
 
         $student->update($validated);
@@ -190,7 +192,7 @@ class StudentController extends Controller
             $suffix++;
 
             if ($suffix > 9999) {
-                $candidate = "{$base}." . Str::lower(Str::random(6)) . "@{$domain}";
+                $candidate = "{$base}.".Str::lower(Str::random(6))."@{$domain}";
                 if (! User::where('email', $candidate)->exists()) {
                     break;
                 }
@@ -249,7 +251,6 @@ class StudentController extends Controller
             ->with('success', "Password reset untuk {$updated} siswa.");
     }
 
-
     public function cards()
     {
         $schools = School::with(['students' => function ($q) {
@@ -272,12 +273,11 @@ class StudentController extends Controller
         ]);
     }
 
-
     public function downloadCards(Request $request)
     {
         $schoolId = $request->query('school_id');
 
-        if (!$schoolId) {
+        if (! $schoolId) {
             return back()->withErrors(['error' => 'Pilih sekolah terlebih dahulu']);
         }
 
@@ -294,9 +294,9 @@ class StudentController extends Controller
                 ->orderBy('name');
         }])->findOrFail($schoolId);
 
-        $pdfService = new StudentCardsPdfService();
+        $pdfService = new StudentCardsPdfService;
         $pdf = $pdfService->generate($school);
 
-        return $pdf->download('student-cards-' . $school->id . '.pdf');
+        return $pdf->download('student-cards-'.$school->id.'.pdf');
     }
 }
