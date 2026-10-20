@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Student;
 
+use App\Enums\ExamType;
 use App\Models\ExamAttempt;
 use App\Models\University;
 use Illuminate\Routing\Controller;
@@ -11,19 +12,6 @@ class UniversityController extends Controller
 {
     public function index()
     {
-        $student = auth()->user();
-
-        $latestAttempt = ExamAttempt::where('student_id', $student->id)
-            ->with('exam.questionBanks')
-            ->orderByDesc('completed_at')
-            ->first();
-
-        $bankCount = $latestAttempt?->exam?->questionBanks?->count() ?? 0;
-        $bankDivisor = $bankCount > 0 ? $bankCount : 1;
-        $studentScore = $latestAttempt
-            ? (float) $latestAttempt->score / $bankDivisor
-            : null;
-
         $universities = University::with(['majors' => function ($q) {
             $q->select('id', 'university_id', 'name', 'description', 'minimum_passing_grade');
         }])
@@ -31,16 +19,11 @@ class UniversityController extends Controller
             ->get();
 
         return Inertia::render('student/universities/StudentUnivIndex', [
-            'universities'          => $universities,
-            'student_latest_score'  => $studentScore,
-            'latest_exam'           => $latestAttempt ? [
-                'exam_name'    => $latestAttempt->exam->name,
-                'completed_at' => optional($latestAttempt->completed_at)->format('Y-m-d'),
-                'total_score'  => $latestAttempt->total_score,
-            ] : null,
+            'universities' => $universities,
+            'student_latest_score' => null,
+            'latest_exam' => null,
         ]);
     }
-
 
     public function compareScore(University $university)
     {
@@ -48,6 +31,7 @@ class UniversityController extends Controller
 
         // Get student's latest exam attempt
         $latestAttempt = ExamAttempt::where('student_id', $student->id)
+            ->whereHas('exam', fn ($query) => $query->where('type', ExamType::UTBK->value))
             ->with('exam.questionBanks')
             ->orderByDesc('completed_at')
             ->first();
@@ -70,33 +54,33 @@ class UniversityController extends Controller
                 $meetsRequirement = $studentScore >= $passingScore;
 
                 return [
-                    'id'                     => $major->id,
-                    'name'                   => $major->name,
-                    'description'            => $major->description,
-                    'minimum_passing_grade'  => $passingScore,
-                    'student_score'          => $studentScore,
-                    'meets_requirement'      => $meetsRequirement,
-                    'difference'             => $studentScore - $passingScore, // + = above, - = below
-                    'status'                 => $meetsRequirement ? 'qualified' : 'not_qualified',
+                    'id' => $major->id,
+                    'name' => $major->name,
+                    'description' => $major->description,
+                    'minimum_passing_grade' => $passingScore,
+                    'student_score' => $studentScore,
+                    'meets_requirement' => $meetsRequirement,
+                    'difference' => $studentScore - $passingScore, // + = above, - = below
+                    'status' => $meetsRequirement ? 'qualified' : 'not_qualified',
                 ];
             })
             ->values();
 
         return Inertia::render('student/universities/CompareScore', [
-            'university'           => [
-                'id'          => $university->id,
-                'name'        => $university->name,
-                'city'        => $university->city,
-                'website'     => $university->website,
+            'university' => [
+                'id' => $university->id,
+                'name' => $university->name,
+                'city' => $university->city,
+                'website' => $university->website,
                 'description' => $university->description,
             ],
             'student_latest_score' => $studentScore,
-            'latest_exam'          => [
-                'exam_name'    => $latestAttempt->exam->name,
+            'latest_exam' => [
+                'exam_name' => $latestAttempt->exam->name,
                 'completed_at' => optional($latestAttempt->completed_at)->format('Y-m-d'),
-                'total_score'  => $latestAttempt->total_score,
+                'total_score' => $latestAttempt->total_score,
             ],
-            'majors'               => $majors,
+            'majors' => $majors,
         ]);
     }
 }

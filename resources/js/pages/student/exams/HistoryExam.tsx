@@ -1,11 +1,9 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import {
-    CheckCircle2,
     Download,
     Search,
     TrendingUp,
     X,
-    XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -23,15 +21,14 @@ interface ExamAttempt {
         id: number;
         title?: string | null; // allow missing
         name?: string | null; // allow missing
+        type: 'utbk' | 'tka' | 'cbt';
         irt_processed_at?: string | null;
     };
     score: number | null;
     total_score: number | null;
     irt_theta?: number | null;
     irt_block_score?: number | null;
-    passing_score?: number;
     percentage: number | null; // skor_utbk_pct (IRT) when ready; null when waiting
-    is_passed: boolean | null; // null when waiting for IRT
     completed_at: string;
 }
 
@@ -47,7 +44,6 @@ interface ExamHistoryProps {
     };
     filters?: {
         q?: string;
-        status?: 'all' | 'passed' | 'failed';
         sort?: 'date' | 'score';
     };
 }
@@ -104,9 +100,6 @@ export default function HistoryExam() {
 
     const [searchInput, setSearchInput] = useState(filters?.q ?? '');
     const [searchQuery, setSearchQuery] = useState(filters?.q ?? '');
-    const [filterStatus, setFilterStatus] = useState<
-        'all' | 'passed' | 'failed'
-    >(filters?.status ?? 'all');
     const [sortBy, setSortBy] = useState<'date' | 'score'>(
         filters?.sort ?? 'date',
     );
@@ -127,12 +120,11 @@ export default function HistoryExam() {
             '/student/exams/history',
             {
                 q: searchQuery.trim() || undefined,
-                status: filterStatus !== 'all' ? filterStatus : undefined,
                 sort: sortBy,
             },
             { preserveScroll: true, preserveState: true, replace: true },
         );
-    }, [searchQuery, filterStatus, sortBy]);
+    }, [searchQuery, sortBy]);
 
     // Precompute for UI sorting fallback (still useful if server returns same page)
     const processed = useMemo(() => {
@@ -149,12 +141,7 @@ export default function HistoryExam() {
         });
 
         const filtered = mapped.filter((a) => {
-            const matchesSearch = a.examNameLc.includes(q);
-            if (filterStatus === 'passed')
-                return matchesSearch && a.is_passed === true;
-            if (filterStatus === 'failed')
-                return matchesSearch && a.is_passed === false;
-            return matchesSearch;
+            return a.examNameLc.includes(q);
         });
 
         if (sortBy === 'date')
@@ -165,18 +152,14 @@ export default function HistoryExam() {
             );
 
         return filtered;
-    }, [attempts.data, searchQuery, filterStatus, sortBy]);
+    }, [attempts.data, searchQuery, sortBy]);
 
-    const passedCount = useMemo(
-        () => attempts.data.filter((a) => a.is_passed === true).length,
-        [attempts.data],
-    );
-    const failedCount = useMemo(
-        () => attempts.data.filter((a) => a.is_passed === false).length,
+    const resultsReadyCount = useMemo(
+        () => attempts.data.filter((a) => a.percentage !== null).length,
         [attempts.data],
     );
     const waitingCount = useMemo(
-        () => attempts.data.filter((a) => a.is_passed === null).length,
+        () => attempts.data.filter((a) => a.percentage === null).length,
         [attempts.data],
     );
 
@@ -255,17 +238,16 @@ export default function HistoryExam() {
                         <Card className="rounded-2xl">
                             <CardHeader className="pb-1">
                                 <CardTitle className="text-[11px] font-medium text-muted-foreground">
-                                    Lulus
+                                    Hasil tersedia
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-0">
                                 <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                                    {passedCount}
+                                    {resultsReadyCount}
                                 </div>
                                 <div className="text-[11px] text-muted-foreground">
-                                    {failedCount} tidak lulus
                                     {waitingCount > 0
-                                        ? `, ${waitingCount} menunggu`
+                                        ? `${waitingCount} menunggu`
                                         : ''}
                                 </div>
                             </CardContent>
@@ -305,45 +287,8 @@ export default function HistoryExam() {
                         )}
                     </div>
 
-                    {/* Filters */}
+                    {/* Sort controls */}
                     <div className="flex flex-wrap gap-2">
-                        <Button
-                            variant={
-                                filterStatus === 'all' ? 'default' : 'outline'
-                            }
-                            size="sm"
-                            onClick={() => setFilterStatus('all')}
-                            className="h-9 rounded-full"
-                        >
-                            Semua
-                        </Button>
-                        <Button
-                            variant={
-                                filterStatus === 'passed'
-                                    ? 'default'
-                                    : 'outline'
-                            }
-                            size="sm"
-                            onClick={() => setFilterStatus('passed')}
-                            className="h-9 rounded-full"
-                        >
-                            <CheckCircle2 className="mr-1 h-4 w-4" />
-                            Lulus
-                        </Button>
-                        <Button
-                            variant={
-                                filterStatus === 'failed'
-                                    ? 'default'
-                                    : 'outline'
-                            }
-                            size="sm"
-                            onClick={() => setFilterStatus('failed')}
-                            className="h-9 rounded-full"
-                        >
-                            <XCircle className="mr-1 h-4 w-4" />
-                            Tidak Lulus
-                        </Button>
-
                         <div className="ml-auto flex gap-2">
                             <Button
                                 variant={
@@ -373,10 +318,7 @@ export default function HistoryExam() {
                         {processed.length > 0 ? (
                             processed.map((attempt) => {
                                 const examName = attempt.examName || '-';
-                                const isWaiting =
-                                    attempt.is_passed === null ||
-                                    !attempt.exam?.irt_processed_at ||
-                                    attempt.percentage === null;
+                                const isWaiting = attempt.percentage === null;
 
                                 return (
                                     <Card
@@ -401,24 +343,18 @@ export default function HistoryExam() {
                                                     variant="outline"
                                                     className={
                                                         isWaiting
-                                                            ? 'shrink-0 border-slate-200 bg-slate-50 text-slate-700 dark:bg-slate-950 dark:text-slate-200'
-                                                            : attempt.is_passed
-                                                              ? 'shrink-0 border-green-200 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-200'
-                                                              : 'shrink-0 border-red-200 bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-200'
+                                                            ? 'shrink-0'
+                                                            : 'shrink-0 border-primary/30 text-primary'
                                                     }
                                                 >
-                                                    {isWaiting
-                                                        ? 'Menunggu'
-                                                        : attempt.is_passed
-                                                          ? 'Lulus'
-                                                          : 'Tidak Lulus'}
+                                                    {isWaiting ? 'Menunggu' : 'Hasil tersedia'}
                                                 </Badge>
                                             </div>
 
                                             <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2">
                                                 <div>
                                                     <div className="text-[11px] text-muted-foreground">
-                                                        Skor (IRT)
+                                                        {attempt.exam.type === 'cbt' ? 'Persentase Nilai' : 'Skor IRT'}
                                                     </div>
                                                     <div className="text-sm font-bold">
                                                         {isWaiting
@@ -428,25 +364,23 @@ export default function HistoryExam() {
                                                               )}%`}
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-[11px] text-muted-foreground">
-                                                        Theta
+                                                {attempt.exam.type !== 'cbt' && (
+                                                    <div className="text-right">
+                                                        <div className="text-[11px] text-muted-foreground">
+                                                            Theta
+                                                        </div>
+                                                        <div className="text-sm font-bold text-primary">
+                                                            {isWaiting ||
+                                                            attempt.irt_theta === null ||
+                                                            attempt.irt_theta === undefined
+                                                                ? 'Menunggu'
+                                                                : attempt.irt_theta.toFixed(3)}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-sm font-bold text-primary">
-                                                        {isWaiting ||
-                                                        attempt.irt_theta ===
-                                                            null ||
-                                                        attempt.irt_theta ===
-                                                            undefined
-                                                            ? 'Menunggu'
-                                                            : attempt.irt_theta.toFixed(
-                                                                  3,
-                                                              )}
-                                                    </div>
-                                                </div>
+                                                )}
                                             </div>
 
-                                            <Button
+                                            {attempt.exam.type !== 'cbt' && <Button
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() =>
@@ -458,8 +392,7 @@ export default function HistoryExam() {
                                                     downloadingIds.has(
                                                         attempt.id,
                                                     ) ||
-                                                    !attempt.exam
-                                                        .irt_processed_at
+                                                    !attempt.exam.irt_processed_at
                                                 }
                                                 className="mt-3 h-9 w-full gap-2 rounded-xl"
                                             >
@@ -470,7 +403,7 @@ export default function HistoryExam() {
                                                           .irt_processed_at
                                                       ? 'Unduh PDF'
                                                       : 'Menunggu Proses IRT'}
-                                            </Button>
+                                            </Button>}
                                         </CardContent>
                                     </Card>
                                 );

@@ -7,9 +7,7 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamToken;
 use App\Models\ExamViolation;
-use App\Models\Major;
 use App\Models\SystemSetting;
-use App\Models\University;
 use App\Services\ExamResultsPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -38,6 +36,7 @@ class ExamController extends Controller
                 now() > $exam->end_at => 'ended',
                 default => 'available'
             };
+
             return $exam;
         });
 
@@ -53,7 +52,6 @@ class ExamController extends Controller
             : null;
 
         return Inertia::render('student/exams/JoinExam', [
-            'universities' => University::with('majors')->get(),
             'exam' => $exam,
         ]);
     }
@@ -61,6 +59,7 @@ class ExamController extends Controller
     private function orderedBanks(ExamAttempt $attempt)
     {
         $attempt->loadMissing('exam.questionBanks');
+
         return $attempt->exam->questionBanks->values();
     }
 
@@ -68,6 +67,7 @@ class ExamController extends Controller
     {
         $banks = $this->orderedBanks($attempt);
         $index = max(0, $attempt->current_section - 1);
+
         return $banks->get($index);
     }
 
@@ -75,22 +75,7 @@ class ExamController extends Controller
     {
         $validated = $request->validate([
             'token' => 'required|string|exists:exam_tokens,token',
-
-            // your placement selections (keep as-is)
-            'selections' => 'required|array|max:4',
-            'selections.*.university_id' => 'required|exists:universities,id',
-            'selections.*.majors' => 'required|array|max:4',
-            'selections.*.majors.*' => 'required|exists:majors,id',
         ]);
-
-        $totalMajors = collect($validated['selections'])
-            ->sum(fn($selection) => count($selection['majors']));
-
-        if ($totalMajors > 4) {
-            return back()->withErrors([
-                'selections' => 'Maximum 4 majors can be selected',
-            ]);
-        }
 
         $token = ExamToken::where('token', $validated['token'])
             ->with(['exam.settings', 'exam.questionBanks'])
@@ -117,10 +102,6 @@ class ExamController extends Controller
 
         $student = auth()->user();
 
-        $student->update([
-            'university_selections' => $validated['selections'],
-        ]);
-
         $existingAttempt = ExamAttempt::where('student_id', $student->id)
             ->where('exam_id', $exam->id)
             ->latest()
@@ -136,7 +117,7 @@ class ExamController extends Controller
             ) {
                 return back()->withErrors([
                     'token' => 'Siswa hanya dapat mengikuti ujian ini satu kali. '
-                        . 'Aktifkan opsi testing di Pengaturan jika perlu mengambil ulang.',
+                        .'Aktifkan opsi testing di Pengaturan jika perlu mengambil ulang.',
                 ]);
             }
 
@@ -153,17 +134,15 @@ class ExamController extends Controller
 
         $attempt = ExamAttempt::create([
             'student_id' => $student->id,
-            'exam_id'    => $exam->id,
+            'exam_id' => $exam->id,
             'started_at' => now(),
-            'status'     => 'in_progress',
+            'status' => 'in_progress',
             'current_section' => 1,
             'section_started_at' => now(),
         ]);
 
         return redirect()->route('student.exams.take', $attempt->id);
     }
-
-
 
     public function take(ExamAttempt $attempt)
     {
@@ -189,12 +168,10 @@ class ExamController extends Controller
             return $this->submitExam($attempt);
         }
 
-
         if (! $attempt->section_started_at) {
             $attempt->update(['section_started_at' => now()]);
             $attempt->refresh();
         }
-
 
         $questions = $bank->questions()
             ->with('options')
@@ -234,7 +211,6 @@ class ExamController extends Controller
         ]);
     }
 
-
     public function saveAnswer(Request $request, ExamAttempt $attempt)
     {
         if ($attempt->student_id !== auth()->id()) {
@@ -245,7 +221,7 @@ class ExamController extends Controller
 
         if ($attempt->is_frozen) {
             return response()->json([
-                'error' => 'Ujian dibekukan. Hubungi admin.'
+                'error' => 'Ujian dibekukan. Hubungi admin.',
             ], 403);
         }
 
@@ -312,7 +288,6 @@ class ExamController extends Controller
             ->with('info', 'Berlanjut ke sesi berikutnya.');
     }
 
-
     public function submitExam(ExamAttempt $attempt)
     {
         if ($attempt->student_id !== auth()->id()) {
@@ -362,107 +337,12 @@ class ExamController extends Controller
 
         $attempt->load(['exam.settings', 'exam.questionBanks', 'student']);
 
-        if (! $attempt->exam->irt_processed_at) {
+        if ($attempt->exam->type->usesIrt() && ! $attempt->exam->irt_processed_at) {
             return Inertia::render('student/exams/WaitingResult');
         }
 
-        $student = $attempt->student;
-
-        $rawSelections = $student->university_selections ?? [];
-        if (!is_array($rawSelections)) {
-            $rawSelections = [];
-        }
-
-        $studentSelections = [];
-        $universitySelections = [];
-
-        foreach ($rawSelections as $selection) {
-            if (
-                !isset($selection['university_id'], $selection['majors']) ||
-                !is_array($selection['majors'])
-            ) {
-                continue;
-            }
-
-            $university = University::find($selection['university_id']);
-            if (!$university) continue;
-
-            $majors = Major::whereIn('id', $selection['majors'])->get();
-
-            $universitySelections[] = [
-                'university' => [
-                    'id' => $university->id,
-                    'name' => $university->name,
-                    'city' => $university->city,
-                ],
-                'majors' => $majors->map(fn(Major $major) => [
-                    'id' => $major->id,
-                    'name' => $major->name,
-                    'minimum_passing_grade' => $major->minimum_passing_grade,
-                ])->values()->all(),
-            ];
-
-            foreach ($majors as $major) {
-                $studentSelections[] = [
-                    'university' => [
-                        'id' => $university->id,
-                        'name' => $university->name,
-                        'city' => $university->city,
-                    ],
-                    'major' => [
-                        'id' => $major->id,
-                        'name' => $major->name,
-                        'minimum_passing_grade' => $major->minimum_passing_grade,
-                    ],
-                ];
-            }
-        }
-
-        $fallbackMajor = $student->major;
-        $fallbackUniversity = $student->university;
-
-        if (empty($studentSelections) && ($fallbackMajor || $fallbackUniversity)) {
-            $studentSelections[] = [
-                'university' => $fallbackUniversity ? [
-                    'id' => $fallbackUniversity->id,
-                    'name' => $fallbackUniversity->name,
-                    'city' => $fallbackUniversity->city,
-                ] : null,
-                'major' => $fallbackMajor ? [
-                    'id' => $fallbackMajor->id,
-                    'name' => $fallbackMajor->name,
-                    'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
-                ] : null,
-            ];
-
-            if ($fallbackUniversity && $fallbackMajor) {
-                $universitySelections[] = [
-                    'university' => [
-                        'id' => $fallbackUniversity->id,
-                        'name' => $fallbackUniversity->name,
-                        'city' => $fallbackUniversity->city,
-                    ],
-                    'majors' => [[
-                        'id' => $fallbackMajor->id,
-                        'name' => $fallbackMajor->name,
-                        'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
-                    ]],
-                ];
-            }
-        }
-
-        $firstSelectionMajorGrade = $studentSelections[0]['major']['minimum_passing_grade'] ?? null;
-        $passingScore = $firstSelectionMajorGrade ?? ($fallbackMajor->minimum_passing_grade ?? 0);
-
-        $bankCount = $attempt->exam->questionBanks->count();
-        $bankDivisor = $bankCount > 0 ? $bankCount : 1;
-        $adjustedScore = (float) ($attempt->score ?? 0) / $bankDivisor;
-
-        $isPassed = $adjustedScore >= $passingScore;
-
+        $usesIrt = $attempt->exam->type->usesIrt();
         $questions = $this->getExamQuestions($attempt->exam);
-        $totalQuestions = $questions->count();
-
         $questionDetails = $questions->map(function ($question) use ($attempt) {
             $response = $attempt->responses()
                 ->where('question_id', $question->id)
@@ -480,48 +360,29 @@ class ExamController extends Controller
                 'student_answer' => $response?->selectedOption?->option_text,
                 'correct_answer' => $correctOption?->option_text,
                 'is_correct' => $response?->selectedOption?->is_correct ?? false,
-                'points_earned' => $response
-                    ? ($response->selectedOption?->is_correct ? $question->points : 0)
+                'points_earned' => $response?->selectedOption?->is_correct
+                    ? $question->points
                     : 0,
             ];
         });
 
-        $primaryPlacement = $studentSelections[0] ?? [
-            'university' => $fallbackUniversity ? [
-                'id' => $fallbackUniversity->id,
-                'name' => $fallbackUniversity->name,
-                'city' => $fallbackUniversity->city,
-            ] : null,
-            'major' => $fallbackMajor ? [
-                'id' => $fallbackMajor->id,
-                'name' => $fallbackMajor->name,
-                'minimum_passing_grade' => $fallbackMajor->minimum_passing_grade,
-            ] : null,
-        ];
-
         return Inertia::render('student/exams/Results', [
             'attempt' => [
                 'id' => $attempt->id,
-                'score' => $attempt->irt_theta ?? $attempt->score,
+                'score' => $usesIrt ? ($attempt->irt_theta ?? $attempt->score) : $attempt->score,
                 'raw_score' => $attempt->score,
-                'irt_theta' => $attempt->irt_theta,
+                'irt_theta' => $usesIrt ? $attempt->irt_theta : null,
                 'total_score' => $attempt->total_score,
                 'question_block_count' => $attempt->exam->questionBanks->count(),
-                'total_questions' => $totalQuestions,
-                'completed_at' => $attempt->completed_at
-                    ? \Carbon\Carbon::parse($attempt->completed_at)->toIso8601String()
-                    : null,
+                'total_questions' => $questions->count(),
+                'completed_at' => $attempt->completed_at?->toIso8601String(),
             ],
             'exam' => [
-                'title' => $attempt->exam->title ?? $attempt->exam->name,
+                'title' => $attempt->exam->name,
                 'description' => $attempt->exam->description,
+                'type' => $attempt->exam->type->value,
             ],
-            'passingScore' => $passingScore,
-            'isPassed' => $isPassed,
             'questionDetails' => $questionDetails,
-            'studentPlacement' => $primaryPlacement,
-            'studentSelections' => $studentSelections,
-            'universitySelections' => $universitySelections,
         ]);
     }
 
@@ -532,14 +393,18 @@ class ExamController extends Controller
         }
 
         $attempt->loadMissing(['exam']);
-        if (! $attempt->exam?->irt_processed_at) {
+        if (! $attempt->exam?->type?->usesIrt()) {
+            abort(404);
+        }
+
+        if (! $attempt->exam->irt_processed_at) {
             return Inertia::render('student/exams/WaitingResult');
         }
 
-        $pdfService = new ExamResultsPdfService();
+        $pdfService = new ExamResultsPdfService;
         $pdf = $pdfService->generate($attempt);
 
-        return $pdf->download('exam-results-' . $attempt->id . '.pdf');
+        return $pdf->download('exam-results-'.$attempt->id.'.pdf');
     }
 
     public function logViolation(Request $request, ExamAttempt $attempt)
@@ -590,8 +455,7 @@ class ExamController extends Controller
             $attempt->update([
                 'is_frozen' => true,
                 'frozen_at' => now(),
-                'frozen_reason' =>
-                "Ujian dibekukan karena {$label} sebanyak {$violation->count} kali, melebihi batas yang diizinkan.",
+                'frozen_reason' => "Ujian dibekukan karena {$label} sebanyak {$violation->count} kali, melebihi batas yang diizinkan.",
             ]);
 
             return response()->json([
@@ -599,8 +463,7 @@ class ExamController extends Controller
                 'is_frozen' => true,
                 'violation_count' => $violation->count,
                 'max_violations' => $MAX_VIOLATIONS,
-                'message' =>
-                "Ujian dibekukan karena {$label} terlalu sering. Silakan hubungi admin/pengawas untuk melanjutkan ujian.",
+                'message' => "Ujian dibekukan karena {$label} terlalu sering. Silakan hubungi admin/pengawas untuk melanjutkan ujian.",
             ]);
         }
 
@@ -609,11 +472,11 @@ class ExamController extends Controller
 
         $message = $autoFreezeEnabled
             ? "Terdeteksi pelanggaran: {$label}. "
-                . "Peringatan {$violation->count}/{$MAX_VIOLATIONS}. "
-                . ($remaining > 0 ? "Sisa {$remaining} sebelum ujian dibekukan." : '')
+                ."Peringatan {$violation->count}/{$MAX_VIOLATIONS}. "
+                .($remaining > 0 ? "Sisa {$remaining} sebelum ujian dibekukan." : '')
             : "Terdeteksi pelanggaran: {$label}. "
-                . "Peringatan {$violation->count}/{$MAX_VIOLATIONS}. "
-                . 'Auto freeze sedang nonaktif.';
+                ."Peringatan {$violation->count}/{$MAX_VIOLATIONS}. "
+                .'Auto freeze sedang nonaktif.';
 
         return response()->json([
             'success' => true,
@@ -640,7 +503,7 @@ class ExamController extends Controller
         $exam->loadMissing(['questionBanks.questions.options']);
 
         return $exam->questionBanks
-            ->flatMap(fn($bank) => $bank->questions)
+            ->flatMap(fn ($bank) => $bank->questions)
             ->unique('id')
             ->values();
     }

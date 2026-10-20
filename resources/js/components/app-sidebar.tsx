@@ -43,13 +43,32 @@ export function AppSidebar() {
                 icon: LayoutGrid,
             },
             {
-                title: 'Ujian',
+                title: 'Ujian UTBK',
                 href: '#',
                 icon: Book,
                 items: [
-                    { title: 'Semua Ujian', href: '/admin/exams' },
-                    { title: 'Buat Ujian', href: '/admin/exams/create' },
+                    { title: 'All Exams', href: '/admin/exams?type=utbk' },
+                    { title: 'Create Exam', href: '/admin/exams/create?type=utbk' },
                     { title: 'IRT Processing', href: '/admin/irt' },
+                ],
+            },
+            {
+                title: 'Ujian TKA',
+                href: '#',
+                icon: Book,
+                items: [
+                    { title: 'All Exams', href: '/admin/exams?type=tka' },
+                    { title: 'Create Exam', href: '/admin/exams/create?type=tka' },
+                    { title: 'IRT Processing', href: '/admin/irt?type=tka' },
+                ],
+            },
+            {
+                title: 'Ujian CBT',
+                href: '#',
+                icon: Book,
+                items: [
+                    { title: 'All Exams', href: '/admin/exams?type=cbt' },
+                    { title: 'Create Exam', href: '/admin/exams/create?type=cbt' },
                 ],
             },
             {

@@ -46,6 +46,7 @@ interface Props {
     questionBanks: QuestionBank[];
     schools: School[];
     classes: string[];
+    examType: 'utbk' | 'tka' | 'cbt';
 }
 
 type SelectedBank = {
@@ -69,8 +70,14 @@ function combineDateTime(date: Date | undefined, time: string): string {
     return `${year}-${month}-${day} ${hh}:${mm}`;
 }
 
-export default function CreateExam({ questionBanks, schools, classes }: Props) {
+export default function CreateExam({
+    questionBanks,
+    schools,
+    classes,
+    examType,
+}: Props) {
     const { data, setData, post, processing, errors } = useForm({
+        type: examType,
         name: '',
         description: '',
         start_at: '',
@@ -100,7 +107,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Admin Dashboard', href: '/admin/dashboard' },
-        { title: 'Daftar Ujian', href: '/admin/exams' },
+        { title: `Ujian ${examType.toUpperCase()}`, href: `/admin/exams?type=${examType}` },
         { title: 'Buat Ujian', href: '/admin/exams/create' },
     ];
 
@@ -164,7 +171,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Buat Ujian" />
+            <Head title={`Buat Ujian ${examType.toUpperCase()}`} />
             <div className="p-4">
                 {/* keep original style: don't change width */}
                 <Card className="mx-auto max-w-screen">
@@ -893,7 +900,7 @@ export default function CreateExam({ questionBanks, schools, classes }: Props) {
 
                             <div className="pt-2">
                                 <Link
-                                    href="/admin/exams"
+                                    href={`/admin/exams?type=${examType}`}
                                     className="text-sm text-muted-foreground underline"
                                 >
                                     Kembali ke daftar ujian

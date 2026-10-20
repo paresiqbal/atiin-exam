@@ -10,6 +10,7 @@ export interface ExamQuestionBankLite {
 export interface ExamData {
     id: number;
     name: string;
+    type: 'utbk' | 'tka' | 'cbt';
     description: string | null;
     is_published: boolean;
     question_banks: ExamQuestionBankLite[];

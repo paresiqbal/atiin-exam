@@ -36,36 +36,43 @@ interface Stats {
         published: number;
         draft: number;
         irt_processed: number;
+        irt_eligible: number;
     };
     attempts: {
         total: number;
         completed: number;
         in_progress: number;
         frozen: number;
+        graded: number;
         passed: number;
         failed: number;
     };
     questions: { total: number; banks: number };
-    avg_skor_utbk: number;
+    avg_skor_irt: number;
 }
 
 interface RecentAttempt {
     id: number;
     student_name: string;
     exam_name: string;
+    raw_score: number | null;
+    total_score: number | null;
     skor_utbk_pct: number | null;
+    exam_type: 'utbk' | 'tka' | 'cbt';
+    uses_irt: boolean;
     irt_processed: boolean;
-    passed: boolean;
+    passed: boolean | null;
     completed_at: string;
 }
 
 interface ExamPerf {
     name: string;
+    type: 'utbk' | 'tka' | 'cbt';
     total_attempts: number;
-    passed: number;
-    failed: number;
-    pass_rate: number;
-    avg_skor_utbk: number | null;
+    passed: number | null;
+    failed: number | null;
+    pass_rate: number | null;
+    avg_skor_irt: number | null;
     irt_processed: boolean;
 }
 
@@ -155,14 +162,17 @@ export default function AdminDashboard({
     skor_distribution,
 }: Props) {
     const passRate =
-        s.attempts.completed > 0
-            ? ((s.attempts.passed / s.attempts.completed) * 100).toFixed(1)
+        s.attempts.graded > 0
+            ? ((s.attempts.passed / s.attempts.graded) * 100).toFixed(1)
             : '0';
 
     const passFailData = [
-        { name: 'Lulus', value: s.attempts.passed, fill: GREEN },
-        { name: 'Tidak Lulus', value: s.attempts.failed, fill: RED },
+        { name: 'Lulus UTBK', value: s.attempts.passed, fill: GREEN },
+        { name: 'Tidak Lulus UTBK', value: s.attempts.failed, fill: RED },
     ];
+    const utbkExamPerformance = exam_performance.filter(
+        (exam) => exam.type === 'utbk',
+    );
 
     const irtData = [
         { name: 'Sudah IRT', value: s.exams.irt_processed, fill: BLUE },
@@ -202,13 +212,13 @@ export default function AdminDashboard({
                         accent={SLATE}
                     />
                     <StatCard
-                        label="Rata-rata Skor UTBK"
+                        label="Rata-rata Skor IRT"
                         value={
-                            s.avg_skor_utbk > 0
-                                ? `${s.avg_skor_utbk.toFixed(2)}%`
+                            s.avg_skor_irt > 0
+                                ? `${s.avg_skor_irt.toFixed(2)}%`
                                 : '-'
                         }
-                        sub={`${passRate}% tingkat kelulusan`}
+                        sub={`${passRate}% kelulusan UTBK`}
                         icon={BookOpen}
                         accent={GREEN}
                     />
@@ -219,7 +229,7 @@ export default function AdminDashboard({
                     <StatCard
                         label="IRT Diproses"
                         value={s.exams.irt_processed}
-                        sub={`dari ${s.exams.total} ujian`}
+                        sub={`dari ${s.exams.irt_eligible} ujian IRT`}
                         icon={Layers}
                         accent={BLUE}
                     />
@@ -231,16 +241,16 @@ export default function AdminDashboard({
                         accent={AMBER}
                     />
                     <StatCard
-                        label="Lulus"
+                        label="Lulus UTBK"
                         value={s.attempts.passed}
-                        sub="dari percobaan selesai"
+                        sub={`dari ${s.attempts.graded} percobaan UTBK`}
                         icon={CheckCircle2}
                         accent={GREEN}
                     />
                     <StatCard
-                        label="Tidak Lulus"
+                        label="Tidak Lulus UTBK"
                         value={s.attempts.failed}
-                        sub="dari percobaan selesai"
+                        sub={`dari ${s.attempts.graded} percobaan UTBK`}
                         icon={XCircle}
                         accent={RED}
                     />
@@ -250,7 +260,7 @@ export default function AdminDashboard({
                 <div className="grid gap-4 md:grid-cols-3">
                     {/* Pass/Fail pie */}
                     <div className="rounded-xl border bg-card p-5">
-                        <SectionTitle>Distribusi Kelulusan</SectionTitle>
+                        <SectionTitle>Distribusi Kelulusan UTBK</SectionTitle>
                         <ResponsiveContainer width="100%" height={200}>
                             <PieChart>
                                 <Pie
@@ -363,9 +373,9 @@ export default function AdminDashboard({
 
                 {/* ── Exam performance bar ── */}
                 <div className="rounded-xl border bg-card p-5">
-                    <SectionTitle>Pass Rate per Ujian (5 Terbaru)</SectionTitle>
+                    <SectionTitle>Pass Rate UTBK (5 Terbaru)</SectionTitle>
                     <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={exam_performance} barSize={32}>
+                    <BarChart data={utbkExamPerformance} barSize={32}>
                             <CartesianGrid
                                 strokeDasharray="3 3"
                                 stroke="#e2e8f0"
@@ -389,13 +399,13 @@ export default function AdminDashboard({
                                 name="Pass Rate"
                                 radius={[3, 3, 0, 0]}
                             >
-                                {exam_performance.map((entry, i) => (
+                                {utbkExamPerformance.map((entry, i) => (
                                     <Cell
                                         key={i}
                                         fill={
-                                            entry.pass_rate >= 60
+                                            (entry.pass_rate ?? 0) >= 60
                                                 ? GREEN
-                                                : entry.pass_rate >= 40
+                                                : (entry.pass_rate ?? 0) >= 40
                                                   ? AMBER
                                                   : RED
                                         }
@@ -434,22 +444,30 @@ export default function AdminDashboard({
                                             <p className="text-sm font-bold">
                                                 {a.skor_utbk_pct?.toFixed(2)}%
                                             </p>
-                                        ) : (
+                                        ) : a.uses_irt ? (
                                             <p className="text-xs text-muted-foreground">
                                                 Belum IRT
                                             </p>
+                                        ) : (
+                                            <p className="text-sm font-bold">
+                                                {a.raw_score ?? 0} / {a.total_score ?? 0}
+                                            </p>
                                         )}
-                                        <span
-                                            className="rounded-full px-2 py-0.5 text-xs font-medium"
-                                            style={{
-                                                background: a.passed
-                                                    ? GREEN + '18'
-                                                    : RED + '18',
-                                                color: a.passed ? GREEN : RED,
-                                            }}
-                                        >
-                                            {a.passed ? 'Lulus' : 'Tidak Lulus'}
-                                        </span>
+                                        {a.exam_type === 'utbk' && a.passed !== null ? (
+                                            <span
+                                                className="rounded-full px-2 py-0.5 text-xs font-medium"
+                                                style={{
+                                                    background: a.passed ? GREEN + '18' : RED + '18',
+                                                    color: a.passed ? GREEN : RED,
+                                                }}
+                                            >
+                                                {a.passed ? 'Lulus' : 'Tidak Lulus'}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">
+                                                {a.uses_irt ? 'Hasil IRT' : 'Selesai'}
+                                            </span>
+                                        )}
                                     </div>
                                 </Link>
                             ))}
@@ -470,10 +488,10 @@ export default function AdminDashboard({
                                             Peserta
                                         </th>
                                         <th className="py-2 text-right font-semibold text-muted-foreground">
-                                            Pass Rate
+                                            Pass Rate UTBK
                                         </th>
                                         <th className="py-2 text-right font-semibold text-muted-foreground">
-                                            Avg Skor
+                                            Avg Skor IRT
                                         </th>
                                     </tr>
                                 </thead>
@@ -486,6 +504,9 @@ export default function AdminDashboard({
                                             <td className="max-w-[140px] py-2.5 pr-2">
                                                 <span className="block truncate">
                                                     {e.name}
+                                                </span>
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {e.type.toUpperCase()}
                                                 </span>
                                                 {e.irt_processed && (
                                                     <span
@@ -500,6 +521,7 @@ export default function AdminDashboard({
                                                 {e.total_attempts}
                                             </td>
                                             <td className="py-2.5 text-right">
+                                                {e.pass_rate !== null ? (
                                                 <span
                                                     className="font-semibold"
                                                     style={{
@@ -514,10 +536,11 @@ export default function AdminDashboard({
                                                 >
                                                     {e.pass_rate}%
                                                 </span>
+                                                ) : '-'}
                                             </td>
                                             <td className="py-2.5 text-right text-muted-foreground">
-                                                {e.avg_skor_utbk !== null
-                                                    ? `${e.avg_skor_utbk}%`
+                                                {e.avg_skor_irt !== null
+                                                    ? `${e.avg_skor_irt}%`
                                                     : '-'}
                                             </td>
                                         </tr>

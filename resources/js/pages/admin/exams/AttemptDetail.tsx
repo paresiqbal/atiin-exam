@@ -37,6 +37,7 @@ interface Props {
     exam: {
         id: number;
         name: string;
+        type: 'utbk' | 'tka' | 'cbt';
         description?: string | null;
         irt_processed_at?: string | null;
     };
@@ -50,14 +51,14 @@ interface Props {
     studentData?: {
         selected_university: string | null;
         selected_major: string | null;
-        minimum_passing_grade: number;
+        minimum_passing_grade: number | null;
     };
     // Controller sends both; skorUtbk is raw (e.g. 692.35) same scale as passingScore
     skorUtbkPct: number | null; // percentage, e.g. 45.41 — display only
     skorUtbk: number | null; // raw UTBK score, e.g. 692.35
     adjustedScore: number; // legacy alias = skorUtbk ?? 0
-    passingScore: number; // raw scale, e.g. 651
-    isPassed: boolean; // computed raw vs raw in controller
+    passingScore: number | null;
+    isPassed: boolean | null;
     questionDetails: QuestionDetail[];
     questionPerformance: Record<number, unknown>;
 }
@@ -93,7 +94,9 @@ export default function AttemptDetail({
         { title: 'Detail', href: '#' },
     ];
 
-    const irtProcessed = !!exam.irt_processed_at;
+    const irtProcessed = exam.type !== 'cbt' && !!exam.irt_processed_at;
+    const usesIrt = exam.type !== 'cbt';
+    const isUtbk = exam.type === 'utbk';
 
     // Use raw UTBK score (same scale as passingScore).
     // If controller already sends skorUtbk, use it directly.
@@ -114,8 +117,7 @@ export default function AttemptDetail({
           })
         : '-';
 
-    const university =
-        studentData?.selected_university ?? student.university?.name ?? '-';
+    const university = studentData?.selected_university ?? student.university?.name ?? '-';
     const major = studentData?.selected_major ?? student.major?.name ?? '-';
 
     return (
@@ -156,7 +158,7 @@ export default function AttemptDetail({
                                         Unduh PDF
                                     </Button>
                                 </a>
-                                <a
+                                {isUtbk && <a
                                     href={`/admin/attempts/${attempt.id}/download-letter`}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -169,7 +171,7 @@ export default function AttemptDetail({
                                         <FileText className="h-4 w-4" />
                                         Unduh Surat
                                     </Button>
-                                </a>
+                                </a>}
                             </>
                         )}
                     </div>
@@ -179,15 +181,19 @@ export default function AttemptDetail({
                 <div
                     className={cn(
                         'flex flex-col gap-6 rounded-xl border-2 p-6 md:flex-row md:items-center',
-                        isPassed
-                            ? 'border-green-500/30 bg-green-500/5'
-                            : 'border-red-500/30 bg-red-500/5',
+                        isUtbk
+                            ? isPassed
+                                ? 'border-green-500/30 bg-green-500/5'
+                                : 'border-red-500/30 bg-red-500/5'
+                            : 'border-primary/30 bg-primary/5',
                     )}
                 >
                     {/* Status */}
                     <div className="flex shrink-0 items-center gap-4">
                         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-background shadow-sm">
-                            {isPassed ? (
+                            {!isUtbk ? (
+                                <FileText className="h-8 w-8 text-primary" />
+                            ) : isPassed ? (
                                 <CheckCircle2 className="h-8 w-8 text-green-600" />
                             ) : (
                                 <XCircle className="h-8 w-8 text-red-500" />
@@ -195,18 +201,16 @@ export default function AttemptDetail({
                         </div>
                         <div>
                             <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                Hasil
+                                {isUtbk ? 'Hasil' : usesIrt ? 'Hasil IRT' : 'Hasil Ujian'}
                             </p>
-                            <p
+                            {isUtbk && <p
                                 className={cn(
                                     'text-3xl font-bold',
-                                    isPassed
-                                        ? 'text-green-700'
-                                        : 'text-red-600',
+                                    isPassed ? 'text-green-700' : 'text-red-600',
                                 )}
                             >
                                 {isPassed ? 'LULUS' : 'TIDAK LULUS'}
-                            </p>
+                            </p>}
                             <p className="mt-0.5 text-xs text-muted-foreground">
                                 Diselesaikan: {completedDate}
                             </p>
@@ -218,36 +222,37 @@ export default function AttemptDetail({
                         {/* Skor UTBK — raw value, directly comparable to Min. Nilai Prodi */}
                         <div className="min-w-[140px] rounded-lg border bg-background px-5 py-3">
                             <p className="mb-1 text-xs font-medium text-muted-foreground">
-                                Skor UTBK
+                                {!usesIrt ? 'Nilai' : isUtbk ? 'Skor UTBK' : 'Skor IRT'}
                             </p>
-                            {irtProcessed ? (
-                                <>
-                                    <p className="text-2xl font-bold">
-                                        {rawScore.toFixed(2)}
-                                    </p>
-                                    {displayPct !== null && (
-                                        <p className="mt-0.5 text-xs text-muted-foreground">
-                                            {displayPct.toFixed(1)}% dari 1.525
-                                        </p>
-                                    )}
-                                </>
+                            {usesIrt ? (
+                                irtProcessed ? (
+                                    <>
+                                        <p className="text-2xl font-bold">{rawScore.toFixed(2)}</p>
+                                        {displayPct !== null && (
+                                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                                {displayPct.toFixed(1)}% dari 1.525
+                                            </p>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className="text-base text-muted-foreground">Belum diproses</p>
+                                )
                             ) : (
-                                <p className="text-base text-muted-foreground">
-                                    Belum diproses
+                                <p className="text-2xl font-bold">
+                                    {attempt.score} / {attempt.total_score}
                                 </p>
                             )}
                         </div>
 
-                        {/* Min. Nilai Prodi — same raw scale */}
-                        <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
+                        {isUtbk && <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
                             <p className="mb-1 text-xs font-medium text-muted-foreground">
                                 Min. Nilai Prodi
                             </p>
                             <p className="text-2xl font-bold">{passingScore}</p>
-                        </div>
+                        </div>}
 
                         {/* Theta */}
-                        {attempt.irt_theta !== null && irtProcessed && (
+                        {usesIrt && attempt.irt_theta !== null && irtProcessed && (
                             <div className="min-w-[110px] rounded-lg border bg-background px-5 py-3">
                                 <p className="mb-1 text-xs font-medium text-muted-foreground">
                                     Theta (IRT)
@@ -269,12 +274,11 @@ export default function AttemptDetail({
                         <div className="divide-y overflow-hidden rounded-lg border px-5">
                             <InfoRow label="Nama" value={student.name} />
                             <InfoRow label="Email" value={student.email} />
-                            <InfoRow label="Universitas" value={university} />
-                            <InfoRow label="Program Studi" value={major} />
-                            <InfoRow
-                                label="Min. Nilai Prodi"
-                                value={passingScore}
-                            />
+                            {isUtbk && <>
+                                <InfoRow label="Universitas" value={university} />
+                                <InfoRow label="Program Studi" value={major} />
+                                <InfoRow label="Min. Nilai Prodi" value={passingScore ?? '-'} />
+                            </>}
                         </div>
                     </div>
 
@@ -288,7 +292,7 @@ export default function AttemptDetail({
                                 label="Diselesaikan"
                                 value={completedDate}
                             />
-                            <InfoRow
+                            {usesIrt && <InfoRow
                                 label="Status IRT"
                                 value={
                                     irtProcessed ? (
@@ -301,7 +305,7 @@ export default function AttemptDetail({
                                         </span>
                                     )
                                 }
-                            />
+                            />}
                             {exam.description && (
                                 <InfoRow
                                     label="Deskripsi"

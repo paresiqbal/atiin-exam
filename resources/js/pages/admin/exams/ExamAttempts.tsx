@@ -35,13 +35,15 @@ import type { Paginated } from '@/types/pagination';
 
 interface Attempt {
     id: number;
+    raw_score: number | null;
+    total_score: number | null;
     skor_utbk_pct: number | null;
     skor_utbk: number | null;   // null = IRT not yet processed
     adjusted_score: number;
     adjusted_total_score: number;
     total_questions: number;
     question_bank_count: number;
-    is_passed: boolean;
+    is_passed: boolean | null;
     started_at: string;
     completed_at: string | null;
     status: 'in_progress' | 'submitted' | 'frozen' | string;
@@ -60,7 +62,7 @@ interface Attempt {
 
 interface Analytics {
     total_attempts: number;
-    passed: number;
+    passed: number | null;
     average_score: number | string | null;
 }
 
@@ -70,7 +72,12 @@ type SortDirection = 'asc' | 'desc';
 type FreezeFilter = 'all' | 'frozen' | 'not_frozen';
 
 interface Props {
-    exam: { id: number; name: string; irt_processed_at?: string | null };
+    exam: {
+        id: number;
+        name: string;
+        type: 'utbk' | 'tka' | 'cbt';
+        irt_processed_at?: string | null;
+    };
     attempts: Paginated<Attempt>;
     analytics: Analytics;
     filters?: {
@@ -106,12 +113,13 @@ function parseDate(iso: string | null | undefined): Date | null {
 
 export default function ExamAttempts({ exam, attempts, analytics, filters }: Props) {
     const baseUrl = `/admin/exams/${exam.id}/attempts`;
-    const irtProcessed = !!exam.irt_processed_at;
+    const irtProcessed = exam.type !== 'cbt' && !!exam.irt_processed_at;
+    const isUtbk = exam.type === 'utbk';
 
     const averageScore = Number(analytics.average_score ?? 0);
     const passRate =
         analytics.total_attempts > 0
-            ? (analytics.passed / analytics.total_attempts) * 100
+            ? ((analytics.passed ?? 0) / analytics.total_attempts) * 100
             : 0;
 
     const [searchQuery, setSearchQuery]     = useState(filters?.q ?? '');
@@ -238,7 +246,7 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                                 Ekspor Nilai (CSV)
                             </Button>
                         </a>
-                        {irtProcessed && (
+                        {isUtbk && irtProcessed && (
                             <a href={`/admin/exams/${exam.id}/irt-export`}>
                                 <Button variant="outline">
                                     <Download className="mr-2 h-4 w-4" />
@@ -250,11 +258,15 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                 </div>
 
                 {/* Analytics Cards */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className={`grid grid-cols-1 gap-4 ${isUtbk ? 'md:grid-cols-4' : 'md:grid-cols-2'}`}>
                     {[
                         { label: 'Total Percobaan (Selesai)', value: analytics.total_attempts, color: '' },
-                        { label: 'Lulus', value: analytics.passed, color: 'text-green-600' },
-                        { label: 'Tingkat Kelulusan', value: `${passRate.toFixed(1)}%`, color: '' },
+                        ...(isUtbk
+                            ? [
+                                  { label: 'Lulus', value: analytics.passed ?? 0, color: 'text-green-600' },
+                                  { label: 'Tingkat Kelulusan', value: `${passRate.toFixed(1)}%`, color: '' },
+                              ]
+                            : []),
                         { label: 'Skor Rata-rata', value: averageScore.toFixed(2), color: '' },
                     ].map(({ label, value, color }) => (
                         <Card key={label}>
@@ -288,14 +300,14 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                     </div>
 
                     <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as StatusFilter); pushQuery({ page: 1, status: v as StatusFilter }); }}>
+                        {isUtbk && <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as StatusFilter); pushQuery({ page: 1, status: v as StatusFilter }); }}>
                             <SelectTrigger className="w-[150px]"><SelectValue placeholder="Status hasil" /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Semua Hasil</SelectItem>
                                 <SelectItem value="passed">Lulus</SelectItem>
                                 <SelectItem value="failed">Gagal</SelectItem>
                             </SelectContent>
-                        </Select>
+                        </Select>}
 
                         <Select value={freezeFilter} onValueChange={(v) => { setFreezeFilter(v as FreezeFilter); pushQuery({ page: 1, freeze: v as FreezeFilter }); }}>
                             <SelectTrigger className="w-[170px]"><SelectValue placeholder="Status freeze" /></SelectTrigger>
@@ -361,11 +373,18 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                                             />
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Nama Siswa</th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Universitas</th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Jurusan</th>
+                                        {isUtbk && <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Universitas</th>}
+                                        {isUtbk && <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Jurusan</th>}
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Status Ujian</th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">
-                                            Skor UTBK {!irtProcessed && <span className="text-muted-foreground font-normal">(belum diproses)</span>}
+                                            {exam.type === 'utbk'
+                                                ? 'Skor UTBK'
+                                                : exam.type === 'tka'
+                                                  ? 'Skor IRT'
+                                                  : 'Nilai'}{' '}
+                                            {exam.type !== 'cbt' && !irtProcessed ? (
+                                                <span className="text-muted-foreground font-normal">(belum diproses)</span>
+                                            ) : null}
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Waktu Pengambilan</th>
                                         <th className="px-6 py-3 text-left text-xs font-semibold tracking-wide uppercase">Aksi</th>
@@ -379,6 +398,13 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                                         // ── Score ─────────────────────────────────────────────────
                                         // Show skor_utbk_pct if IRT processed, else "-"
                                         const skorCell = (() => {
+                                            if (exam.type === 'cbt') {
+                                                return (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {attempt.raw_score ?? 0} / {attempt.total_score ?? 0}
+                                                    </span>
+                                                );
+                                            }
                                             if (!irtProcessed || attempt.skor_utbk_pct == null) {
                                                 return (
                                                     <span className="text-xs text-muted-foreground">-</span>
@@ -388,7 +414,9 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                                             return (
                                                 <span
                                                     className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                                                        isPassed
+                                                        isPassed === null
+                                                            ? 'bg-muted text-muted-foreground'
+                                                            : isPassed
                                                             ? 'bg-green-100 text-green-800'
                                                             : 'bg-red-100 text-red-800'
                                                     }`}
@@ -444,14 +472,14 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                                                     <div className="font-medium">{attempt.student.name}</div>
                                                     <div className="text-xs text-muted-foreground">{attempt.student.email}</div>
                                                 </td>
-                                                <td className="px-6 py-3">
+                                                {isUtbk && <td className="px-6 py-3">
                                                     {attempt.student.university?.name ?? (
                                                         <span className="text-xs text-muted-foreground">-</span>
                                                     )}
-                                                </td>
-                                                <td className="px-6 py-3">
+                                                </td>}
+                                                {isUtbk && <td className="px-6 py-3">
                                                     {attempt.student.major?.name ?? '-'}
-                                                </td>
+                                                </td>}
                                                 <td className="px-6 py-3">{statusBadge}</td>
                                                 <td className="px-6 py-3">{skorCell}</td>
                                                 <td className="px-6 py-3">{durationCell}</td>
@@ -465,7 +493,7 @@ export default function ExamAttempts({ exam, attempts, analytics, filters }: Pro
                                                             </Button>
                                                         </ActionIconTooltip>
 
-                                                        {exam.irt_processed_at && (
+                                                        {irtProcessed && (
                                                             <ActionIconTooltip label="Unduh Surat">
                                                                 <Button
                                                                     variant="outline"
