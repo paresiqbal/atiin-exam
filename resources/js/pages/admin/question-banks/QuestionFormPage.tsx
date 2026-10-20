@@ -67,9 +67,6 @@ async function uploadImage(file: File): Promise<string> {
     return data.url;
 }
 
-// ── Typed editor interface for custom toolbar commands ────────────────────────
-// Reactjs-tiptap-editor bundles its own @tiptap/core version, so we define
-// a narrow interface for only the commands we need to avoid cross-version conflicts.
 interface ExtendedChain {
     focus(): this & { run(): boolean };
     run(): boolean;
@@ -84,11 +81,6 @@ interface ExtendedEditor {
     isActive(attrs: Record<string, unknown>): boolean;
 }
 
-// ── Extension arrays ──────────────────────────────────────────────────────────
-// TiptapSubscript/Superscript come from a different @tiptap/core version than
-// reactjs-tiptap-editor bundles internally. The double cast via `unknown` is the
-// TypeScript-idiomatic way to bridge two structurally compatible but nominally
-// different types — no information is lost at runtime since they are the same API.
 const sub = TiptapSubscript as unknown as AnyExtension;
 const sup = TiptapSuperscript as unknown as AnyExtension;
 
@@ -134,8 +126,6 @@ const optionExtensions: AnyExtension[] = [
     sup,
 ];
 
-// ── Toolbar extra buttons (Justify, Subscript, Superscript) ───────────────────
-// Rendered via the toolbar.render prop to append after the built-in buttons.
 function ExtraToolbarButtons({ editor }: { editor: ExtendedEditor | null }) {
     if (!editor) return null;
 
