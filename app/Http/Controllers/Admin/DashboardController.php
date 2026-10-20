@@ -103,6 +103,11 @@ class DashboardController extends Controller
                     'exam_name' => $attempt->exam->name,
                     'raw_score' => $attempt->score,
                     'total_score' => $attempt->total_score,
+                    'percentage' => $attempt->exam->type === ExamType::CBT
+                        ? ((float) ($attempt->total_score ?? 0) > 0
+                            ? round(((float) ($attempt->score ?? 0) / (float) $attempt->total_score) * 100, 2)
+                            : 0)
+                        : null,
                     'skor_utbk_pct' => $skorUtbkPct !== null ? round($skorUtbkPct, 2) : null,
                     'exam_type' => $attempt->exam->type->value,
                     'uses_irt' => $usesIrt,

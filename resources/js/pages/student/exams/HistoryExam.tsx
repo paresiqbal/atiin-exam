@@ -25,10 +25,11 @@ interface ExamAttempt {
         irt_processed_at?: string | null;
     };
     score: number | null;
+    raw_score: number | null;
     total_score: number | null;
     irt_theta?: number | null;
     irt_block_score?: number | null;
-    percentage: number | null; // skor_utbk_pct (IRT) when ready; null when waiting
+    percentage: number | null;
     completed_at: string;
 }
 
@@ -364,6 +365,16 @@ export default function HistoryExam() {
                                                               )}%`}
                                                     </div>
                                                 </div>
+                                                {attempt.exam.type === 'cbt' && (
+                                                    <div className="text-right">
+                                                        <div className="text-[11px] text-muted-foreground">
+                                                            Poin
+                                                        </div>
+                                                        <div className="text-sm font-bold text-primary">
+                                                            {attempt.raw_score ?? 0} / {attempt.total_score ?? 0}
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 {attempt.exam.type !== 'cbt' && (
                                                     <div className="text-right">
                                                         <div className="text-[11px] text-muted-foreground">
