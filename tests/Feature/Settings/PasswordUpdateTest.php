@@ -13,7 +13,7 @@ class PasswordUpdateTest extends TestCase
 
     public function test_password_update_page_is_displayed()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => 'student']);
 
         $response = $this
             ->actingAs($user)
@@ -24,27 +24,27 @@ class PasswordUpdateTest extends TestCase
 
     public function test_password_can_be_updated()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => 'student']);
 
         $response = $this
             ->actingAs($user)
             ->from(route('user-password.edit'))
             ->put(route('user-password.update'), [
                 'current_password' => 'password',
-                'password' => 'new-password',
-                'password_confirmation' => 'new-password',
+                'password' => 'simple',
+                'password_confirmation' => 'simple',
             ]);
 
         $response
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('user-password.edit'));
 
-        $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
+        $this->assertTrue(Hash::check('simple', $user->refresh()->password));
     }
 
     public function test_correct_password_must_be_provided_to_update_password()
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create(['role' => 'student']);
 
         $response = $this
             ->actingAs($user)
@@ -57,6 +57,24 @@ class PasswordUpdateTest extends TestCase
 
         $response
             ->assertSessionHasErrors('current_password')
+            ->assertRedirect(route('user-password.edit'));
+    }
+
+    public function test_admin_cannot_set_a_weak_password()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this
+            ->actingAs($admin)
+            ->from(route('user-password.edit'))
+            ->put(route('user-password.update'), [
+                'current_password' => 'password',
+                'password' => 'admin123',
+                'password_confirmation' => 'admin123',
+            ]);
+
+        $response
+            ->assertSessionHasErrors('password')
             ->assertRedirect(route('user-password.edit'));
     }
 }

@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Controller;
 use App\Models\School;
-use App\Models\University;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 
 class UserController extends Controller
@@ -37,7 +37,11 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:8',
+            'password' => [
+                'required',
+                'string',
+                $request->input('role') === 'student' ? Password::min(6) : Password::defaults(),
+            ],
             'role' => 'required|in:admin,teacher,student',
             'school_id' => 'nullable|exists:schools,id',
             'class' => 'nullable|string|max:255',
@@ -63,11 +67,15 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => 'required|email|unique:users,email,'.$user->id,
             'role' => 'required|in:admin,teacher,student',
             'school_id' => 'nullable|exists:schools,id',
             'class' => 'nullable|string|max:255',
-            'password' => 'nullable|string|min:8',
+            'password' => [
+                'nullable',
+                'string',
+                $request->input('role') === 'student' ? Password::min(6) : Password::defaults(),
+            ],
         ]);
 
         if ($request->filled('password')) {
