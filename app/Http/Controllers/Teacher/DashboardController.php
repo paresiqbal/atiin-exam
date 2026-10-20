@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Teacher;
 
+use App\Enums\ExamType;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -47,8 +48,10 @@ class DashboardController extends Controller
         $completedAttempts = (clone $attemptsBase)->where('exam_attempts.status', 'submitted')->count();
         $inProgressAttempts = (clone $attemptsBase)->where('exam_attempts.status', 'in_progress')->count();
 
-        // Pass/fail calculation (safe even if major/min grade is missing)
-        $submitted = (clone $attemptsBase)
+        $utbkAttemptsBase = (clone $attemptsBase)
+            ->where('exams.type', ExamType::UTBK->value);
+
+        $submitted = (clone $utbkAttemptsBase)
             ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id')
             ->leftJoin('majors', 'majors.id', '=', 'students.major_id')
             ->where('exam_attempts.status', 'submitted')
@@ -60,11 +63,12 @@ class DashboardController extends Controller
 
         $passedAttempts = 0;
         foreach ($submitted as $row) {
-            if ((float)$row->score >= (float)$row->min_pass) {
+            if ((float) $row->score >= (float) $row->min_pass) {
                 $passedAttempts++;
             }
         }
-        $failedAttempts = $completedAttempts - $passedAttempts;
+        $gradedAttempts = $submitted->count();
+        $failedAttempts = $gradedAttempts - $passedAttempts;
 
         // Average score (submitted only)
         $averageScore = $completedAttempts > 0
@@ -103,15 +107,17 @@ class DashboardController extends Controller
                 'exam_attempts.id',
                 DB::raw('COALESCE(students.name, "-") as student_name'),
                 DB::raw('COALESCE(exams.name, "-") as exam_name'),
+                'exams.type as exam_type',
                 'exam_attempts.score',
                 'exam_attempts.total_score',
+                'exam_attempts.irt_theta',
                 'exam_attempts.completed_at',
                 'students.major_id',
             ])
             ->get()
             ->map(function ($row) {
-                $percentage = ((float)$row->total_score > 0)
-                    ? round(((float)$row->score / (float)$row->total_score) * 100, 2)
+                $percentage = ((float) $row->total_score > 0)
+                    ? round(((float) $row->score / (float) $row->total_score) * 100, 2)
                     : 0;
 
                 return [
@@ -121,8 +127,9 @@ class DashboardController extends Controller
                     'score' => (float) $row->score,
                     'total_score' => (float) $row->total_score,
                     'percentage' => $percentage,
-                    // we'll fill passed below safely (requires major min grade)
-                    'passed' => false,
+                    'exam_type' => $row->exam_type,
+                    'irt_theta' => $row->irt_theta !== null ? (float) $row->irt_theta : null,
+                    'passed' => null,
                     'completed_at' => $row->completed_at ? date('M d, Y H:i', strtotime($row->completed_at)) : null,
                     '_major_id' => $row->major_id, // internal temp
                 ];
@@ -131,7 +138,12 @@ class DashboardController extends Controller
         // Fill passed for recent attempts (safe lookup)
         $majorMin = [];
         if (Schema::hasTable('majors')) {
-            $majorIds = $recentAttempts->pluck('_major_id')->filter()->unique()->values();
+            $majorIds = $recentAttempts
+                ->where('exam_type', ExamType::UTBK->value)
+                ->pluck('_major_id')
+                ->filter()
+                ->unique()
+                ->values();
             if ($majorIds->count()) {
                 $majorMin = DB::table('majors')
                     ->whereIn('id', $majorIds)
@@ -141,9 +153,12 @@ class DashboardController extends Controller
         }
 
         $recentAttempts = $recentAttempts->map(function ($a) use ($majorMin) {
-            $min = $a['_major_id'] ? ($majorMin[$a['_major_id']] ?? 0) : 0;
-            $a['passed'] = ((float)$a['score'] >= (float)$min);
+            if ($a['exam_type'] === ExamType::UTBK->value) {
+                $min = $a['_major_id'] ? ($majorMin[$a['_major_id']] ?? 0) : 0;
+                $a['passed'] = ((float) $a['score'] >= (float) $min);
+            }
             unset($a['_major_id']);
+
             return $a;
         })->values();
 
@@ -151,7 +166,7 @@ class DashboardController extends Controller
         $examsTop = (clone $examsQuery)
             ->orderByDesc('created_at')
             ->limit(5)
-            ->select(['exams.id', 'exams.name'])
+            ->select(['exams.id', 'exams.name', 'exams.type'])
             ->get();
 
         $examPerformance = $examsTop->map(function ($exam) use ($attemptsBase) {
@@ -164,7 +179,8 @@ class DashboardController extends Controller
             $submitted = $attempts->where('status', 'submitted');
             $submittedCount = $submitted->count();
 
-            $studentIds = $submitted->pluck('student_id')->unique()->values();
+            $isUtbk = $exam->type === ExamType::UTBK->value;
+            $studentIds = $isUtbk ? $submitted->pluck('student_id')->unique()->values() : collect();
             $minPassByStudent = [];
 
             if ($studentIds->count()) {
@@ -175,23 +191,30 @@ class DashboardController extends Controller
                     ->get();
 
                 foreach ($rows as $r) {
-                    $minPassByStudent[$r->id] = (float)$r->min_pass;
+                    $minPassByStudent[$r->id] = (float) $r->min_pass;
                 }
             }
 
             $passed = 0;
-            foreach ($submitted as $a) {
-                $min = $minPassByStudent[$a->student_id] ?? 0;
-                if ((float)$a->score >= (float)$min) $passed++;
+            if ($isUtbk) {
+                foreach ($submitted as $a) {
+                    $min = $minPassByStudent[$a->student_id] ?? 0;
+                    if ((float) $a->score >= (float) $min) {
+                        $passed++;
+                    }
+                }
             }
 
-            $failed = $submittedCount - $passed;
-            $passRate = $submittedCount > 0 ? round(($passed / $submittedCount) * 100, 2) : 0;
+            $failed = $isUtbk ? $submittedCount - $passed : null;
+            $passRate = $isUtbk && $submittedCount > 0
+                ? round(($passed / $submittedCount) * 100, 2)
+                : null;
 
             return [
                 'name' => $exam->name,
+                'type' => $exam->type,
                 'total_attempts' => $attempts->count(),
-                'passed' => $passed,
+                'passed' => $isUtbk ? $passed : null,
                 'failed' => $failed,
                 'pass_rate' => $passRate,
             ];
@@ -211,9 +234,8 @@ class DashboardController extends Controller
             ->orderByDesc('total_exams')
             ->limit(5)
             ->get()
-            ->map(function ($s) use ($attemptsBase) {
-                // compute passed/failed for this student within teacher exams
-                $submitted = (clone $attemptsBase)
+            ->map(function ($s) use ($utbkAttemptsBase) {
+                $submitted = (clone $utbkAttemptsBase)
                     ->where('exam_attempts.student_id', $s->student_id)
                     ->where('exam_attempts.status', 'submitted')
                     ->select(['exam_attempts.score'])
@@ -226,7 +248,9 @@ class DashboardController extends Controller
 
                 $passed = 0;
                 foreach ($submitted as $a) {
-                    if ((float)$a->score >= $minPass) $passed++;
+                    if ((float) $a->score >= $minPass) {
+                        $passed++;
+                    }
                 }
 
                 $failed = $submitted->count() - $passed;
@@ -252,6 +276,7 @@ class DashboardController extends Controller
                     'total' => $totalAttempts,
                     'completed' => $completedAttempts,
                     'in_progress' => $inProgressAttempts,
+                    'graded' => $gradedAttempts,
                     'passed' => $passedAttempts,
                     'failed' => $failedAttempts,
                 ],
@@ -269,10 +294,14 @@ class DashboardController extends Controller
 
     private function detectOwnerColumn(string $table, array $candidates): ?string
     {
-        if (!Schema::hasTable($table)) return null;
+        if (! Schema::hasTable($table)) {
+            return null;
+        }
 
         foreach ($candidates as $col) {
-            if (Schema::hasColumn($table, $col)) return $col;
+            if (Schema::hasColumn($table, $col)) {
+                return $col;
+            }
         }
 
         return null;

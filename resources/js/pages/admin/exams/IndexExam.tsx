@@ -54,10 +54,19 @@ import type { ExamData } from '@/types/exam';
 import type { Paginated } from '@/types/pagination';
 
 type StatusFilter = 'all' | 'published' | 'draft';
+type ExamType = 'utbk' | 'tka' | 'cbt';
 
-const baseUrl = '/admin/exams';
-
-export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
+export default function IndexExam({
+    exams,
+    examType,
+}: {
+    exams: Paginated<ExamData>;
+    examType: ExamType;
+}) {
+    const baseUrl = '/admin/exams';
+    const listUrl = `${baseUrl}?type=${examType}`;
+    const createUrl = `${baseUrl}/create?type=${examType}`;
+    const title = `Daftar Ujian ${examType.toUpperCase()}`;
     const data = useMemo(() => exams.data ?? [], [exams.data]);
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -73,7 +82,7 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Admin Dashboard', href: '/admin/dashboard' },
-        { title: 'Daftar Ujian', href: baseUrl },
+        { title, href: listUrl },
     ];
 
     const filteredExams = useMemo(() => {
@@ -153,7 +162,7 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
     const handleBulkDelete = () => {
         if (selectedIds.length === 0) return;
 
-        return router.delete(`${baseUrl}/bulk-delete`, {
+        return router.delete(`${baseUrl}/bulk-delete?type=${examType}`, {
             data: {
                 ids: selectedIds,
             },
@@ -168,8 +177,8 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
         setRowsPerPage(perPage);
 
         router.get(
-            `${baseUrl}`,
-            { page: 1, per_page: perPage },
+            baseUrl,
+            { type: examType, page: 1, per_page: perPage },
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -197,20 +206,20 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Daftar Ujian" />
+            <Head title={title} />
 
             <div className="space-y-6 p-4">
                 {/* Header */}
                 <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
                     <div>
-                        <h1 className="text-3xl font-bold">Daftar Ujian</h1>
+                        <h1 className="text-3xl font-bold">{title}</h1>
                         <p className="text-muted-foreground">
                             Kelola ujian yang tersedia untuk sekolah Anda
                         </p>
                     </div>
 
                     <div>
-                        <Link href={`${baseUrl}/create`}>
+                        <Link href={createUrl}>
                             <Button>
                                 Buat Ujian <Plus />
                             </Button>
@@ -539,7 +548,7 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
                                 <PaginationItem>
                                     {exams.current_page > 1 ? (
                                         <Link
-                                            href={`${baseUrl}?page=${
+                                            href={`${listUrl}&page=${
                                                 exams.current_page - 1
                                             }&per_page=${rowsPerPage}`}
                                         >
@@ -556,7 +565,7 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
                                 ).map((page) => (
                                     <PaginationItem key={page}>
                                         <Link
-                                            href={`${baseUrl}?page=${page}&per_page=${rowsPerPage}`}
+                                            href={`${listUrl}&page=${page}&per_page=${rowsPerPage}`}
                                         >
                                             <PaginationLink
                                                 isActive={
@@ -572,7 +581,7 @@ export default function IndexExam({ exams }: { exams: Paginated<ExamData> }) {
                                 <PaginationItem>
                                     {exams.current_page < exams.last_page ? (
                                         <Link
-                                            href={`${baseUrl}?page=${
+                                            href={`${listUrl}&page=${
                                                 exams.current_page + 1
                                             }&per_page=${rowsPerPage}`}
                                         >

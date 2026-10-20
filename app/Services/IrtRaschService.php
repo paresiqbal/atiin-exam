@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Exam;
-use App\Models\ExamAttempt;
 use App\Models\Question;
 use Illuminate\Support\Collection;
 
@@ -15,6 +14,13 @@ class IrtRaschService
         int $maxIterations = 100,
         ?Collection $attemptsOverride = null
     ): array {
+        if (! $exam->type->usesIrt()) {
+            return [
+                'success' => false,
+                'message' => 'IRT scoring is only available for UTBK and TKA exams.',
+            ];
+        }
+
         $exam->loadMissing([
             'questionBanks' => function ($q) {
                 $q->withPivot(['sort_order'])->orderBy('exam_question_bank.sort_order');
@@ -23,7 +29,7 @@ class IrtRaschService
         ]);
 
         $questions = $exam->questionBanks
-            ->flatMap(fn($bank) => $bank->questions->sortBy('id'))
+            ->flatMap(fn ($bank) => $bank->questions->sortBy('id'))
             ->unique('id')
             ->values();
 
@@ -33,10 +39,10 @@ class IrtRaschService
         $attempts = $attemptsOverride
             ? $attemptsOverride->loadMissing(['responses.selectedOption'])->values()
             : $exam->attempts()
-            ->where('status', 'submitted')
-            ->with(['responses.selectedOption'])
-            ->get()
-            ->values();
+                ->where('status', 'submitted')
+                ->with(['responses.selectedOption'])
+                ->get()
+                ->values();
 
         if ($questions->isEmpty()) {
             return [
@@ -53,12 +59,12 @@ class IrtRaschService
         }
 
         $questionIds = $questions->pluck('id')->values();
-        $itemCount   = $questionIds->count();
+        $itemCount = $questionIds->count();
         $personCount = $attempts->count();
 
         $matrix = $this->buildResponseMatrix($attempts, $questionIds);
         $thetas = array_fill(0, $personCount, 0.0);
-        $bs     = array_fill(0, $itemCount, 0.0);
+        $bs = array_fill(0, $itemCount, 0.0);
 
         $converged = false;
         $iteration = 0;
@@ -71,7 +77,7 @@ class IrtRaschService
             // meaning convergence was measured on a drifting scale and the
             // algorithm could falsely converge or never converge.
             $prevThetas = $thetas;
-            $prevBs     = $bs;
+            $prevBs = $bs;
 
             // ── Update person abilities (theta) ────────────────────────────
             for ($i = 0; $i < $personCount; $i++) {
@@ -85,11 +91,11 @@ class IrtRaschService
                     $sumNum = 0.0;
                     $sumDen = 0.0;
                     for ($j = 0; $j < $itemCount; $j++) {
-                        $p       = $this->probCorrect($thetas[$i], $bs[$j]);
+                        $p = $this->probCorrect($thetas[$i], $bs[$j]);
                         $sumNum += ($matrix[$i][$j] - $p);
                         $sumDen += ($p * (1.0 - $p));
                     }
-                    $newTheta   = $sumDen > 0
+                    $newTheta = $sumDen > 0
                         ? $thetas[$i] + ($sumNum / $sumDen)
                         : $thetas[$i];
                     $thetas[$i] = $this->clamp($newTheta, -4.0, 4.0);
@@ -111,11 +117,11 @@ class IrtRaschService
                     $sumNum = 0.0;
                     $sumDen = 0.0;
                     for ($i = 0; $i < $personCount; $i++) {
-                        $p       = $this->probCorrect($thetas[$i], $bs[$j]);
+                        $p = $this->probCorrect($thetas[$i], $bs[$j]);
                         $sumNum += ($p - $matrix[$i][$j]);
                         $sumDen += ($p * (1.0 - $p));
                     }
-                    $newB   = $sumDen > 0
+                    $newB = $sumDen > 0
                         ? $bs[$j] + ($sumNum / $sumDen)
                         : $bs[$j];
                     $bs[$j] = $this->clamp($newB, -4.0, 4.0);
@@ -153,8 +159,8 @@ class IrtRaschService
         $this->persistResults($questions, $bs, $attempts, $thetas, $exam, $matrix);
 
         return [
-            'success'    => true,
-            'converged'  => $converged,
+            'success' => true,
+            'converged' => $converged,
             'iterations' => $iteration + 1,
         ];
     }
@@ -166,12 +172,12 @@ class IrtRaschService
         // $attempts is already ->values() (0-indexed) when passed from scoreExam.
         foreach ($attempts as $attempt) {
             $byQuestion = $attempt->responses->keyBy('question_id');
-            $row        = [];
+            $row = [];
 
             foreach ($questionIds as $questionId) {
                 $response = $byQuestion->get($questionId);
                 $isCorrect = (bool) ($response?->selectedOption?->is_correct ?? false);
-                $row[]     = $isCorrect ? 1.0 : 0.0;
+                $row[] = $isCorrect ? 1.0 : 0.0;
             }
 
             $matrix[] = $row;
@@ -198,13 +204,13 @@ class IrtRaschService
         // $questions is ordered by bank sort_order then question id, matching
         // how buildResponseMatrix populated the matrix columns.
         $banks = $exam->questionBanks
-            ->sortBy(fn($b) => $b->pivot?->sort_order ?? 0)
+            ->sortBy(fn ($b) => $b->pivot?->sort_order ?? 0)
             ->values();
         $bankCount = max(1, $banks->count());
 
         // Map question_id → matrix column index (matches $questionIds order)
         $questionIndexMap = $questions->mapWithKeys(
-            fn($q, $idx) => [$q->id => $idx]
+            fn ($q, $idx) => [$q->id => $idx]
         )->all();
 
         // Map bank index → [matrix column indices] and total question count
@@ -223,7 +229,7 @@ class IrtRaschService
             $totalSkor = 0.0;
 
             foreach ($bankColIndices as $bi => $colIndices) {
-                $total   = count($colIndices);
+                $total = count($colIndices);
                 $correct = 0;
                 foreach ($colIndices as $col) {
                     $correct += (int) ($matrix[$i][$col] ?? 0);
@@ -231,11 +237,11 @@ class IrtRaschService
                 $totalSkor += $total > 0 ? ($correct / $total) * 1000 : 0;
             }
 
-            $skorUtbk    = $totalSkor / $bankCount;
+            $skorUtbk = $totalSkor / $bankCount;
             $skorUtbkPct = round(($skorUtbk / 1525.0) * 100, 4);
 
             $attempt->update([
-                'irt_theta'       => $thetas[$i],
+                'irt_theta' => $thetas[$i],
                 'irt_block_score' => $skorUtbkPct,
             ]);
         }
@@ -246,7 +252,7 @@ class IrtRaschService
     private function probCorrect(float $theta, float $b): float
     {
         // Rasch model: P(correct | θ, b) = 1 / (1 + exp(-(θ - b)))
-        return 1.0 / (1.0 + exp(- ($theta - $b)));
+        return 1.0 / (1.0 + exp(-($theta - $b)));
     }
 
     private function clamp(float $value, float $min, float $max): float

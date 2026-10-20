@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ExamType;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
@@ -18,8 +19,14 @@ class IrtController extends Controller
     public function index(Request $request)
     {
         $hasIrtProcessedAt = Schema::hasColumn('exams', 'irt_processed_at');
+        $irtTypes = collect(ExamType::cases())
+            ->filter(fn (ExamType $type) => $type->usesIrt())
+            ->map(fn (ExamType $type) => $type->value)
+            ->all();
+        $type = $request->input('type');
 
         $query = Exam::query()
+            ->whereIn('type', $irtTypes)
             ->withCount([
                 'attempts',
                 'attempts as submitted_attempts_count' => function ($q) {
@@ -28,8 +35,12 @@ class IrtController extends Controller
             ])
             ->with(['school']);
 
+        if (is_string($type) && in_array($type, $irtTypes, true)) {
+            $query->where('type', $type);
+        }
+
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', '%'.$request->search.'%');
         }
 
         if ($request->filled('school_id')) {
@@ -63,14 +74,15 @@ class IrtController extends Controller
             ->values();
 
         return Inertia::render('admin/irt/IrtProcessing', [
-            'exams'            => $exams,
-            'schools'          => $schools,
-            'classes'          => $classes,
-            'filters'          => [
-                'search'    => $request->input('search'),
+            'exams' => $exams,
+            'schools' => $schools,
+            'classes' => $classes,
+            'filters' => [
+                'search' => $request->input('search'),
                 'school_id' => $request->input('school_id'),
-                'class'     => $request->input('class'),
-                'status'    => $request->input('status'),
+                'class' => $request->input('class'),
+                'status' => $request->input('status'),
+                'type' => $type,
             ],
             'hasIrtProcessedAt' => $hasIrtProcessedAt,
             'flash' => [
@@ -83,12 +95,16 @@ class IrtController extends Controller
     // ── NEW: Export results as Excel ─────────────────────────────────────────
     public function export(Exam $exam)
     {
+        if (! $exam->type->usesIrt()) {
+            return back()->with('error', 'IRT hanya tersedia untuk ujian UTBK dan TKA.');
+        }
+
         if (! $exam->irt_processed_at) {
             return back()->with('error', 'IRT belum diproses untuk ujian ini.');
         }
 
-        $path     = (new IrtExportService())->export($exam);
-        $filename = 'IRT_Hasil_' . str_replace(' ', '_', $exam->name) . '.xlsx';
+        $path = (new IrtExportService)->export($exam);
+        $filename = 'IRT_Hasil_'.str_replace(' ', '_', $exam->name).'.xlsx';
 
         return response()->download($path, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -97,6 +113,10 @@ class IrtController extends Controller
 
     public function process(Request $request, Exam $exam)
     {
+        if (! $exam->type->usesIrt()) {
+            return back()->with('error', 'IRT hanya tersedia untuk ujian UTBK dan TKA.');
+        }
+
         if (! Schema::hasColumn('exams', 'irt_processed_at')) {
             return back()->with('error', 'Kolom irt_processed_at belum ada. Jalankan migrasi terlebih dahulu.');
         }
@@ -120,7 +140,7 @@ class IrtController extends Controller
             return back()->with('error', 'Exam has not ended yet.');
         }
 
-        $irtService = new IrtRaschService();
+        $irtService = new IrtRaschService;
         $result = $irtService->scoreExam($exam);
 
         if (! $result['success']) {
@@ -143,16 +163,20 @@ class IrtController extends Controller
         }
 
         $validated = $request->validate([
-            'exam_id'    => 'required|exists:exams,id',
+            'exam_id' => 'required|exists:exams,id',
             'school_ids' => 'nullable|array',
             'school_ids.*' => 'integer|exists:schools,id',
-            'classes'    => 'nullable|array',
-            'classes.*'  => 'string|max:50',
-            'force'      => 'nullable|boolean',
+            'classes' => 'nullable|array',
+            'classes.*' => 'string|max:50',
+            'force' => 'nullable|boolean',
         ]);
 
         $force = ! empty($validated['force']);
-        $exam  = Exam::findOrFail($validated['exam_id']);
+        $exam = Exam::findOrFail($validated['exam_id']);
+
+        if (! $exam->type->usesIrt()) {
+            return back()->with('error', 'IRT hanya tersedia untuk ujian UTBK dan TKA.');
+        }
 
         if ($exam->irt_processed_at && ! $force) {
             return back()->with('error', 'IRT sudah diproses. Gunakan force reprocess untuk memproses ulang.');
@@ -185,7 +209,7 @@ class IrtController extends Controller
             return back()->with('error', 'No attempts found for selected filters.');
         }
 
-        $irtService = new IrtRaschService();
+        $irtService = new IrtRaschService;
         $result = $irtService->scoreExam($exam, 0.001, 100, $attempts);
 
         if (! $result['success']) {
@@ -204,9 +228,9 @@ class IrtController extends Controller
         }
 
         $validated = $request->validate([
-            'exam_ids'   => 'required|array|min:1',
+            'exam_ids' => 'required|array|min:1',
             'exam_ids.*' => 'integer|exists:exams,id',
-            'force'      => 'nullable|boolean',
+            'force' => 'nullable|boolean',
         ]);
 
         $force = ! empty($validated['force']);
@@ -216,22 +240,28 @@ class IrtController extends Controller
             return back()->with('error', 'No exams selected.');
         }
 
+        if ($exams->contains(fn (Exam $exam) => ! $exam->type->usesIrt())) {
+            return back()->with('error', 'IRT hanya tersedia untuk ujian UTBK dan TKA.');
+        }
+
         $processed = 0;
-        $skipped   = 0;
+        $skipped = 0;
 
         foreach ($exams as $exam) {
             // Skip already-processed exams unless force=true
             if ($exam->irt_processed_at && ! $force) {
                 $skipped++;
+
                 continue;
             }
 
             if ($exam->end_at && now()->lt($exam->end_at)) {
                 $skipped++;
+
                 continue;
             }
 
-            $irtService = new IrtRaschService();
+            $irtService = new IrtRaschService;
             $result = $irtService->scoreExam($exam);
 
             if (! $result['success']) {
@@ -246,7 +276,7 @@ class IrtController extends Controller
             return back()->with('error', 'No exams were processed. They may already be processed — use Force Reprocess to override.');
         }
 
-        $message = ($force ? 'Force reprocessed' : 'IRT processed') . " for {$processed} exam(s).";
+        $message = ($force ? 'Force reprocessed' : 'IRT processed')." for {$processed} exam(s).";
         if ($skipped > 0) {
             $message .= " Skipped {$skipped} exam(s) (already processed or not ended).";
         }

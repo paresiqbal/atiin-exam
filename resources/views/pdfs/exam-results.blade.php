@@ -50,17 +50,17 @@
         }
 
         .score-section {
-            background-color: {{ $is_passed ? '#d4edda' : '#f8d7da' }};
+            background-color: #f5f5f5;
             padding: 20px;
             margin-bottom: 20px;
             border-radius: 5px;
             text-align: center;
-            border: 2px solid {{ $is_passed ? '#28a745' : '#dc3545' }};
+            border: 2px solid #ddd;
         }
 
         .score-section h2 {
             margin: 0 0 6px 0;
-            color: {{ $is_passed ? '#28a745' : '#dc3545' }};
+            color: #333;
             font-size: 28px;
             letter-spacing: 2px;
         }
@@ -237,18 +237,6 @@
             <span>{{ $student_email }}</span>
         </div>
         <div class="student-info-row">
-            <strong>Universitas</strong>
-            <span>{{ $university }}</span>
-        </div>
-        <div class="student-info-row">
-            <strong>Jurusan</strong>
-            <span>{{ $major }}</span>
-        </div>
-        <div class="student-info-row">
-            <strong>Nilai Minimum Jurusan</strong>
-            <span>{{ number_format((float) $major_min_gpa, 2) }}</span>
-        </div>
-        <div class="student-info-row">
             <strong>Sekolah / Kelas</strong>
             <span>{{ $school }} — {{ $class }}</span>
         </div>
@@ -260,16 +248,12 @@
 
         <div class="score-grid">
             <div class="score-box">
-                <div class="label">Skor UTBK</div>
+                <div class="label">{{ $score_label }}</div>
                 <div class="value">{{ number_format($skor_utbk, 2) }}</div>
             </div>
             <div class="score-box">
-                <div class="label">Skor UTBK (%)</div>
+                <div class="label">{{ $percent_score_label }}</div>
                 <div class="value">{{ number_format($skor_utbk_pct, 2) }}%</div>
-            </div>
-            <div class="score-box">
-                <div class="label">Nilai Minimum</div>
-                <div class="value">{{ number_format((float) $passing_score, 2) }}</div>
             </div>
             @if ($theta !== null)
                 <div class="score-box">
@@ -308,11 +292,11 @@
                     <th style="text-align:right;">{{ number_format($total_skor, 2) }}</th>
                 </tr>
                 <tr style="background:#e8f4fd;">
-                    <th colspan="4" style="text-align:right;">Skor UTBK</th>
+                    <th colspan="4" style="text-align:right;">{{ $score_label }}</th>
                     <th style="text-align:right;">{{ number_format($skor_utbk, 2) }}</th>
                 </tr>
                 <tr style="background:#e8f4fd;">
-                    <th colspan="4" style="text-align:right;">Skor UTBK (%)</th>
+                    <th colspan="4" style="text-align:right;">{{ $percent_score_label }}</th>
                     <th style="text-align:right;">{{ number_format($skor_utbk_pct, 2) }}%</th>
                 </tr>
             </tbody>

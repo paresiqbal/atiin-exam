@@ -25,6 +25,7 @@ interface School {
 interface ExamItem {
     id: number;
     name: string;
+    type: 'utbk' | 'tka';
     end_at: string | null;
     attempts_count: number;
     submitted_attempts_count: number;
@@ -34,6 +35,7 @@ interface ExamItem {
 
 interface Paginated<T> {
     data: T[];
+    links?: { url: string | null; label: string; active: boolean }[];
     current_page: number;
     last_page: number;
     total: number;
@@ -41,6 +43,7 @@ interface Paginated<T> {
 }
 
 type StatusFilter = 'all' | 'processed' | 'not_processed';
+type ExamTypeFilter = 'all' | 'utbk' | 'tka';
 
 interface Props {
     exams: Paginated<ExamItem>;
@@ -51,6 +54,7 @@ interface Props {
         school_id?: string | number | null;
         class?: string | null;
         status?: StatusFilter | null;
+        type?: ExamTypeFilter | null;
     };
     hasIrtProcessedAt: boolean;
     flash?: {
@@ -78,6 +82,9 @@ export default function IrtProcessing({
     const initialStatusFilter = filters?.status?.trim()
         ? filters.status
         : 'all';
+    const initialTypeFilter = filters?.type === 'utbk' || filters?.type === 'tka'
+        ? filters.type
+        : 'all';
 
     const [search, setSearch] = useState(initialSearch);
     const [schoolId, setSchoolId] = useState(initialSchoolId);
@@ -85,6 +92,7 @@ export default function IrtProcessing({
     const [statusFilter, setStatusFilter] = useState<StatusFilter>(
         initialStatusFilter as StatusFilter,
     );
+    const [typeFilter, setTypeFilter] = useState<ExamTypeFilter>(initialTypeFilter);
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [processingId, setProcessingId] = useState<number | null>(null);
 
@@ -113,6 +121,10 @@ export default function IrtProcessing({
                     (next?.status ?? statusFilter) !== 'all'
                         ? (next?.status ?? statusFilter)
                         : undefined,
+                type:
+                    (next?.type ?? typeFilter) !== 'all'
+                        ? (next?.type ?? typeFilter)
+                        : undefined,
             },
             { preserveScroll: true, preserveState: true, replace: true },
         );
@@ -138,6 +150,12 @@ export default function IrtProcessing({
             { exam_ids: selectedIds, force },
             { preserveScroll: true },
         );
+    };
+
+    const handleTypeFilterChange = (type: ExamTypeFilter) => {
+        setSelectedIds([]);
+        setTypeFilter(type);
+        applyFilters({ type });
     };
 
     return (
@@ -269,6 +287,20 @@ export default function IrtProcessing({
                             </Select>
 
                             <Select
+                                value={typeFilter}
+                                onValueChange={(val) => handleTypeFilterChange(val as ExamTypeFilter)}
+                            >
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Tipe Ujian" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Semua Tipe</SelectItem>
+                                    <SelectItem value="utbk">UTBK</SelectItem>
+                                    <SelectItem value="tka">TKA</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <Select
                                 value={statusFilter}
                                 onValueChange={(val) => {
                                     setStatusFilter(val as StatusFilter);
@@ -359,6 +391,9 @@ export default function IrtProcessing({
                                     Ujian
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
+                                    Tipe
+                                </th>
+                                <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
                                     Sekolah
                                 </th>
                                 <th className="px-4 py-3 text-left text-xs font-semibold tracking-wide uppercase">
@@ -377,7 +412,7 @@ export default function IrtProcessing({
                                 <tr>
                                     <td
                                         className="px-4 py-6 text-center text-muted-foreground"
-                                        colSpan={6}
+                                        colSpan={7}
                                     >
                                         Tidak ada ujian ditemukan.
                                     </td>
@@ -427,6 +462,11 @@ export default function IrtProcessing({
                                             </td>
                                             <td className="px-4 py-3 font-medium">
                                                 {exam.name}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Badge variant="outline">
+                                                    {exam.type.toUpperCase()}
+                                                </Badge>
                                             </td>
                                             <td className="px-4 py-3">
                                                 {exam.school?.name ?? '-'}
@@ -523,6 +563,24 @@ export default function IrtProcessing({
                         </tbody>
                     </table>
                 </div>
+                {exams.links && exams.links.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                        {exams.links.map((link, index) => (
+                            <Button
+                                key={`${link.label}-${index}`}
+                                variant={link.active ? 'default' : 'outline'}
+                                size="sm"
+                                disabled={!link.url}
+                                onClick={() => link.url && router.visit(link.url, { preserveScroll: true, preserveState: true })}
+                            >
+                                {link.label
+                                    .replace(/<[^>]*>/g, '')
+                                    .replace('&laquo;', '«')
+                                    .replace('&raquo;', '»')}
+                            </Button>
+                        ))}
+                    </div>
+                )}
             </div>
         </AppLayout>
     );

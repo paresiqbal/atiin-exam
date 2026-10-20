@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Enums\ExamType;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Exam extends Model
 {
@@ -12,6 +14,7 @@ class Exam extends Model
     protected $fillable = [
         'admin_id',
         'name',
+        'type',
         'description',
         'school_id',
         'start_at',
@@ -22,11 +25,17 @@ class Exam extends Model
     ];
 
     protected $casts = [
+        'type' => ExamType::class,
         'start_at' => 'datetime',
         'end_at' => 'datetime',
         'irt_scored_at' => 'datetime',
         'irt_processed_at' => 'datetime',
     ];
+
+    public function scopeOfType(Builder $query, ExamType $type): Builder
+    {
+        return $query->where('type', $type->value);
+    }
 
     public function admin()
     {
@@ -43,7 +52,7 @@ class Exam extends Model
 
     public function getTotalDurationMinutesAttribute(): int
     {
-        return (int) $this->questionBanks->sum(fn($qb) => (int) $qb->pivot->duration_minutes);
+        return (int) $this->questionBanks->sum(fn ($qb) => (int) $qb->pivot->duration_minutes);
     }
 
     public function settings()

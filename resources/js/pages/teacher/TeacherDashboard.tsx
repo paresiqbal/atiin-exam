@@ -44,6 +44,7 @@ interface TeacherDashboardData {
             total: number;
             completed: number;
             in_progress: number;
+            graded: number;
             passed: number;
             failed: number;
         };
@@ -60,15 +61,18 @@ interface TeacherDashboardData {
         score: number;
         total_score: number;
         percentage: number;
-        passed: boolean;
+        exam_type: string;
+        irt_theta: number | null;
+        passed: boolean | null;
         completed_at: string | null;
     }>;
     exam_performance: Array<{
         name: string;
+        type: string;
         total_attempts: number;
-        passed: number;
-        failed: number;
-        pass_rate: number;
+        passed: number | null;
+        failed: number | null;
+        pass_rate: number | null;
     }>;
     student_activity: Array<{
         name: string;
@@ -86,6 +90,7 @@ export default function TeacherDashboard(props: Partial<TeacherDashboardData>) {
             total: 0,
             completed: 0,
             in_progress: 0,
+            graded: 0,
             passed: 0,
             failed: 0,
         },
@@ -199,11 +204,10 @@ export default function TeacherDashboard(props: Partial<TeacherDashboardData>) {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-2xl font-bold">
-                                        {statistics.average_score}%
+                                        {statistics.average_score}
                                     </p>
                                     <p className="mt-1 text-xs text-muted-foreground">
-                                        {statistics.attempts.passed} passed,{' '}
-                                        {statistics.attempts.failed} failed
+                                        Across all submitted attempts
                                     </p>
                                 </div>
                                 <BookOpen className="h-10 w-10 text-muted-foreground/50" />
@@ -221,7 +225,7 @@ export default function TeacherDashboard(props: Partial<TeacherDashboardData>) {
                                 Pass/Fail Distribution
                             </CardTitle>
                             <CardDescription>
-                                Outcomes from your students’ attempts
+                                {statistics.attempts.graded} UTBK results only
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -267,7 +271,7 @@ export default function TeacherDashboard(props: Partial<TeacherDashboardData>) {
                                 Exam Performance
                             </CardTitle>
                             <CardDescription>
-                                Pass rate by your latest exams
+                                UTBK pass rate by your latest exams
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -336,7 +340,9 @@ export default function TeacherDashboard(props: Partial<TeacherDashboardData>) {
                                                     {attempt.student_name}
                                                 </p>
                                                 <p className="truncate text-xs text-muted-foreground">
-                                                    {attempt.exam_name}
+                                                    {attempt.exam_name} (
+                                                    {attempt.exam_type.toUpperCase()}
+                                                    )
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
                                                     {attempt.completed_at ??
@@ -345,19 +351,37 @@ export default function TeacherDashboard(props: Partial<TeacherDashboardData>) {
                                             </div>
                                             <div className="ml-4 text-right">
                                                 <p className="text-sm font-semibold">
-                                                    {attempt.percentage}%
+                                                    {attempt.exam_type ===
+                                                    'tka'
+                                                        ? attempt.irt_theta ===
+                                                          null
+                                                            ? '—'
+                                                            : `IRT θ ${attempt.irt_theta.toFixed(3)}`
+                                                        : `${attempt.percentage}%`}
                                                 </p>
-                                                <span
-                                                    className={`rounded-full px-2 py-1 text-xs ${
-                                                        attempt.passed
-                                                            ? 'bg-green-50 text-green-700'
-                                                            : 'bg-red-50 text-red-700'
-                                                    }`}
-                                                >
-                                                    {attempt.passed
-                                                        ? 'Passed'
-                                                        : 'Failed'}
-                                                </span>
+                                                {attempt.passed === null ? (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {attempt.exam_type ===
+                                                        'tka'
+                                                            ? attempt.irt_theta ===
+                                                              null
+                                                                ? 'IRT pending'
+                                                                : 'IRT scored'
+                                                            : 'Score recorded'}
+                                                    </span>
+                                                ) : (
+                                                    <span
+                                                        className={`rounded-full px-2 py-1 text-xs ${
+                                                            attempt.passed
+                                                                ? 'bg-green-50 text-green-700'
+                                                                : 'bg-red-50 text-red-700'
+                                                        }`}
+                                                    >
+                                                        {attempt.passed
+                                                            ? 'Passed'
+                                                            : 'Failed'}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     ))
@@ -373,7 +397,7 @@ export default function TeacherDashboard(props: Partial<TeacherDashboardData>) {
                                 Top Student Activity
                             </CardTitle>
                             <CardDescription>
-                                Most active students in your exams
+                                Most active students; pass/fail is for UTBK
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -401,7 +425,7 @@ export default function TeacherDashboard(props: Partial<TeacherDashboardData>) {
                                                     {student.total_exams} exams
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {student.passed} passed,{' '}
+                                                    UTBK: {student.passed} passed,{' '}
                                                     {student.failed} failed
                                                 </p>
                                             </div>

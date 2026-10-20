@@ -2,14 +2,18 @@
 
 namespace App\Services;
 
+use App\Enums\ExamType;
 use App\Models\Exam;
 use App\Support\PhpSpreadsheet\FileCache;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Settings;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class IrtExportService
@@ -24,6 +28,7 @@ class IrtExportService
      * Confirm exact max values with the client if needed.
      */
     private const MAX_SCORE = 1000.0;
+
     private const ATTIN_FORMULA = 1525.0;
 
     public function export(Exam $exam): string
@@ -96,9 +101,9 @@ class IrtExportService
     private function buildSpreadsheet(Exam $exam, Collection $banks, array $rows): string
     {
         $tempDir = storage_path('app/temp');
-        $cellCacheDir = $tempDir . DIRECTORY_SEPARATOR . 'phpspreadsheet-cells';
-        $writerCacheDir = $tempDir . DIRECTORY_SEPARATOR . 'phpspreadsheet-writer';
-        $path = $tempDir . DIRECTORY_SEPARATOR . 'irt_export_' . $exam->id . '_' . time() . '.xlsx';
+        $cellCacheDir = $tempDir.DIRECTORY_SEPARATOR.'phpspreadsheet-cells';
+        $writerCacheDir = $tempDir.DIRECTORY_SEPARATOR.'phpspreadsheet-writer';
+        $path = $tempDir.DIRECTORY_SEPARATOR.'irt_export_'.$exam->id.'_'.time().'.xlsx';
 
         foreach ([$tempDir, $cellCacheDir, $writerCacheDir] as $directory) {
             if (! is_dir($directory)) {
@@ -109,7 +114,7 @@ class IrtExportService
         $previousCache = Settings::getCache();
         Settings::setCache(new FileCache($cellCacheDir));
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
 
         try {
             $worksheet = $spreadsheet->getActiveSheet();
@@ -126,17 +131,17 @@ class IrtExportService
             $lastCol = $colRanking;
 
             $dateStr = $exam->end_at
-                ? 'Hari/ Tanggal : ' . \Carbon\Carbon::parse($exam->end_at)->translatedFormat('l, d F Y')
+                ? 'Hari/ Tanggal : '.Carbon::parse($exam->end_at)->translatedFormat('l, d F Y')
                 : 'Hari/ Tanggal : -';
             $worksheet->setCellValue('B3', $dateStr);
             $worksheet->getStyle('B3')->getFont()->setBold(true)->setSize(11)->setName('Arial');
 
-            $correctStartLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colCorrectStart);
-            $correctEndLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colCorrectStart + $blockCount - 1);
-            $scoreStartLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colScoreStart);
-            $scoreEndLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colScoreStart + $blockCount - 1);
-            $totalSkorLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colTotalSkor);
-            $rankingLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colRanking);
+            $correctStartLetter = Coordinate::stringFromColumnIndex($colCorrectStart);
+            $correctEndLetter = Coordinate::stringFromColumnIndex($colCorrectStart + $blockCount - 1);
+            $scoreStartLetter = Coordinate::stringFromColumnIndex($colScoreStart);
+            $scoreEndLetter = Coordinate::stringFromColumnIndex($colScoreStart + $blockCount - 1);
+            $totalSkorLetter = Coordinate::stringFromColumnIndex($colTotalSkor);
+            $rankingLetter = Coordinate::stringFromColumnIndex($colRanking);
 
             $worksheet->setCellValue("{$correctStartLetter}4", 'JUMLAH SOAL BENAR (PER BLOCK)');
             $worksheet->mergeCells("{$correctStartLetter}4:{$correctEndLetter}4");
@@ -151,15 +156,16 @@ class IrtExportService
             $worksheet->setCellValue('D5', 'USER ID');
 
             foreach ($bankNames as $index => $name) {
-                $correctColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colCorrectStart + $index);
-                $scoreColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colScoreStart + $index);
+                $correctColumn = Coordinate::stringFromColumnIndex($colCorrectStart + $index);
+                $scoreColumn = Coordinate::stringFromColumnIndex($colScoreStart + $index);
                 $worksheet->setCellValue("{$correctColumn}5", $name);
                 $worksheet->setCellValue("{$scoreColumn}5", $name);
             }
 
             $worksheet->setCellValue("{$totalSkorLetter}5", 'TOTAL SKOR');
-            $worksheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorUtbk) . '5', 'SKOR UTBK');
-            $worksheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorPct) . '5', 'SKOR UTBK (%)');
+            $scoreLabel = $exam->type === ExamType::UTBK ? 'SKOR UTBK' : 'SKOR TKA';
+            $worksheet->setCellValue(Coordinate::stringFromColumnIndex($colSkorUtbk).'5', $scoreLabel);
+            $worksheet->setCellValue(Coordinate::stringFromColumnIndex($colSkorPct).'5', $scoreLabel.' (%)');
             $worksheet->setCellValue("{$rankingLetter}5", 'RANGKING');
 
             $headerRange = "B5:{$rankingLetter}5";
@@ -186,8 +192,8 @@ class IrtExportService
                 $worksheet->setCellValue("D{$excelRow}", $data['student_id']);
 
                 foreach ($bankNames as $index => $name) {
-                    $correctColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colCorrectStart + $index);
-                    $scoreColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colScoreStart + $index);
+                    $correctColumn = Coordinate::stringFromColumnIndex($colCorrectStart + $index);
+                    $scoreColumn = Coordinate::stringFromColumnIndex($colScoreStart + $index);
 
                     $worksheet->setCellValue("{$correctColumn}{$excelRow}", $data['block_correct'][$name] ?? 0);
                     $worksheet->getStyle("{$correctColumn}{$excelRow}")->getNumberFormat()->setFormatCode('0');
@@ -200,17 +206,17 @@ class IrtExportService
                 $worksheet->getStyle("{$totalSkorLetter}{$excelRow}")->getNumberFormat()->setFormatCode('0.00');
 
                 $worksheet->setCellValue(
-                    \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorUtbk) . $excelRow,
+                    Coordinate::stringFromColumnIndex($colSkorUtbk).$excelRow,
                     $skorUtbk
                 );
-                $worksheet->getStyle(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorUtbk) . $excelRow)
+                $worksheet->getStyle(Coordinate::stringFromColumnIndex($colSkorUtbk).$excelRow)
                     ->getNumberFormat()->setFormatCode('0.00');
 
                 $worksheet->setCellValue(
-                    \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorPct) . $excelRow,
+                    Coordinate::stringFromColumnIndex($colSkorPct).$excelRow,
                     $pct
                 );
-                $worksheet->getStyle(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colSkorPct) . $excelRow)
+                $worksheet->getStyle(Coordinate::stringFromColumnIndex($colSkorPct).$excelRow)
                     ->getNumberFormat()->setFormatCode('0.00"%"');
 
                 $worksheet->setCellValue("{$rankingLetter}{$excelRow}", $rank);
@@ -230,7 +236,7 @@ class IrtExportService
             $worksheet->getColumnDimension('C')->setWidth(28);
             $worksheet->getColumnDimension('D')->setWidth(10);
             foreach (range($colCorrectStart, $lastCol) as $columnIndex) {
-                $column = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($columnIndex);
+                $column = Coordinate::stringFromColumnIndex($columnIndex);
                 $worksheet->getColumnDimension($column)->setWidth(10);
             }
             $worksheet->getColumnDimension($totalSkorLetter)->setWidth(13);
@@ -249,7 +255,7 @@ class IrtExportService
         return $path;
     }
 
-    private function styleGroupHeader(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $worksheet, string $range, string $bgColor): void
+    private function styleGroupHeader(Worksheet $worksheet, string $range, string $bgColor): void
     {
         $worksheet->getStyle($range)->applyFromArray([
             'font' => ['bold' => true, 'size' => 11, 'name' => 'Arial'],
