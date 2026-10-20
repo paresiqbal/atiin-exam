@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ExamType;
 use App\Models\ExamAttempt;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Http;
 
 class ExamResultsPdfService
 {
@@ -48,12 +49,14 @@ class ExamResultsPdfService
                 }
 
                 return [
-                    'question_text' => $question->question_text,
+                    'question_text' => $this->inlineHtmlImages($question->question_text),
                     'question_type' => $question->question_type,
                     'points' => $question->points,
-                    'image_url' => $question->image_url,
-                    'student_answer' => $response?->selectedOption?->option_text,
-                    'correct_answer' => $correctOption?->option_text,
+                    'image_data' => $this->toDataUri($question->image_url),
+                    'student_answer' => $this->inlineHtmlImages($response?->selectedOption?->option_text),
+                    'student_answer_img' => $this->toDataUri($response?->selectedOption?->image_url),
+                    'correct_answer' => $this->inlineHtmlImages($correctOption?->option_text),
+                    'correct_answer_img' => $this->toDataUri($correctOption?->image_url),
                     'is_correct' => $isCorrect,
                     'points_earned' => $isCorrect ? $question->points : 0,
                     'irt_b' => $question->irt_b,
@@ -109,5 +112,67 @@ class ExamResultsPdfService
             ->setOption('margin-right', 0.5)
             ->setOption('margin-bottom', 0.5)
             ->setOption('margin-left', 0.5);
+    }
+
+    private function toDataUri(?string $src): ?string
+    {
+        if (! $src) {
+            return null;
+        }
+
+        if (str_starts_with($src, 'data:')) {
+            return $src;
+        }
+
+        $path = parse_url($src, PHP_URL_PATH) ?: '';
+
+        if (str_starts_with($path, '/storage/')) {
+            $storageDirectory = realpath(storage_path('app/public'));
+            $localPath = realpath(storage_path('app/public/'.substr($path, strlen('/storage/'))));
+
+            if ($storageDirectory && $localPath && str_starts_with($localPath, $storageDirectory.DIRECTORY_SEPARATOR) && is_file($localPath)) {
+                $mimeType = mime_content_type($localPath);
+                $contents = file_get_contents($localPath);
+
+                if (is_string($mimeType) && str_starts_with($mimeType, 'image/') && is_string($contents)) {
+                    return 'data:'.$mimeType.';base64,'.base64_encode($contents);
+                }
+            }
+        }
+
+        if (! preg_match('#^https?://#i', $src)) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(8)->get($src);
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $mimeType = $response->header('Content-Type') ?: 'image/png';
+
+            if (! str_starts_with($mimeType, 'image/')) {
+                return null;
+            }
+
+            return 'data:'.$mimeType.';base64,'.base64_encode($response->body());
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function inlineHtmlImages(?string $html): string
+    {
+        if (! $html || stripos($html, '<img') === false) {
+            return $html ?? '';
+        }
+
+        return preg_replace_callback('/<img\b[^>]*\bsrc=["\']([^"\']+)["\'][^>]*>/i', function ($match) {
+            $data = $this->toDataUri($match[1]);
+
+            return $data ? str_replace($match[1], $data, $match[0]) : '';
+        }, $html) ?? $html;
     }
 }

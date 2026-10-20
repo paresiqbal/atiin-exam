@@ -157,6 +157,13 @@
             border-radius: 5px;
         }
 
+        .question-item img,
+        .answer-row img {
+            max-width: 100%;
+            max-height: 260px;
+            height: auto;
+        }
+
         .question-header {
             display: flex;
             justify-content: space-between;
@@ -317,6 +324,9 @@
                             <div>
                                 <div class="question-text">Soal {{ $index + 1 }}</div>
                                 <div>{!! $question['question_text'] !!}</div>
+                                @if (!empty($question['image_data']))
+                                    <img src="{{ $question['image_data'] }}">
+                                @endif
                             </div>
                             <div style="text-align:right;">
                                 <span class="question-type">
@@ -336,6 +346,9 @@
                             @else
                                 Tidak dijawab
                             @endif
+                            @if (!empty($question['student_answer_img']))
+                                <img src="{{ $question['student_answer_img'] }}">
+                            @endif
                         </div>
 
                         {{-- Correct answer (only when wrong) --}}
@@ -343,6 +356,9 @@
                             <div class="answer-row correct">
                                 <span class="answer-label">Jawaban Benar:</span>
                                 {!! $question['correct_answer'] !!}
+                                @if (!empty($question['correct_answer_img']))
+                                    <img src="{{ $question['correct_answer_img'] }}">
+                                @endif
                             </div>
                         @endif
                     </div>
