@@ -1,0 +1,10 @@
+buatkan issue.md yang berisi perencanaan untuk nanti
+di implementasikan oleh junior programmer atau ai model yang lebih murah.
+
+isi dari planing nya adalah sebagai berikut:
+    - bug fixing pada PFD hasil ujian siswa
+    - di PDF hasil, gambar soal tidak tampil sama sekali hanya box kosong
+    - 
+
+Jelaskan tahapan-tahapan yang harus dilakukan untuk mengimplementasikan fitur ini,
+ anggap nanti yang mengimplementasikan adalah junior programmer atau model AI yang lebih murah.
