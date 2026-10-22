@@ -1,7 +1,6 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, useRemember } from '@inertiajs/react';
 import { Edit2, Eye, KeyRound, Plus, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
@@ -68,8 +67,10 @@ interface Student {
 
 interface StudentPageProps extends InertiaPageProps {
     students: Paginated<Student>;
+    schools: School[];
     filters: {
         search?: string;
+        school_id?: string | number | null;
     };
 }
 
@@ -83,71 +84,63 @@ const baseUrl = '/admin/students';
 type SchoolFilter = 'all' | number;
 
 export default function StudentIndex() {
-    const { students, filters } = usePage<StudentPageProps>().props;
+    const { students, filters, schools } = usePage<StudentPageProps>().props;
     const data = useMemo(() => students.data ?? [], [students.data]);
 
-    const [searchQuery, setSearchQuery] = useState(filters.search ?? '');
-    useEffect(() => {
-        setSearchQuery(filters.search ?? '');
-    }, [filters.search]);
-
-    const [schoolFilter, setSchoolFilter] = useState<SchoolFilter>('all');
+    const [searchQuery, setSearchQuery] = useRemember(
+        filters.search ?? '',
+        'Admin/Students/Index/search',
+    );
+    const [schoolFilter, setSchoolFilter] = useRemember<SchoolFilter>(
+        filters.school_id ? Number(filters.school_id) : 'all',
+        'Admin/Students/Index/school',
+    );
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [rowsPerPage, setRowsPerPage] = useState<number>(
         (students as Paginated<Student>).per_page ?? 10,
     );
 
-    const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        const trimmedSearch = searchQuery.trim();
+    useEffect(() => {
+        const search = searchQuery.trim();
+        const schoolId = schoolFilter === 'all' ? undefined : schoolFilter;
+        const currentSchoolId = filters.school_id
+            ? Number(filters.school_id)
+            : undefined;
 
-        router.get(
-            `${baseUrl}`,
-            {
-                page: 1,
-                per_page: rowsPerPage,
-                search: trimmedSearch || undefined,
-            },
-            {
-                preserveScroll: true,
-                preserveState: true,
-            },
-        );
-    };
+        if (
+            search === (filters.search ?? '') &&
+            schoolId === currentSchoolId
+        ) {
+            return;
+        }
 
-    const schoolOptions = useMemo(() => {
-        const map = new Map<number, string>();
+        const timeout = setTimeout(() => {
+            router.get(
+                baseUrl,
+                {
+                    page: 1,
+                    per_page: rowsPerPage,
+                    search: search || undefined,
+                    school_id: schoolId,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 400);
 
-        data.forEach((s) => {
-            if (s.school) {
-                map.set(s.school.id, s.school.name);
-            }
-        });
+        return () => clearTimeout(timeout);
+    }, [
+        searchQuery,
+        schoolFilter,
+        filters.search,
+        filters.school_id,
+        rowsPerPage,
+    ]);
 
-        return Array.from(map.entries()).map(([id, name]) => ({
-            id,
-            name,
-        }));
-    }, [data]);
-
-    // Filtering (search + school)
-    const filteredStudents = useMemo(() => {
-        const q = searchQuery.toLowerCase();
-
-        return data.filter((s) => {
-            const schoolName = s.school?.name ?? '';
-
-            const matchesSearch =
-                s.name.toLowerCase().includes(q) ||
-                s.email.toLowerCase().includes(q) ||
-                schoolName.toLowerCase().includes(q);
-
-            const matchesSchool =
-                schoolFilter === 'all' ? true : s.school?.id === schoolFilter;
-
-            return matchesSearch && matchesSchool;
-        });
-    }, [data, searchQuery, schoolFilter]);
+    const filteredStudents = data;
 
     // Stats
     const totalStudents = filteredStudents.length;
@@ -232,14 +225,14 @@ export default function StudentIndex() {
     const handleChangeRowsPerPage = (value: string) => {
         const perPage = Number(value) || 10;
         setRowsPerPage(perPage);
-        const trimmedSearch = searchQuery.trim();
-
         router.get(
             `${baseUrl}`,
             {
                 page: 1,
                 per_page: perPage,
-                search: trimmedSearch || undefined,
+                search: searchQuery.trim() || undefined,
+                school_id:
+                    schoolFilter === 'all' ? undefined : schoolFilter,
             },
             {
                 preserveScroll: true,
@@ -273,7 +266,7 @@ export default function StudentIndex() {
 
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <form
-                        onSubmit={handleSearchSubmit}
+                        onSubmit={(event) => event.preventDefault()}
                         className="flex flex-1 items-center gap-2 rounded-lg px-3 py-2"
                     >
                         <InputGroup className="flex-1">
@@ -289,7 +282,7 @@ export default function StudentIndex() {
 
                             {searchQuery !== '' && (
                                 <InputGroupAddon align="inline-end">
-                                    {filteredStudents.length} hasil
+                                    {students.total} hasil
                                 </InputGroupAddon>
                             )}
                         </InputGroup>
@@ -316,7 +309,7 @@ export default function StudentIndex() {
                                 <SelectItem value="all">
                                     Semua sekolah
                                 </SelectItem>
-                                {schoolOptions.map((school) => (
+                                {schools.map((school) => (
                                     <SelectItem
                                         key={school.id}
                                         value={String(school.id)}

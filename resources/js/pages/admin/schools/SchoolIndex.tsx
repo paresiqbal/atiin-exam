@@ -1,6 +1,6 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, useRemember } from '@inertiajs/react';
 import { Edit2, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
@@ -56,32 +56,50 @@ interface Paginated<T> {
 
 interface PageProps {
     schools: Paginated<School>;
+    filters?: {
+        search?: string;
+    };
     [key: string]: unknown;
 }
 
 const baseUrl = '/admin/schools';
 
 export default function SchoolIndex() {
-    const { schools } = usePage<PageProps>().props;
+    const { schools, filters } = usePage<PageProps>().props;
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useRemember(
+        filters?.search ?? '',
+        'Admin/Schools/Index/search',
+    );
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [rowsPerPage, setRowsPerPage] = useState<number>(
         schools.per_page ?? 10,
     );
 
-    const filteredSchools = useMemo(
-        () =>
-            schools.data.filter((school) => {
-                const q = searchQuery.toLowerCase();
-                const matchesName = school.name.toLowerCase().includes(q);
-                const matchesDesc =
-                    school.description?.toLowerCase().includes(q) ?? false;
+    const filteredSchools = useMemo(() => schools.data, [schools.data]);
 
-                return matchesName || matchesDesc;
-            }),
-        [schools.data, searchQuery],
-    );
+    useEffect(() => {
+        const search = searchQuery.trim();
+        if (search === (filters?.search ?? '')) return;
+
+        const timeout = setTimeout(() => {
+            router.get(
+                baseUrl,
+                {
+                    page: 1,
+                    per_page: rowsPerPage,
+                    search: search || undefined,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+
+        return () => clearTimeout(timeout);
+    }, [searchQuery, filters?.search, rowsPerPage]);
 
     const breadcrumbs: BreadcrumbItem[] = [
         {
@@ -149,7 +167,11 @@ export default function SchoolIndex() {
 
         router.get(
             `${baseUrl}`,
-            { page: 1, per_page: perPage },
+            {
+                page: 1,
+                per_page: perPage,
+                search: searchQuery.trim() || undefined,
+            },
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -196,7 +218,7 @@ export default function SchoolIndex() {
 
                             {searchQuery !== '' && (
                                 <InputGroupAddon align="inline-end">
-                                    {filteredSchools.length} hasil
+                                    {schools.total} hasil
                                 </InputGroupAddon>
                             )}
                         </InputGroup>

@@ -2,9 +2,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import {
+    Head,
+    Link,
+    router,
+    usePage,
+    useRemember,
+} from '@inertiajs/react';
 import { Calendar, Clock, Hourglass, Play, Search } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { limitPaginationLinks } from '@/lib/pagination';
 
 type ExamStatus = 'available' | 'coming_soon' | 'ended';
@@ -134,20 +140,22 @@ export default function IndexExam() {
     const { props } = usePage<PageProps>();
     const exams = props.exams;
     const initialQ = props.filters?.q ?? '';
-    const [q, setQ] = useState(initialQ);
+    const [q, setQ] = useRemember(initialQ, 'Student/Exams/Index/search');
 
-    // Debounced search
     useEffect(() => {
+        const search = q.trim();
+        if (search === initialQ) return;
+
         const t = setTimeout(() => {
             router.get(
                 '/student/exams',
-                { q: q.trim() || undefined },
+                { q: search || undefined, page: 1 },
                 { preserveScroll: true, preserveState: true, replace: true },
             );
         }, 350);
 
         return () => clearTimeout(t);
-    }, [q]);
+    }, [q, initialQ]);
 
     const subtitle = useMemo(() => {
         if (!q.trim())

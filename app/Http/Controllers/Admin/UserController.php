@@ -15,13 +15,28 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
+        $search = trim((string) $request->input('search', ''));
+        $role = $request->input('role');
 
         $users = User::with('school')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->when(in_array($role, ['admin', 'teacher', 'student'], true), function ($query) use ($role) {
+                $query->where('role', $role);
+            })
             ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('admin/users/UserIndex', [
             'users' => $users,
+            'filters' => [
+                'search' => $search,
+                'role' => in_array($role, ['admin', 'teacher', 'student'], true) ? $role : 'all',
+            ],
         ]);
     }
 

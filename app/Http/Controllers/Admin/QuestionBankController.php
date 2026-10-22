@@ -13,13 +13,23 @@ class QuestionBankController extends Controller
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
+        $search = trim((string) $request->input('search', ''));
 
         $questionBanks = QuestionBank::withCount('questions')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
             ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('admin/question-banks/QuestionBankIndex', [
             'questionBanks' => $questionBanks,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
@@ -38,16 +48,15 @@ class QuestionBankController extends Controller
         ]);
 
         QuestionBank::create([
-            'name'        => $validated['name'],
+            'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'teacher_id'  => $request->user()->id,
+            'teacher_id' => $request->user()->id,
         ]);
 
         return redirect()
             ->route('admin.question-banks.index')
             ->with('success', 'Question bank created successfully');
     }
-
 
     public function show(QuestionBank $questionBank)
     {

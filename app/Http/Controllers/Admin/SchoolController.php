@@ -12,16 +12,25 @@ class SchoolController extends Controller
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
+        $search = trim((string) $request->input('search', ''));
 
         $schools = School::withCount(['users', 'exams'])
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
             ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('admin/schools/SchoolIndex', [
             'schools' => $schools,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
-
 
     public function create()
     {
@@ -49,7 +58,7 @@ class SchoolController extends Controller
     public function update(Request $request, School $school)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:schools,name,' . $school->id,
+            'name' => 'required|string|max:255|unique:schools,name,'.$school->id,
             'description' => 'nullable|string',
         ]);
 
