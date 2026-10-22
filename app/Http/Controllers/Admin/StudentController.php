@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Models\Major;
 use App\Models\School;
 use App\Models\User;
 use App\Services\StudentCardsPdfService;
@@ -99,42 +98,23 @@ class StudentController extends Controller
             ->with('exam')
             ->orderByDesc('completed_at')
             ->get()
-            ->map(function ($attempt) use ($student) {
+            ->map(function ($attempt) {
                 $skorUtbkPct = $attempt->irt_block_score;
-
-                // Convert pct back to raw UTBK score for comparison
-                // skor_utbk = skor_utbk_pct * 1525 / 100
-                $skorUtbk = $skorUtbkPct !== null
-                    ? round((float) $skorUtbkPct * 1525.0 / 100, 2)
-                    : null;
-
-                // Passing grade from university_selections JSON, fallback to major
-                // minimum_passing_grade is on the RAW UTBK scale (e.g. 550, 640)
-                $selections = $student->university_selections ?? [];
-                $firstMajorId = $selections[0]['majors'][0] ?? null;
-                $passingScore = $firstMajorId
-                    ? (Major::find($firstMajorId)?->minimum_passing_grade ?? 0)
-                    : ($student->major?->minimum_passing_grade ?? 0);
-
-                // Compare raw vs raw
-                $effectiveScore = $skorUtbk ?? $attempt->score ?? 0;
-                $isPassed = $attempt->status === 'submitted'
-                    ? $effectiveScore >= $passingScore
-                    : null;
 
                 return [
                     'id' => $attempt->id,
                     'status' => $attempt->status,
                     'skor_utbk_pct' => $skorUtbkPct !== null ? round($skorUtbkPct, 2) : null,
-                    'skor_utbk' => $skorUtbk,   // raw score — same scale as passing_score
+                    'skor_utbk' => $attempt->scoreOnPassingScale(),
                     'irt_processed' => $skorUtbkPct !== null,
-                    'passing_score' => $passingScore,
-                    'is_passed' => $isPassed,
+                    'passing_score' => $attempt->minimumPassingScore(),
+                    'is_passed' => $attempt->isPassed(),
                     'started_at' => optional($attempt->started_at)->toIso8601String(),
                     'completed_at' => optional($attempt->completed_at)->toIso8601String(),
                     'exam' => [
                         'id' => $attempt->exam->id,
                         'name' => $attempt->exam->name,
+                        'type' => $attempt->exam->type->value,
                     ],
                 ];
             });

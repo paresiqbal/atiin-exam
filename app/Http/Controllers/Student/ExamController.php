@@ -389,6 +389,7 @@ class ExamController extends Controller
                 'question_block_count' => $attempt->exam->questionBanks->count(),
                 'total_questions' => $questions->count(),
                 'completed_at' => $attempt->completed_at?->toIso8601String(),
+                'is_passed' => $attempt->isPassed(),
             ],
             'exam' => [
                 'title' => $attempt->exam->name,

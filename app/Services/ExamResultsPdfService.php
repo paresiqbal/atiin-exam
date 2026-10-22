@@ -78,8 +78,11 @@ class ExamResultsPdfService
 
         // IRT scores
         $totalSkor = $questionSections->sum('block_score');
-        $skorUtbk = round($totalSkor / $bankDivisor, 2);
-        $skorUtbkPct = round(($skorUtbk / self::ATTIN_FORMULA) * 100, 2);
+        $skorUtbk = $attempt->scoreOnPassingScale();
+        $skorUtbkPct = $attempt->irt_block_score !== null
+            ? round((float) $attempt->irt_block_score, 2)
+            : null;
+        $isPassed = $attempt->isPassed();
         $data = [
             'student_name' => $student->name,
             'student_email' => $student->email,
@@ -97,10 +100,12 @@ class ExamResultsPdfService
             'skor_utbk_pct' => $skorUtbkPct,
 
             'status' => 'HASIL UJIAN',
+            'pass_status' => $isPassed === null ? null : ($isPassed ? 'LULUS' : 'TIDAK LULUS'),
+            'pass_status_class' => $isPassed === null ? null : ($isPassed ? 'passed' : 'failed'),
 
             // Legacy aliases so Blade does not break
             'score' => $skorUtbk,
-            'total_score' => self::ATTIN_FORMULA,
+            'total_score' => $skorUtbk !== null ? self::ATTIN_FORMULA : null,
             'percentage' => $skorUtbkPct,
 
             'question_sections' => $questionSections,
