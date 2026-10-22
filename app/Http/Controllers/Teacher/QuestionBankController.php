@@ -12,9 +12,16 @@ class QuestionBankController extends Controller
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
+        $search = trim((string) $request->input('search', ''));
 
         $questionBanks = QuestionBank::query()
             ->where('teacher_id', $request->user()->id)
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
+            })
             ->withCount('questions')
             ->orderByDesc('created_at')
             ->paginate($perPage)
@@ -22,6 +29,9 @@ class QuestionBankController extends Controller
 
         return Inertia::render('teacher/question-banks/QuestionBankIndex', [
             'questionBanks' => $questionBanks,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

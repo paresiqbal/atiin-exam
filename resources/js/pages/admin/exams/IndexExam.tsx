@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useRemember } from '@inertiajs/react';
 import {
     Calendar as CalendarIcon,
     Edit2,
@@ -6,7 +6,7 @@ import {
     Plus,
     Search,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
@@ -59,9 +59,11 @@ type ExamType = 'utbk' | 'tka' | 'cbt';
 export default function IndexExam({
     exams,
     examType,
+    filters,
 }: {
     exams: Paginated<ExamData>;
     examType: ExamType;
+    filters?: { search?: string };
 }) {
     const baseUrl = '/admin/exams';
     const listUrl = `${baseUrl}?type=${examType}`;
@@ -69,7 +71,10 @@ export default function IndexExam({
     const title = `Daftar Ujian ${examType.toUpperCase()}`;
     const data = useMemo(() => exams.data ?? [], [exams.data]);
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useRemember(
+        filters?.search ?? '',
+        'Admin/Exams/Index/search',
+    );
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
     const [rowsPerPage, setRowsPerPage] = useState<number>(
         (exams as Paginated<ExamData>).per_page ?? 10,
@@ -80,21 +85,37 @@ export default function IndexExam({
     const [startDate, setStartDate] = useState<Date | undefined>();
     const [endDate, setEndDate] = useState<Date | undefined>();
 
+    useEffect(() => {
+        const search = searchQuery.trim();
+        if (search === (filters?.search ?? '')) return;
+
+        const timeout = setTimeout(() => {
+            router.get(
+                baseUrl,
+                {
+                    type: examType,
+                    page: 1,
+                    per_page: rowsPerPage,
+                    search: search || undefined,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+
+        return () => clearTimeout(timeout);
+    }, [searchQuery, filters?.search, examType, rowsPerPage]);
+
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Admin Dashboard', href: '/admin/dashboard' },
         { title, href: listUrl },
     ];
 
     const filteredExams = useMemo(() => {
-        const q = searchQuery.toLowerCase();
-
         return data.filter((exam) => {
-            const nameMatch = exam.name.toLowerCase().includes(q);
-            const bankMatch = (exam.question_banks ?? []).some((b) =>
-                b.name?.toLowerCase().includes(q),
-            );
-            const matchesSearch = nameMatch || bankMatch;
-
             const matchesStatus =
                 statusFilter === 'all'
                     ? true
@@ -116,9 +137,9 @@ export default function IndexExam({
                 }
             }
 
-            return matchesSearch && matchesStatus && matchesDate;
+            return matchesStatus && matchesDate;
         });
-    }, [data, searchQuery, statusFilter, startDate, endDate]);
+    }, [data, statusFilter, startDate, endDate]);
 
     // selection logic (same as StudentIndex)
     const allSelected = useMemo(
@@ -178,7 +199,12 @@ export default function IndexExam({
 
         router.get(
             baseUrl,
-            { type: examType, page: 1, per_page: perPage },
+            {
+                type: examType,
+                page: 1,
+                per_page: perPage,
+                search: searchQuery.trim() || undefined,
+            },
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -244,7 +270,7 @@ export default function IndexExam({
 
                             {searchQuery !== '' && (
                                 <InputGroupAddon align="inline-end">
-                                    {filteredExams.length} hasil
+                                    {exams.total} hasil
                                 </InputGroupAddon>
                             )}
                         </InputGroup>

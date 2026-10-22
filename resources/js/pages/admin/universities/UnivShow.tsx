@@ -16,7 +16,6 @@ import {
 import { Input } from '@/components/ui/input';
 
 import type { BreadcrumbItem } from '@/types';
-import type { Paginated } from '@/types/pagination';
 import type { PageProps as InertiaPageProps } from '@inertiajs/core';
 import { Edit2, Save, X } from 'lucide-react';
 
@@ -39,7 +38,7 @@ interface University {
 
 interface UnivShowPageProps extends InertiaPageProps {
     university: University;
-    majors: Paginated<Major>;
+    majors: Major[];
 }
 
 const baseUrl = '/admin/universities';
@@ -53,7 +52,7 @@ export default function UnivShow() {
         { title: university.name, href: '#' },
     ];
 
-    const majorsData = majors.data ?? [];
+    const majorsData = majors ?? [];
 
     // 🔧 Inline edit state
     const [editingId, setEditingId] = useState<number | null>(null);

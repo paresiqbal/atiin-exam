@@ -4,19 +4,28 @@ namespace App\Http\Controllers\Student;
 
 use App\Enums\ExamType;
 use App\Models\ExamAttempt;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
 
 class ExamHistoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $student = auth()->user();
+        $search = trim((string) $request->input('q', ''));
+        $sort = $request->input('sort', 'date') === 'score' ? 'score' : 'date';
 
         $attempts = ExamAttempt::where('student_id', $student->id)
+            ->when($search !== '', function ($query) use ($search) {
+                $query->whereHas('exam', function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%");
+                });
+            })
             ->with('exam.questionBanks')
             ->orderByDesc('completed_at')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         $attempts->getCollection()->transform(function ($attempt) {
             $examType = $attempt->exam?->type;
@@ -48,6 +57,10 @@ class ExamHistoryController extends Controller
 
         return Inertia::render('student/exams/HistoryExam', [
             'attempts' => $attempts,
+            'filters' => [
+                'q' => $search,
+                'sort' => $sort,
+            ],
         ]);
     }
 }

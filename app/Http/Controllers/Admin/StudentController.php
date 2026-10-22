@@ -19,6 +19,7 @@ class StudentController extends Controller
     {
         $perPage = (int) $request->input('per_page', 10);
         $search = trim((string) $request->input('search', ''));
+        $schoolId = $request->input('school_id');
 
         $students = User::where('role', 'student')
             ->with('university', 'major', 'school')
@@ -32,13 +33,18 @@ class StudentController extends Controller
                         });
                 });
             })
+            ->when($schoolId !== null && $schoolId !== '', function ($query) use ($schoolId) {
+                $query->where('school_id', $schoolId);
+            })
             ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('admin/students/StudentIndex', [
             'students' => $students,
+            'schools' => School::orderBy('name')->get(['id', 'name']),
             'filters' => [
                 'search' => $search,
+                'school_id' => $schoolId,
             ],
         ]);
     }

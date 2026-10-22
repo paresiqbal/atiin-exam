@@ -1,6 +1,6 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, useRemember } from '@inertiajs/react';
 import { Edit2, Eye, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
@@ -48,6 +48,9 @@ interface QuestionBankWithCounts extends QuestionBank {
 
 interface QuestionBankPageProps extends InertiaPageProps {
     questionBanks: Paginated<QuestionBankWithCounts>;
+    filters?: {
+        search?: string;
+    };
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -58,27 +61,44 @@ const breadcrumbs: BreadcrumbItem[] = [
 const baseUrl = '/teacher/question-banks';
 
 export default function TeacherQuestionBankIndex() {
-    const { questionBanks } = usePage<QuestionBankPageProps>().props;
+    const { questionBanks, filters } =
+        usePage<QuestionBankPageProps>().props;
 
     const data = useMemo(() => questionBanks.data ?? [], [questionBanks.data]);
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useRemember(
+        filters?.search ?? '',
+        'Teacher/QuestionBanks/Index/search',
+    );
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [rowsPerPage, setRowsPerPage] = useState<number>(
         (questionBanks as Paginated<QuestionBankWithCounts>).per_page ?? 10,
     );
 
-    // Filter by name & description
-    const filteredBanks = useMemo(() => {
-        const q = searchQuery.toLowerCase();
+    const filteredBanks = data;
 
-        return data.filter((bank) => {
-            return (
-                bank.name.toLowerCase().includes(q) ||
-                (bank.description ?? '').toLowerCase().includes(q)
+    useEffect(() => {
+        const search = searchQuery.trim();
+        if (search === (filters?.search ?? '')) return;
+
+        const timeout = setTimeout(() => {
+            router.get(
+                baseUrl,
+                {
+                    page: 1,
+                    per_page: rowsPerPage,
+                    search: search || undefined,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    replace: true,
+                },
             );
-        });
-    }, [data, searchQuery]);
+        }, 400);
+
+        return () => clearTimeout(timeout);
+    }, [searchQuery, filters?.search, rowsPerPage]);
 
     // Stats
     const totalQuestions = filteredBanks.reduce(
@@ -144,7 +164,11 @@ export default function TeacherQuestionBankIndex() {
 
         router.get(
             `${baseUrl}`,
-            { page: 1, per_page: perPage },
+            {
+                page: 1,
+                per_page: perPage,
+                search: searchQuery.trim() || undefined,
+            },
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -192,7 +216,7 @@ export default function TeacherQuestionBankIndex() {
 
                             {searchQuery !== '' && (
                                 <InputGroupAddon align="inline-end">
-                                    {filteredBanks.length} hasil
+                                    {questionBanks.total} hasil
                                 </InputGroupAddon>
                             )}
                         </InputGroup>
@@ -217,7 +241,7 @@ export default function TeacherQuestionBankIndex() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="text-3xl font-bold">
-                            {filteredBanks.length}
+                            {questionBanks.total}
                         </CardContent>
                     </Card>
 

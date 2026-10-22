@@ -1,6 +1,6 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, useRemember } from '@inertiajs/react';
 import { Edit2, Eye, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { ConfirmBulkDeleteButton } from '@/components/ConfirmBulkDeleteButton';
 import { ConfirmDeleteButton } from '@/components/ConfirmDeleteButton';
@@ -57,6 +57,9 @@ interface University {
 interface UnivPageProps extends InertiaPageProps {
     universities: Paginated<University>;
     total: number;
+    filters?: {
+        search?: string;
+    };
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -67,27 +70,42 @@ const breadcrumbs: BreadcrumbItem[] = [
 const baseUrl = '/admin/universities';
 
 export default function UnivIndex() {
-    const { universities } = usePage<UnivPageProps>().props;
+    const { universities, filters } = usePage<UnivPageProps>().props;
     const data = useMemo(() => universities.data ?? [], [universities.data]);
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useRemember(
+        filters?.search ?? '',
+        'Admin/Universities/Index/search',
+    );
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [rowsPerPage, setRowsPerPage] = useState<number>(
         (universities as Paginated<University>).per_page ?? 10,
     );
 
-    const filteredUniversities = useMemo(() => {
-        const q = searchQuery.toLowerCase();
+    const filteredUniversities = data;
 
-        return data.filter((u) => {
-            return (
-                u.name.toLowerCase().includes(q) ||
-                (u.code ?? '').toLowerCase().includes(q) ||
-                (u.city ?? '').toLowerCase().includes(q) ||
-                u.majors.some((m) => m.name.toLowerCase().includes(q))
+    useEffect(() => {
+        const search = searchQuery.trim();
+        if (search === (filters?.search ?? '')) return;
+
+        const timeout = setTimeout(() => {
+            router.get(
+                baseUrl,
+                {
+                    page: 1,
+                    per_page: rowsPerPage,
+                    search: search || undefined,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    replace: true,
+                },
             );
-        });
-    }, [data, searchQuery]);
+        }, 400);
+
+        return () => clearTimeout(timeout);
+    }, [searchQuery, filters?.search, rowsPerPage]);
 
     const totalMajors = filteredUniversities.reduce(
         (sum, u) => sum + u.majors.length,
@@ -157,7 +175,11 @@ export default function UnivIndex() {
 
         router.get(
             `${baseUrl}`,
-            { page: 1, per_page: perPage },
+            {
+                page: 1,
+                per_page: perPage,
+                search: searchQuery.trim() || undefined,
+            },
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -206,7 +228,7 @@ export default function UnivIndex() {
 
                             {searchQuery !== '' && (
                                 <InputGroupAddon align="inline-end">
-                                    {filteredUniversities.length} hasil
+                                    {universities.total} hasil
                                 </InputGroupAddon>
                             )}
                         </InputGroup>
@@ -231,7 +253,7 @@ export default function UnivIndex() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="text-3xl font-bold">
-                            {filteredUniversities.length}
+                            {universities.total}
                         </CardContent>
                     </Card>
 

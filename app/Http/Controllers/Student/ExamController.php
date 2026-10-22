@@ -16,19 +16,29 @@ use Inertia\Response;
 
 class ExamController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $student = auth()->user();
+        $search = trim((string) $request->input('q', ''));
 
         $exams = Exam::query()
             ->where('school_id', $student->school_id)
             ->where('is_published', true)
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhereHas('questionBanks', function ($query) use ($search) {
+                            $query->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->with([
                 'settings',
                 'questionBanks:id,name',
             ])
             ->orderBy('start_at')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         $exams->getCollection()->transform(function ($exam) {
             $exam->status = match (true) {
@@ -42,6 +52,9 @@ class ExamController extends Controller
 
         return Inertia::render('student/exams/IndexExam', [
             'exams' => $exams,
+            'filters' => [
+                'q' => $search,
+            ],
         ]);
     }
 

@@ -60,16 +60,29 @@ class ExamController extends Controller
     {
         $perPage = (int) $request->input('per_page', 10);
         $type = $this->requestedType($request);
+        $search = trim((string) $request->input('search', ''));
 
         $exams = Exam::ofType($type)
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhereHas('questionBanks', function ($query) use ($search) {
+                            $query->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->with(['questionBanks:id,name'])
             ->withCount('attempts')
             ->orderByDesc('created_at')
-            ->paginate($perPage);
+            ->paginate($perPage)
+            ->withQueryString();
 
         return Inertia::render('admin/exams/IndexExam', [
             'exams' => $exams,
             'examType' => $type->value,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 

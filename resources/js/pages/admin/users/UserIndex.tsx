@@ -1,6 +1,6 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage, useRemember } from '@inertiajs/react';
 import { Edit2, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -35,39 +35,65 @@ import type { BreadcrumbItem } from '@/types';
 import type { Paginated } from '@/types/pagination';
 import type { User } from '@/types/user';
 
-type RoleFilter = 'all' | 'admin' | 'instructor' | 'student';
+type RoleFilter = 'all' | 'admin' | 'teacher' | 'student';
 
 type UsersPageProps = {
     users: Paginated<User>;
+    filters?: {
+        search?: string;
+        role?: RoleFilter;
+    };
 };
 
 const baseUrl = '/admin/users';
 
 export default function UserIndex() {
-    const { users } = usePage<UsersPageProps>().props;
+    const { users, filters } = usePage<UsersPageProps>().props;
 
-    const [searchQuery, setSearchQuery] = useState('');
-    const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
+    const [searchQuery, setSearchQuery] = useRemember(
+        filters?.search ?? '',
+        'Admin/Users/Index/search',
+    );
+    const [roleFilter, setRoleFilter] = useRemember<RoleFilter>(
+        filters?.role ?? 'all',
+        'Admin/Users/Index/role',
+    );
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [rowsPerPage, setRowsPerPage] = useState<number>(
         (users as Paginated<User>).per_page ?? 10,
     );
 
-    const filteredUsers = useMemo(
-        () =>
-            users.data.filter((user: User) => {
-                const q = searchQuery.toLowerCase();
-                const matchesSearch =
-                    user.name.toLowerCase().includes(q) ||
-                    user.email.toLowerCase().includes(q);
+    const filteredUsers = users.data;
 
-                const matchesRole =
-                    roleFilter === 'all' ? true : user.role === roleFilter;
+    useEffect(() => {
+        const search = searchQuery.trim();
+        const role = roleFilter;
+        if (
+            search === (filters?.search ?? '') &&
+            role === (filters?.role ?? 'all')
+        ) {
+            return;
+        }
 
-                return matchesSearch && matchesRole;
-            }),
-        [users, searchQuery, roleFilter],
-    );
+        const timeout = setTimeout(() => {
+            router.get(
+                baseUrl,
+                {
+                    page: 1,
+                    per_page: rowsPerPage,
+                    search: search || undefined,
+                    role: role === 'all' ? undefined : role,
+                },
+                {
+                    preserveScroll: true,
+                    preserveState: true,
+                    replace: true,
+                },
+            );
+        }, 400);
+
+        return () => clearTimeout(timeout);
+    }, [searchQuery, roleFilter, filters?.search, filters?.role, rowsPerPage]);
 
     const allSelected = useMemo(
         () =>
@@ -128,7 +154,12 @@ export default function UserIndex() {
 
         router.get(
             `${baseUrl}`,
-            { page: 1, per_page: perPage },
+            {
+                page: 1,
+                per_page: perPage,
+                search: searchQuery.trim() || undefined,
+                role: roleFilter === 'all' ? undefined : roleFilter,
+            },
             {
                 preserveScroll: true,
                 preserveState: true,
@@ -185,7 +216,7 @@ export default function UserIndex() {
 
                             {searchQuery !== '' && (
                                 <InputGroupAddon align="inline-end">
-                                    {filteredUsers.length} hasil
+                                    {users.total} hasil
                                 </InputGroupAddon>
                             )}
                         </InputGroup>

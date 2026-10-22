@@ -12,13 +12,27 @@ class UniversityController extends Controller
     public function index(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
+        $search = trim((string) $request->input('search', ''));
 
         $universities = University::with('majors')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('city', 'like', "%{$search}%")
+                        ->orWhereHas('majors', function ($query) use ($search) {
+                            $query->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
             ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('admin/universities/UnivIndex', [
             'universities' => $universities,
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
@@ -54,14 +68,14 @@ class UniversityController extends Controller
 
     public function show(University $university)
     {
-        $majors = $university->majors()->paginate(15);
+        $university->loadCount('majors');
+        $majors = $university->majors()->orderBy('name')->get();
 
         return Inertia::render('admin/universities/UnivShow', [
             'university' => $university,
             'majors' => $majors,
         ]);
     }
-
 
     public function edit(University $university)
     {
@@ -73,8 +87,8 @@ class UniversityController extends Controller
     public function update(Request $request, University $university)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:universities,name,' . $university->id,
-            'code' => 'nullable|string|max:50|unique:universities,code,' . $university->id,
+            'name' => 'required|string|max:255|unique:universities,name,'.$university->id,
+            'code' => 'nullable|string|max:50|unique:universities,code,'.$university->id,
             'city' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'website' => 'nullable|url',

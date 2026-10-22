@@ -1,4 +1,4 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Head, router, usePage, useRemember } from '@inertiajs/react';
 import {
     Download,
     Search,
@@ -99,38 +99,45 @@ export default function HistoryExam() {
     const { attempts, filters } = usePage()
         .props as unknown as ExamHistoryProps;
 
-    const [searchInput, setSearchInput] = useState(filters?.q ?? '');
-    const [searchQuery, setSearchQuery] = useState(filters?.q ?? '');
-    const [sortBy, setSortBy] = useState<'date' | 'score'>(
+    const [searchInput, setSearchInput] = useRemember(
+        filters?.q ?? '',
+        'Student/Exams/History/search',
+    );
+    const [sortBy, setSortBy] = useRemember<'date' | 'score'>(
         filters?.sort ?? 'date',
+        'Student/Exams/History/sort',
     );
 
     const [downloadingIds, setDownloadingIds] = useState<Set<number>>(
         new Set(),
     );
 
-    // Debounce typing
-    useEffect(() => {
-        const t = setTimeout(() => setSearchQuery(searchInput), 250);
-        return () => clearTimeout(t);
-    }, [searchInput]);
-
     // Server-side query (fast + consistent)
     useEffect(() => {
-        router.get(
-            '/student/exams/history',
-            {
-                q: searchQuery.trim() || undefined,
-                sort: sortBy,
-            },
-            { preserveScroll: true, preserveState: true, replace: true },
-        );
-    }, [searchQuery, sortBy]);
+        if (
+            searchInput.trim() === (filters?.q ?? '') &&
+            sortBy === (filters?.sort ?? 'date')
+        ) {
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            router.get(
+                '/student/exams/history',
+                {
+                    q: searchInput.trim() || undefined,
+                    sort: sortBy,
+                    page: 1,
+                },
+                { preserveScroll: true, preserveState: true, replace: true },
+            );
+        }, 350);
+
+        return () => clearTimeout(timeout);
+    }, [searchInput, sortBy, filters?.q, filters?.sort]);
 
     // Precompute for UI sorting fallback (still useful if server returns same page)
     const processed = useMemo(() => {
-        const q = searchQuery.trim().toLowerCase();
-
         const mapped = attempts.data.map((a) => {
             const examName = (a.exam?.title ?? a.exam?.name ?? '').toString();
             return {
@@ -141,9 +148,7 @@ export default function HistoryExam() {
             };
         });
 
-        const filtered = mapped.filter((a) => {
-            return a.examNameLc.includes(q);
-        });
+        const filtered = mapped;
 
         if (sortBy === 'date')
             filtered.sort((a, b) => b.completedTs - a.completedTs);
@@ -153,7 +158,7 @@ export default function HistoryExam() {
             );
 
         return filtered;
-    }, [attempts.data, searchQuery, sortBy]);
+    }, [attempts.data, sortBy]);
 
     const resultsReadyCount = useMemo(
         () => attempts.data.filter((a) => a.percentage !== null).length,
