@@ -62,10 +62,10 @@ interface ExamAttempt {
     skor_utbk: number | null; // raw UTBK score (e.g. 646.3) — same scale as passing_score
     irt_processed: boolean;
     passing_score: number; // raw UTBK scale (e.g. 550)
-    is_passed: boolean | null; // null = not submitted
+    is_passed: boolean | null; // null = no pass/fail status applies
     started_at?: string | null;
     completed_at?: string | null;
-    exam: { id: number; name: string };
+    exam: { id: number; name: string; type: 'utbk' | 'tka' | 'cbt' };
 }
 
 interface Props extends InertiaPageProps {
@@ -98,7 +98,7 @@ export default function StudentShow() {
     const { student, exam_attempts } = usePage<Props>().props;
 
     // ── Summary stats ────────────────────────────────────────────────────────
-    const { totalExams, avgSkorUtbk, lastExamAt, passedCount, irtCount } =
+    const { totalExams, avgSkorUtbk, lastExamAt, passedCount, failedCount, irtCount } =
         useMemo(() => {
             const submitted = exam_attempts.filter(
                 (a) => a.status === 'submitted',
@@ -109,6 +109,7 @@ export default function StudentShow() {
                     avgSkorUtbk: null,
                     lastExamAt: null,
                     passedCount: 0,
+                    failedCount: 0,
                     irtCount: 0,
                 };
             }
@@ -131,12 +132,14 @@ export default function StudentShow() {
                     : null;
 
             const passed = submitted.filter((a) => a.is_passed === true).length;
+            const failed = submitted.filter((a) => a.is_passed === false).length;
 
             return {
                 totalExams: submitted.length,
                 avgSkorUtbk: avg,
                 lastExamAt: sorted[0]?.completed_at ?? null,
                 passedCount: passed,
+                failedCount: failed,
                 irtCount: irtAttempts.length,
             };
         }, [exam_attempts]);
@@ -294,7 +297,7 @@ export default function StudentShow() {
                                         Tidak Lulus
                                     </p>
                                     <p className="text-3xl font-bold text-red-600">
-                                        {totalExams - passedCount}
+                                        {failedCount}
                                     </p>
                                 </div>
                             </div>
@@ -455,7 +458,11 @@ export default function StudentShow() {
                                                                 variant="outline"
                                                                 className="text-xs text-muted-foreground"
                                                             >
-                                                                Belum IRT
+                                                                {attempt.exam
+                                                                    .type ===
+                                                                'cbt'
+                                                                    ? 'Tanpa status lulus'
+                                                                    : 'Belum IRT'}
                                                             </Badge>
                                                         )}
                                                     </TableCell>

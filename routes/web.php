@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\SchoolController;
 use App\Http\Controllers\Admin\ConsultantRequestController as AdminConsultantRequestController;
 use App\Http\Controllers\Admin\NewsController;
 use App\Http\Controllers\Admin\NewsImageController;
+use App\Http\Controllers\Admin\SearchController as AdminSearchController;
 use App\Http\Controllers\Admin\StudentAccountController;
 use App\Http\Controllers\Admin\StudentController;
 use App\Http\Controllers\Admin\UniversityController;
@@ -48,6 +49,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/search', AdminSearchController::class)->name('search');
 
         // User management routes
         Route::delete('users/bulk-delete', [UserController::class, 'bulkDelete'])->name('users.bulk-delete');

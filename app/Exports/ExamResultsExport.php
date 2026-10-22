@@ -23,7 +23,7 @@ class ExamResultsExport implements FromCollection, WithHeadings, WithStyles
     {
         // Get all attempts for this exam with student info
         $attempts = $this->exam->attempts()
-            ->with('student.university', 'student.major', 'student.school', 'responses.question')
+            ->with('exam', 'student.university', 'student.major', 'student.school', 'responses.question')
             ->get();
 
         $questions = $this->exam->questionBank->questions()->orderBy('id')->get();
@@ -56,12 +56,16 @@ class ExamResultsExport implements FromCollection, WithHeadings, WithStyles
             // Add total score
             $row['Total Score'] = "{$attempt->score}/{$attempt->total_score}";
             $row['Percentage'] = $attempt->total_score > 0
-                ? round(($attempt->score / $attempt->total_score) * 100, 2) . '%'
+                ? round(($attempt->score / $attempt->total_score) * 100, 2).'%'
                 : '0%';
 
-            // Add passing status
-            $passingScore = $student->major?->minimum_passing_grade ?? 0;
-            $row['Status'] = $attempt->score >= $passingScore ? 'PASSED' : 'FAILED';
+            if ($this->exam->type->usesIrt()) {
+                $row['Status'] = match ($attempt->isPassed()) {
+                    true => 'LULUS',
+                    false => 'TIDAK LULUS',
+                    null => '-',
+                };
+            }
 
             $rows[] = $row;
         }
@@ -81,7 +85,9 @@ class ExamResultsExport implements FromCollection, WithHeadings, WithStyles
 
         $headers[] = 'Total Score';
         $headers[] = 'Percentage';
-        $headers[] = 'Status';
+        if ($this->exam->type->usesIrt()) {
+            $headers[] = 'Status';
+        }
 
         return $headers;
     }

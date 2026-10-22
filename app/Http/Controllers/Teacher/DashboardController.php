@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Teacher;
 
-use App\Enums\ExamType;
 use App\Http\Controllers\Controller;
+use App\Models\ExamAttempt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -48,27 +48,21 @@ class DashboardController extends Controller
         $completedAttempts = (clone $attemptsBase)->where('exam_attempts.status', 'submitted')->count();
         $inProgressAttempts = (clone $attemptsBase)->where('exam_attempts.status', 'in_progress')->count();
 
-        $utbkAttemptsBase = (clone $attemptsBase)
-            ->where('exams.type', ExamType::UTBK->value);
-
-        $submitted = (clone $utbkAttemptsBase)
-            ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id')
-            ->leftJoin('majors', 'majors.id', '=', 'students.major_id')
-            ->where('exam_attempts.status', 'submitted')
-            ->select([
-                'exam_attempts.score',
-                DB::raw('COALESCE(majors.minimum_passing_grade, 0) as min_pass'),
-            ])
-            ->get();
-
-        $passedAttempts = 0;
-        foreach ($submitted as $row) {
-            if ((float) $row->score >= (float) $row->min_pass) {
-                $passedAttempts++;
-            }
-        }
-        $gradedAttempts = $submitted->count();
-        $failedAttempts = $gradedAttempts - $passedAttempts;
+        $teacherExamIds = (clone $examsQuery)->pluck('exams.id');
+        $irtSubmittedAttempts = ExamAttempt::with(['exam', 'student.major'])
+            ->whereIn('exam_id', $teacherExamIds)
+            ->where('status', 'submitted')
+            ->get()
+            ->filter(fn (ExamAttempt $attempt): bool => $attempt->exam->type->usesIrt());
+        $passedAttempts = $irtSubmittedAttempts
+            ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === true)
+            ->count();
+        $gradedAttempts = $irtSubmittedAttempts
+            ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() !== null)
+            ->count();
+        $failedAttempts = $irtSubmittedAttempts
+            ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === false)
+            ->count();
 
         // Average score (submitted only)
         $averageScore = $completedAttempts > 0
@@ -98,69 +92,30 @@ class DashboardController extends Controller
         }
 
         // ---- Recent attempts (last 5 submitted)
-        $recentAttempts = (clone $attemptsBase)
-            ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id')
-            ->where('exam_attempts.status', 'submitted')
-            ->orderByDesc('exam_attempts.completed_at')
+        $recentAttempts = ExamAttempt::with(['exam', 'student.major'])
+            ->whereIn('exam_id', $teacherExamIds)
+            ->where('status', 'submitted')
+            ->orderByDesc('completed_at')
             ->limit(5)
-            ->select([
-                'exam_attempts.id',
-                DB::raw('COALESCE(students.name, "-") as student_name'),
-                DB::raw('COALESCE(exams.name, "-") as exam_name'),
-                'exams.type as exam_type',
-                'exam_attempts.score',
-                'exam_attempts.total_score',
-                'exam_attempts.irt_theta',
-                'exam_attempts.completed_at',
-                'students.major_id',
-            ])
             ->get()
-            ->map(function ($row) {
-                $percentage = ((float) $row->total_score > 0)
-                    ? round(((float) $row->score / (float) $row->total_score) * 100, 2)
+            ->map(function (ExamAttempt $attempt) {
+                $percentage = ((float) $attempt->total_score > 0)
+                    ? round(((float) $attempt->score / (float) $attempt->total_score) * 100, 2)
                     : 0;
 
                 return [
-                    'id' => (int) $row->id,
-                    'student_name' => $row->student_name,
-                    'exam_name' => $row->exam_name,
-                    'score' => (float) $row->score,
-                    'total_score' => (float) $row->total_score,
+                    'id' => $attempt->id,
+                    'student_name' => $attempt->student?->name ?? '-',
+                    'exam_name' => $attempt->exam?->name ?? '-',
+                    'score' => (float) $attempt->score,
+                    'total_score' => (float) $attempt->total_score,
                     'percentage' => $percentage,
-                    'exam_type' => $row->exam_type,
-                    'irt_theta' => $row->irt_theta !== null ? (float) $row->irt_theta : null,
-                    'passed' => null,
-                    'completed_at' => $row->completed_at ? date('M d, Y H:i', strtotime($row->completed_at)) : null,
-                    '_major_id' => $row->major_id, // internal temp
+                    'exam_type' => $attempt->exam?->type?->value,
+                    'irt_theta' => $attempt->irt_theta !== null ? (float) $attempt->irt_theta : null,
+                    'passed' => $attempt->isPassed(),
+                    'completed_at' => $attempt->completed_at?->format('M d, Y H:i'),
                 ];
             });
-
-        // Fill passed for recent attempts (safe lookup)
-        $majorMin = [];
-        if (Schema::hasTable('majors')) {
-            $majorIds = $recentAttempts
-                ->where('exam_type', ExamType::UTBK->value)
-                ->pluck('_major_id')
-                ->filter()
-                ->unique()
-                ->values();
-            if ($majorIds->count()) {
-                $majorMin = DB::table('majors')
-                    ->whereIn('id', $majorIds)
-                    ->pluck('minimum_passing_grade', 'id')
-                    ->toArray();
-            }
-        }
-
-        $recentAttempts = $recentAttempts->map(function ($a) use ($majorMin) {
-            if ($a['exam_type'] === ExamType::UTBK->value) {
-                $min = $a['_major_id'] ? ($majorMin[$a['_major_id']] ?? 0) : 0;
-                $a['passed'] = ((float) $a['score'] >= (float) $min);
-            }
-            unset($a['_major_id']);
-
-            return $a;
-        })->values();
 
         // ---- Exam performance (top 5 latest exams)
         $examsTop = (clone $examsQuery)
@@ -169,53 +124,26 @@ class DashboardController extends Controller
             ->select(['exams.id', 'exams.name', 'exams.type'])
             ->get();
 
-        $examPerformance = $examsTop->map(function ($exam) use ($attemptsBase) {
-            $attempts = (clone $attemptsBase)
-                ->where('exams.id', $exam->id)
-                ->select(['exam_attempts.status', 'exam_attempts.score', 'exam_attempts.student_id'])
+        $examPerformance = $examsTop->map(function ($exam) {
+            $attempts = ExamAttempt::with(['exam', 'student.major'])
+                ->where('exam_id', $exam->id)
                 ->get();
 
-            // pass/fail only based on submitted attempts
             $submitted = $attempts->where('status', 'submitted');
-            $submittedCount = $submitted->count();
-
-            $isUtbk = $exam->type === ExamType::UTBK->value;
-            $studentIds = $isUtbk ? $submitted->pluck('student_id')->unique()->values() : collect();
-            $minPassByStudent = [];
-
-            if ($studentIds->count()) {
-                $rows = DB::table('users as students')
-                    ->leftJoin('majors', 'majors.id', '=', 'students.major_id')
-                    ->whereIn('students.id', $studentIds)
-                    ->select(['students.id', DB::raw('COALESCE(majors.minimum_passing_grade, 0) as min_pass')])
-                    ->get();
-
-                foreach ($rows as $r) {
-                    $minPassByStudent[$r->id] = (float) $r->min_pass;
-                }
-            }
-
-            $passed = 0;
-            if ($isUtbk) {
-                foreach ($submitted as $a) {
-                    $min = $minPassByStudent[$a->student_id] ?? 0;
-                    if ((float) $a->score >= (float) $min) {
-                        $passed++;
-                    }
-                }
-            }
-
-            $failed = $isUtbk ? $submittedCount - $passed : null;
-            $passRate = $isUtbk && $submittedCount > 0
-                ? round(($passed / $submittedCount) * 100, 2)
+            $usesIrt = $exam->type->usesIrt();
+            $graded = $submitted->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() !== null);
+            $passed = $graded->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === true)->count();
+            $failed = $graded->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === false)->count();
+            $passRate = $usesIrt && $graded->isNotEmpty()
+                ? round(($passed / $graded->count()) * 100, 2)
                 : null;
 
             return [
                 'name' => $exam->name,
                 'type' => $exam->type,
                 'total_attempts' => $attempts->count(),
-                'passed' => $isUtbk ? $passed : null,
-                'failed' => $failed,
+                'passed' => $usesIrt ? $passed : null,
+                'failed' => $usesIrt ? $failed : null,
                 'pass_rate' => $passRate,
             ];
         })->values();
@@ -234,26 +162,19 @@ class DashboardController extends Controller
             ->orderByDesc('total_exams')
             ->limit(5)
             ->get()
-            ->map(function ($s) use ($utbkAttemptsBase) {
-                $submitted = (clone $utbkAttemptsBase)
-                    ->where('exam_attempts.student_id', $s->student_id)
-                    ->where('exam_attempts.status', 'submitted')
-                    ->select(['exam_attempts.score'])
-                    ->get();
-
-                $minPass = 0;
-                if ($s->major_id) {
-                    $minPass = (float) (DB::table('majors')->where('id', $s->major_id)->value('minimum_passing_grade') ?? 0);
-                }
-
-                $passed = 0;
-                foreach ($submitted as $a) {
-                    if ((float) $a->score >= $minPass) {
-                        $passed++;
-                    }
-                }
-
-                $failed = $submitted->count() - $passed;
+            ->map(function ($s) use ($teacherExamIds) {
+                $submitted = ExamAttempt::with(['exam', 'student.major'])
+                    ->whereIn('exam_id', $teacherExamIds)
+                    ->where('student_id', $s->student_id)
+                    ->where('status', 'submitted')
+                    ->get()
+                    ->filter(fn (ExamAttempt $attempt): bool => $attempt->exam->type->usesIrt());
+                $passed = $submitted
+                    ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === true)
+                    ->count();
+                $failed = $submitted
+                    ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === false)
+                    ->count();
 
                 return [
                     'name' => $s->name ?? '-',

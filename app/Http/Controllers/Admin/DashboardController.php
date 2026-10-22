@@ -6,7 +6,6 @@ use App\Enums\ExamType;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
-use App\Models\Major;
 use App\Models\Question;
 use App\Models\QuestionBank;
 use App\Models\User;
@@ -44,25 +43,17 @@ class DashboardController extends Controller
             ->with('student.major', 'exam')
             ->get();
 
-        $utbkAttempts = $submittedAttempts
-            ->filter(fn (ExamAttempt $attempt) => $attempt->exam?->type === ExamType::UTBK);
-        $passedAttempts = 0;
-        foreach ($utbkAttempts as $attempt) {
-            $selections = $attempt->student->university_selections ?? [];
-            $firstMajorId = $selections[0]['majors'][0] ?? null;
-            $passingScore = $firstMajorId
-                ? (Major::find($firstMajorId)?->minimum_passing_grade ?? 0)
-                : ($attempt->student->major?->minimum_passing_grade ?? 0);
-            $effectiveScore = $attempt->irt_block_score !== null
-                ? $attempt->irt_block_score * 1525 / 100
-                : $attempt->score ?? 0;
-
-            if ($effectiveScore >= $passingScore) {
-                $passedAttempts++;
-            }
-        }
-        $gradedAttempts = $utbkAttempts->count();
-        $failedAttempts = $gradedAttempts - $passedAttempts;
+        $irtAttempts = $submittedAttempts
+            ->filter(fn (ExamAttempt $attempt): bool => $attempt->exam?->type->usesIrt() ?? false);
+        $passedAttempts = $irtAttempts
+            ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === true)
+            ->count();
+        $gradedAttempts = $irtAttempts
+            ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() !== null)
+            ->count();
+        $failedAttempts = $irtAttempts
+            ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === false)
+            ->count();
 
         $avgSkorIrt = ExamAttempt::where('status', 'submitted')
             ->whereNotNull('irt_block_score')
@@ -80,22 +71,8 @@ class DashboardController extends Controller
             ->take(6)
             ->get()
             ->map(function (ExamAttempt $attempt) {
-                $isUtbk = $attempt->exam?->type === ExamType::UTBK;
                 $usesIrt = $attempt->exam?->type?->usesIrt() ?? false;
                 $skorUtbkPct = $attempt->irt_block_score;
-                $passed = null;
-
-                if ($isUtbk) {
-                    $selections = $attempt->student->university_selections ?? [];
-                    $firstMajorId = $selections[0]['majors'][0] ?? null;
-                    $passingScore = $firstMajorId
-                        ? (Major::find($firstMajorId)?->minimum_passing_grade ?? 0)
-                        : ($attempt->student->major?->minimum_passing_grade ?? 0);
-                    $effectiveScore = $skorUtbkPct !== null
-                        ? $skorUtbkPct * 1525 / 100
-                        : $attempt->score ?? 0;
-                    $passed = $effectiveScore >= $passingScore;
-                }
 
                 return [
                     'id' => $attempt->id,
@@ -112,7 +89,7 @@ class DashboardController extends Controller
                     'exam_type' => $attempt->exam->type->value,
                     'uses_irt' => $usesIrt,
                     'irt_processed' => $usesIrt && $attempt->exam->irt_processed_at !== null && $skorUtbkPct !== null,
-                    'passed' => $passed,
+                    'passed' => $attempt->isPassed(),
                     'completed_at' => optional($attempt->completed_at)->format('d M Y, H:i'),
                 ];
             });
@@ -131,22 +108,11 @@ class DashboardController extends Controller
                 $passed = 0;
                 $totalSkor = 0;
                 $irtCount = 0;
-                $isUtbk = $exam->type === ExamType::UTBK;
                 $usesIrt = $exam->type->usesIrt();
 
                 foreach ($attempts as $attempt) {
-                    if ($isUtbk) {
-                        $selections = $attempt->student->university_selections ?? [];
-                        $firstMajorId = $selections[0]['majors'][0] ?? null;
-                        $passingScore = $firstMajorId
-                            ? (Major::find($firstMajorId)?->minimum_passing_grade ?? 0)
-                            : ($attempt->student->major?->minimum_passing_grade ?? 0);
-                        $effectiveScore = $attempt->irt_block_score !== null
-                            ? $attempt->irt_block_score * 1525 / 100
-                            : $attempt->score ?? 0;
-                        if ($effectiveScore >= $passingScore) {
-                            $passed++;
-                        }
+                    if ($attempt->isPassed() === true) {
+                        $passed++;
                     }
 
                     if ($usesIrt && $attempt->irt_block_score !== null) {
@@ -156,15 +122,20 @@ class DashboardController extends Controller
                 }
 
                 $total = $attempts->count();
+                $graded = $attempts->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() !== null)->count();
                 $avgSkorIrt = $irtCount > 0 ? round($totalSkor / $irtCount, 2) : null;
 
                 return [
                     'name' => $exam->name,
                     'type' => $exam->type->value,
                     'total_attempts' => $total,
-                    'passed' => $isUtbk ? $passed : null,
-                    'failed' => $isUtbk ? $total - $passed : null,
-                    'pass_rate' => $isUtbk && $total > 0 ? round(($passed / $total) * 100, 1) : null,
+                    'passed' => $usesIrt ? $passed : null,
+                    'failed' => $usesIrt
+                        ? $attempts->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === false)->count()
+                        : null,
+                    'pass_rate' => $usesIrt && $graded > 0
+                        ? round(($passed / $graded) * 100, 1)
+                        : null,
                     'avg_skor_irt' => $avgSkorIrt,
                     'irt_processed' => $usesIrt && $exam->irt_processed_at !== null,
                 ];

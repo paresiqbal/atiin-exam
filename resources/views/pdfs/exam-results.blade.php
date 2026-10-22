@@ -77,6 +77,25 @@
             margin: 4px 0;
         }
 
+        .pass-status {
+            margin: 12px auto 0;
+            padding: 8px 16px;
+            width: fit-content;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .pass-status.passed {
+            color: #166534;
+            background-color: #dcfce7;
+        }
+
+        .pass-status.failed {
+            color: #991b1b;
+            background-color: #fee2e2;
+        }
+
         .score-grid {
             display: flex;
             justify-content: center;
@@ -252,6 +271,10 @@
     {{-- Score summary --}}
     <div class="score-section">
         <h2>{{ $status }}</h2>
+
+        @if ($pass_status !== null)
+            <div class="pass-status {{ $pass_status_class }}">{{ $pass_status }}</div>
+        @endif
 
         <div class="score-grid">
             <div class="score-box">

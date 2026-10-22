@@ -32,6 +32,7 @@ interface Props {
         question_block_count?: number;
         total_questions: number;
         completed_at: string | null;
+        is_passed: boolean | null;
     };
     exam: {
         title: string;
@@ -110,6 +111,11 @@ export default function Results({ attempt, exam, questionDetails }: Props) {
                             <ScoreCard label={isCbt ? 'Poin Diperoleh / Maksimum' : 'Skor Mentah'} value={`${Math.floor(rawScore)} / ${Math.floor(totalScore)}`} />
                             <ScoreCard label={isCbt ? 'Persentase Nilai' : 'Persentase Benar'} value={`${percentage}%`} />
                         </div>
+                        {attempt.is_passed !== null && (
+                            <Badge variant={attempt.is_passed ? 'default' : 'destructive'}>
+                                {attempt.is_passed ? 'LULUS' : 'TIDAK LULUS'}
+                            </Badge>
+                        )}
                     </CardContent>
                 </Card>
 

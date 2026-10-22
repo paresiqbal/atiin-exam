@@ -24,13 +24,6 @@ use Inertia\Response;
 
 class ExamController extends Controller
 {
-    /**
-     * irt_block_score stores skor_utbk_pct (percentage, e.g. 45.41).
-     * minimum_passing_grade is on the raw UTBK scale (e.g. 651).
-     * Use this constant to convert: skor_utbk_raw = pct * ATTIN_FORMULA / 100
-     */
-    private const ATTIN_FORMULA = 1525.0;
-
     private function requestedType(Request $request): ExamType
     {
         $type = $request->query('type', ExamType::UTBK->value);
@@ -40,16 +33,6 @@ class ExamController extends Controller
         }
 
         return ExamType::tryFrom($type) ?? abort(404);
-    }
-
-    /**
-     * Convert skor_utbk_pct → raw UTBK score (same scale as minimum_passing_grade).
-     */
-    private function pctToRaw(?float $pct): ?float
-    {
-        return $pct !== null
-            ? round($pct * self::ATTIN_FORMULA / 100, 2)
-            : null;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -390,9 +373,8 @@ class ExamController extends Controller
 
         $attemptsQuery = $exam->attempts()
             ->select('exam_attempts.*')
-            ->with(['student.university', 'student.major'])
-            ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id')
-            ->leftJoin('majors', 'majors.id', '=', 'students.major_id');
+            ->with(['exam', 'student.university', 'student.major'])
+            ->leftJoin('users as students', 'students.id', '=', 'exam_attempts.student_id');
 
         if (! empty($q)) {
             $attemptsQuery->where(function ($sq) use ($q) {
@@ -401,29 +383,18 @@ class ExamController extends Controller
             });
         }
 
-        $isUtbk = $exam->type === ExamType::UTBK;
+        $usesIrt = $exam->type->usesIrt();
         $isCbt = $exam->type === ExamType::CBT;
 
-        if ($isUtbk && $status === 'passed') {
-            $attemptsQuery
+        if ($usesIrt && in_array($status, ['passed', 'failed'], true)) {
+            $shouldPass = $status === 'passed';
+            $matchingAttemptIds = (clone $attemptsQuery)
                 ->where('exam_attempts.status', 'submitted')
-                ->whereNotNull('exam_attempts.irt_block_score')
-                ->whereRaw(
-                    '(exam_attempts.irt_block_score * ? / 100) >= COALESCE(majors.minimum_passing_grade, 0)',
-                    [self::ATTIN_FORMULA]
-                );
-        }
+                ->get()
+                ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === $shouldPass)
+                ->modelKeys();
 
-        if ($isUtbk && $status === 'failed') {
-            $attemptsQuery
-                ->where('exam_attempts.status', 'submitted')
-                ->where(function ($fq) {
-                    $fq->whereNull('exam_attempts.irt_block_score')
-                        ->orWhereRaw(
-                            '(exam_attempts.irt_block_score * ? / 100) < COALESCE(majors.minimum_passing_grade, 0)',
-                            [self::ATTIN_FORMULA]
-                        );
-                });
+            $attemptsQuery->whereIn('exam_attempts.id', $matchingAttemptIds);
         }
 
         if ($freeze === 'frozen') {
@@ -459,7 +430,7 @@ class ExamController extends Controller
             $totalQuestions,
             $questionBankCount,
             $bankDivisor,
-            $isUtbk,
+            $usesIrt,
             $isCbt
         ) {
             $rawScore = (float) ($attempt->score ?? 0);
@@ -469,12 +440,11 @@ class ExamController extends Controller
                 ? round(($rawScore / $totalScore) * 100, 2)
                 : 0;
 
-            // Convert to raw UTBK score for pass/fail comparison
-            $skorUtbk = $this->pctToRaw($blockScore);   // e.g. 692.35
+            $skorUtbk = $attempt->scoreOnPassingScale();
             $adjustedScore = $isCbt ? $rawScore : ($blockScore ?? ($rawScore / $bankDivisor));
             $adjustedTotalScore = $isCbt ? $totalScore : ($totalScore / $bankDivisor);
 
-            $selections = $isUtbk ? ($attempt->student->university_selections ?? []) : [];
+            $selections = $usesIrt ? ($attempt->student->university_selections ?? []) : [];
             $firstSelection = $selections[0] ?? null;
             $firstUniversityId = $firstSelection['university_id'] ?? null;
             $firstMajorId = $firstSelection['majors'][0] ?? null;
@@ -488,15 +458,8 @@ class ExamController extends Controller
                 : null;
 
             $selectedMajorName = $selectedMajorModel?->name;
-            $minPassing = $isUtbk
-                ? ($selectedMajorModel?->minimum_passing_grade
-                    ?? $attempt->student->major?->minimum_passing_grade
-                    ?? 0)
-                : null;
-
-            $isPassed = $isUtbk && $attempt->status === 'submitted' && $skorUtbk !== null
-                ? $skorUtbk >= $minPassing
-                : null;
+            $minPassing = $usesIrt ? $attempt->minimumPassingScore() : null;
+            $isPassed = $attempt->isPassed();
 
             $durationMinutes = null;
             if ($attempt->started_at && $attempt->completed_at) {
@@ -528,10 +491,10 @@ class ExamController extends Controller
                     'name' => $attempt->student->name,
                     'email' => $attempt->student->email,
                     'university' => [
-                        'name' => $isUtbk ? ($selectedUniversity ?? $attempt->student->university?->name ?? '-') : null,
+                        'name' => $usesIrt ? ($selectedUniversity ?? $attempt->student->university?->name ?? '-') : null,
                     ],
                     'major' => [
-                        'name' => $isUtbk ? ($selectedMajorName ?? $attempt->student->major?->name ?? '-') : null,
+                        'name' => $usesIrt ? ($selectedMajorName ?? $attempt->student->major?->name ?? '-') : null,
                         'minimum_passing_grade' => $minPassing,
                     ],
                 ],
@@ -541,26 +504,22 @@ class ExamController extends Controller
         // ── Analytics ─────────────────────────────────────────────────────────
         $submittedAttempts = $exam->attempts()
             ->where('status', 'submitted')
+            ->with(['exam', 'student.major'])
             ->get();
 
         $totalAttempts = $submittedAttempts->count();
 
-        $passed = $isUtbk ? $submittedAttempts->filter(function ($attempt) {
-            $selections = $attempt->student->university_selections ?? [];
-            $firstMajorId = ($selections[0]['majors'][0] ?? null);
-            $minPassing = $firstMajorId
-                ? Major::find($firstMajorId)?->minimum_passing_grade ?? 0
-                : ($attempt->student->major?->minimum_passing_grade ?? 0);
-
-            $skorUtbk = $this->pctToRaw($attempt->irt_block_score);
-
-            return $skorUtbk !== null && $skorUtbk >= $minPassing;
-        })->count() : null;
+        $passed = $usesIrt
+            ? $submittedAttempts
+                ->load(['exam', 'student.major'])
+                ->filter(fn (ExamAttempt $attempt): bool => $attempt->isPassed() === true)
+                ->count()
+            : null;
 
         // Average raw UTBK score across IRT-processed attempts
         $averageRaw = $submittedAttempts
             ->filter(fn ($a) => $a->irt_block_score !== null)
-            ->map(fn ($a) => $this->pctToRaw($a->irt_block_score))
+            ->map(fn (ExamAttempt $attempt) => $attempt->scoreOnPassingScale())
             ->avg() ?? 0;
         $averageScore = $isCbt
             ? $submittedAttempts->avg(function ($attempt) {
@@ -611,37 +570,28 @@ class ExamController extends Controller
             'responses.selectedOption',
         ]);
 
-        $isUtbk = $attempt->exam->type === ExamType::UTBK;
-        if ($isUtbk) {
+        $usesIrt = $attempt->exam->type->usesIrt();
+        if ($usesIrt) {
             $attempt->student->load(['university', 'major']);
         }
 
-        $selections = $isUtbk ? ($attempt->student->university_selections ?? []) : [];
+        $selections = $usesIrt ? ($attempt->student->university_selections ?? []) : [];
         $firstSelection = $selections[0] ?? null;
         $firstMajorId = $firstSelection['majors'][0] ?? null;
 
-        $selectedMajor = $isUtbk && $firstMajorId
+        $selectedMajor = $usesIrt && $firstMajorId
             ? Major::find($firstMajorId)
             : null;
 
-        $passingScore = $isUtbk
-            ? ($selectedMajor?->minimum_passing_grade
-                ?? $attempt->student?->major?->minimum_passing_grade
-                ?? 0)
-            : null;
+        $passingScore = $usesIrt ? $attempt->minimumPassingScore() : null;
 
         // irt_block_score stores skor_utbk_pct (percentage, e.g. 45.41)
         $skorUtbkPct = $attempt->irt_block_score !== null
             ? round((float) $attempt->irt_block_score, 2)
             : null;
 
-        // Convert to raw UTBK score (same scale as minimum_passing_grade, e.g. 692.35)
-        $skorUtbk = $this->pctToRaw($skorUtbkPct);
-
-        // Compare raw vs raw — this is the fixed comparison
-        $isPassed = $isUtbk && $skorUtbk !== null
-            ? $skorUtbk >= $passingScore
-            : null;
+        $skorUtbk = $attempt->scoreOnPassingScale();
+        $isPassed = $attempt->isPassed();
 
         $questions = $this->getExamQuestions($attempt->exam);
 
@@ -694,14 +644,14 @@ class ExamController extends Controller
             'student' => [
                 'name' => $attempt->student->name,
                 'email' => $attempt->student->email,
-                'university' => $isUtbk ? $attempt->student->university : null,
-                'major' => $isUtbk ? $attempt->student->major : null,
+                'university' => $usesIrt ? $attempt->student->university : null,
+                'major' => $usesIrt ? $attempt->student->major : null,
             ],
             'studentData' => [
-                'selected_university' => $isUtbk && $firstSelection
+                'selected_university' => $usesIrt && $firstSelection
                     ? University::find($firstSelection['university_id'])?->name
                     : null,
-                'selected_major' => $isUtbk ? $selectedMajor?->name : null,
+                'selected_major' => $usesIrt ? $selectedMajor?->name : null,
                 'minimum_passing_grade' => $passingScore,
             ],
             'questionBankCount' => $attempt->exam->questionBanks->count(),
@@ -771,12 +721,14 @@ class ExamController extends Controller
             }
         }
 
-        if ($isUtbk) {
-            array_push($headerRow1, 'Skor UTBK', 'Status');
-            array_push($headerRow2, 'Skor UTBK', 'Status');
-        } elseif ($usesIrt) {
-            array_push($headerRow1, 'Theta (IRT)', 'Skor IRT (%)');
-            array_push($headerRow2, 'Theta (IRT)', 'Skor IRT (%)');
+        if ($usesIrt) {
+            if ($isUtbk) {
+                array_push($headerRow1, 'Skor UTBK', 'Status');
+                array_push($headerRow2, 'Skor UTBK', 'Status');
+            } else {
+                array_push($headerRow1, 'Theta (IRT)', 'Skor IRT (%)', 'Status');
+                array_push($headerRow2, 'Theta (IRT)', 'Skor IRT (%)', 'Status');
+            }
         } else {
             if ($exam->type === ExamType::CBT) {
                 array_push($headerRow1, 'Poin Diperoleh', 'Poin Maksimum');
@@ -817,14 +769,21 @@ class ExamController extends Controller
                 }
             }
 
-            if ($isUtbk) {
-                $skorUtbk = $this->pctToRaw($attempt->irt_block_score);
-                $passingScore = $student?->major?->minimum_passing_grade ?? 0;
-                $row[] = $skorUtbk !== null ? number_format($skorUtbk, 2) : '-';
-                $row[] = $skorUtbk !== null && $skorUtbk >= $passingScore ? 'LULUS' : 'TIDAK LULUS';
-            } elseif ($usesIrt) {
-                $row[] = $attempt->irt_theta !== null ? number_format((float) $attempt->irt_theta, 4) : '-';
-                $row[] = $attempt->irt_block_score !== null ? number_format((float) $attempt->irt_block_score, 2) : '-';
+            if ($usesIrt) {
+                if ($isUtbk) {
+                    $row[] = $attempt->scoreOnPassingScale() !== null
+                        ? number_format($attempt->scoreOnPassingScale(), 2)
+                        : '-';
+                } else {
+                    $row[] = $attempt->irt_theta !== null ? number_format((float) $attempt->irt_theta, 4) : '-';
+                    $row[] = $attempt->irt_block_score !== null ? number_format((float) $attempt->irt_block_score, 2) : '-';
+                }
+
+                $row[] = match ($attempt->isPassed()) {
+                    true => 'LULUS',
+                    false => 'TIDAK LULUS',
+                    null => '-',
+                };
             } else {
                 $row[] = $attempt->score ?? '-';
                 $row[] = $attempt->total_score ?? '-';
